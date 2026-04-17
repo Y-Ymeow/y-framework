@@ -1,0 +1,56 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$command = $argv[1] ?? null;
+
+if ($command === null) {
+    fwrite(STDERR, "Available commands: route:cache, cache:clear, route:list\n");
+    exit(1);
+}
+
+$app = require dirname(__DIR__) . '/bootstrap/app.php';
+
+switch ($command) {
+    case 'route:cache':
+        require dirname(__DIR__) . '/bootstrap/cache.php';
+        break;
+
+    case 'cache:clear':
+        $app->cache()->clear();
+        echo "Cache cleared.\n";
+        break;
+
+    case 'route:list':
+        $router = $app->make(Framework\Routing\Router::class);
+
+        foreach ($router->all() as $route) {
+            $handler = match (true) {
+                is_array($route->handler) => implode('@', $route->handler),
+                is_string($route->handler) => $route->handler,
+                default => 'closure',
+            };
+            echo implode('|', $route->methods) . "\t" . $route->path . "\t" . $handler . PHP_EOL;
+        }
+        break;
+
+    case 'db:migrate':
+        $migrator = new Framework\Database\Migrations\Migrator(
+            $app->make(Framework\Database\DatabaseManager::class)->connection(),
+            $app->basePath('database/migrations')
+        );
+        $executed = $migrator->migrate();
+        if (empty($executed)) {
+            echo "Nothing to migrate.\n";
+        } else {
+            foreach ($executed as $name) {
+                echo "Migrated: {$name}\n";
+            }
+        }
+        break;
+
+    default:
+        fwrite(STDERR, "Unknown command [{$command}]\n");
+        exit(1);
+}

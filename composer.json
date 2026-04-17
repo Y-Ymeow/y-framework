@@ -1,0 +1,39 @@
+{
+  "name": "ymeow/php-framework",
+  "description": "A compiled, performance-oriented PHP framework skeleton.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "^8.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Framework\\": "src/",
+      "App\\": "app/"
+    },
+    "files": [
+      "src/Routing/Functions.php",
+      "functions/helpers.php",
+      "functions/http.php",
+      "functions/routing.php",
+      "functions/database.php",
+      "functions/db_extra.php",
+      "functions/ui.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "serve": "php -S 127.0.0.1:8000 -t public public/index.php",
+    "route:cache": "php bin/console route:cache",
+    "cache:clear": "php bin/console cache:clear"
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

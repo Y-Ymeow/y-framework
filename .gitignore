@@ -1,0 +1,26 @@
+# 依赖
+/vendor/
+
+# 环境与配置
+.env
+.env.local
+.env.*.local
+
+# 存储与缓存
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# 数据库 (排除本地 SQLite 数据库文件)
+/*.sqlite
+/*.sqlite-journal
+
+# IDE 与系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 编译产物
+/public/storage
