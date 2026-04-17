@@ -77,8 +77,45 @@ function asset(string $path): string
 }
 
 /**
- * 整个 HTML 文档的“壳”
+ * 全局动态组件注册中心
  */
+final class LiveRegistry
+{
+    private static array $components = [];
+
+    public static function register(string $id, callable $renderer): void
+    {
+        self::$components[$id] = $renderer;
+    }
+
+    public static function get(string $id): ?callable
+    {
+        return self::$components[$id] ?? null;
+    }
+}
+
+/**
+ * 高效动态组件容器 (支持精准 ID 更新)
+ */
+function LiveComponent(string $id, callable $renderer, array $props = []): string
+{
+    // 1. 注册组件
+    LiveRegistry::register($id, $renderer);
+
+    // 2. 如果是针对该 ID 的 Y-Live 请求，直接返回渲染结果
+    $request = app(\Framework\Http\Request::class);
+    if ($request->header('X-Live-Id') === $id) {
+        // 在 Kernel 捕获处处理，或者在这里抛出中断
+    }
+
+    return div([
+        'data-live-id' => $id, 
+        'data-props' => json_encode($props),
+        'class' => 'y-live-component'
+    ], 
+        $renderer($props)
+    );
+}
 function Document(string $title, array $head, array $bodyContent): string
 {
     return "<!DOCTYPE html>\n" . 

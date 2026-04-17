@@ -50,6 +50,114 @@ switch ($command) {
         }
         break;
 
+    case 'app:init':
+        $base = dirname(__DIR__);
+        @mkdir($base . '/app/Entities', 0777, true);
+        @mkdir($base . '/app/Actions', 0777, true);
+        @mkdir($base . '/database/migrations', 0777, true);
+        @mkdir($base . '/resources/js', 0777, true);
+        @mkdir($base . '/resources/css', 0777, true);
+
+        // 1. 生成 Entity
+        file_put_contents($base . '/app/Entities/User.php', <<<PHP
+<?php
+namespace App\Entities;
+use Framework\Database\Attributes\{Table, Column};
+
+#[Table('users')]
+class User {
+    #[Column(isPrimary: true, autoIncrement: true)]
+    public int \$id;
+    #[Column]
+    public string \$name;
+    #[Column]
+    public int \$likes = 0;
+}
+PHP
+);
+
+        // 2. 生成 Migration
+        file_put_contents($base . '/database/migrations/2026_01_01_000000_create_users_table.php', <<<PHP
+<?php
+use Framework\Database\Schema\Schema;
+use Framework\Database\Schema\Blueprint;
+use Framework\Database\Migrations\Migration;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('users', function (Blueprint \$table) {
+            \$table->id();
+            \$table->string('name');
+            \$table->integer('likes');
+        });
+    }
+    public function down(): void { Schema::dropIfExists('users'); }
+};
+PHP
+);
+
+        // 3. 生成 Action + Functional UI + Y-Live
+        file_put_contents($base . '/app/Actions/Welcome.php', <<<PHP
+<?php
+use Framework\Routing\Attribute\Route;
+use Framework\Http\Request;
+use App\Entities\User;
+use function Framework\UI\{Document, div, h1, button, LiveComponent};
+
+#[Route(path: '/', methods: ['GET'])]
+function Welcome(Request \$request) {
+    // 演示：精准获取或创建一个用户
+    \$mapper = app(Framework\Database\ORM\Mapper::class);
+    \$user = \$mapper->find(User::class, 1) ?: new User();
+    if (!\$user->id) { \$user->name = 'Y-Stacker'; \$mapper->save(\$user); }
+
+    return Document("Y-Stack Demo", [], [
+        div(['style' => 'text-align:center; padding:50px;'],
+            h1([], "🚀 欢迎使用 Y-Stack"),
+            
+            // Y-Live 精准更新演示：点击只更新这个按钮区域，不刷新页面
+            LiveComponent("UserLikes", function() use (\$user) {
+                return div([],
+                    div([], "你好, {\$user->name}! 你目前的点赞数: {\$user->likes}"),
+                    button([
+                        'data-live-action' => 'like', 
+                        'style' => 'padding:10px; cursor:pointer;'
+                    ], "给 Y-Stack 点个赞 👍")
+                );
+            }, ['id' => \$user->id])
+        )
+    ]);
+}
+
+#[Route(path: '/', methods: ['POST'])]
+function HandleLike(Request \$request) {
+    if (\$request->header('X-Live-Id') === 'UserLikes') {
+        \$mapper = app(Framework\Database\ORM\Mapper::class);
+        \$user = \$mapper->find(User::class, 1);
+        \$user->likes++;
+        \$mapper->save(\$user);
+        
+        // 只渲染并返回这一个片段
+        return Framework\UI\LiveRegistry::get('UserLikes')();
+    }
+}
+PHP
+);
+
+        // 4. 生成 package.json
+        file_put_contents($base . '/package.json', json_encode([
+            'private' => true,
+            'scripts' => ['dev' => 'vite', 'build' => 'vite build'],
+            'devDependencies' => ['vite' => '^5.0.0', 'idiomorph' => '^0.3.0']
+        ], JSON_PRETTY_PRINT));
+
+        echo "✅ Demo 项目已初始化！\n";
+        echo "接下来请运行:\n";
+        echo "1. composer dump-autoload (更新 App 命名空间)\n";
+        echo "2. php bin/console db:migrate (初始化数据库)\n";
+        echo "3. php -S 127.0.0.1:8000 index.php (访问首页)\n";
+        break;
+
     default:
         fwrite(STDERR, "Unknown command [{$command}]\n");
         exit(1);

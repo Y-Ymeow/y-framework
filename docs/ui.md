@@ -27,6 +27,36 @@ return Document("首页", [], [
 ]);
 ```
 
+## CSRF 保护
+
+框架内置了 CSRF 保护。使用 `form()` 助手函数时，如果 `method` 不是 `GET`，会自动添加 CSRF 隐藏域。
+
+```php
+use function Framework\UI\{form, input};
+
+return form(['action' => '/submit', 'method' => 'POST'],
+    input(['name' => 'data']),
+    input(['type' => 'submit'])
+);
+```
+
+## 动态组件 (Y-Live)
+
+Y-Live 提供了一种无需编写 JavaScript 即可实现局部页面更新的方案（类似 Livewire）。
+
+```php
+use function Framework\UI\LiveComponent;
+
+return LiveComponent('counter', function($props) {
+    return div([], 
+        "当前计数: " . ($props['count'] ?? 0),
+        button(['data-live-action' => 'increment'], "点击增加")
+    );
+});
+```
+
+详情请参阅 [Y-Live 动态更新](live.md)。
+
 ## 片段缓存 (Fragment Caching)
 
 对于昂贵的组件，可以使用 `cache_ui`：

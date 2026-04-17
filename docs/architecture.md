@@ -14,8 +14,10 @@
 ## 核心组件
 
 - **HTTP 引擎**：仿 PSR-15 中间件管线，使用原生 Request/Response 对象。
-- **UI 引擎 (Functional UI)**：彻底抛弃 HTML 模板文件，使用纯 PHP 函数描述结构，支持局部片段缓存。
+- **UI 引擎 (Functional UI)**：彻底抛弃 HTML 模板文件，使用纯 PHP 函数描述结构。支持 **Y-Live** 片段更新，无需 JS 即可实现交互。
+- **现代前端集成**：原生支持 Vite 资源管理与 **Inertia.js** SPA 渲染模式。
 - **数据库 (Data Mapper)**：利用 PHP 8 Attribute 实现 POPO (Plain Old PHP Object) 到数据库的透明映射。
 - **路由系统**：支持路由分组、中间件和编译缓存。
+- **CLI 工具**：包含缓存管理、数据库迁移，以及 `app:init`（一键初始化 Demo 环境）。
 - **现代化部署 (FrankenPHP)**：原生支持 FrankenPHP Worker 模式，实现应用常驻内存，获得极致的响应速度。
 

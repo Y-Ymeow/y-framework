@@ -1,5 +1,6 @@
 # 依赖
 /vendor/
+/node_modules/
 
 # 环境与配置
 .env
@@ -12,9 +13,14 @@
 /storage/logs/*
 !/storage/logs/.gitkeep
 
-# 数据库 (排除本地 SQLite 数据库文件)
+# 数据库
 /*.sqlite
 /*.sqlite-journal
+
+# 业务代码 (如果你想让仓库保持核心纯净，可以取消下面注释)
+# /app/*
+# /database/migrations/*
+# /resources/*
 
 # IDE 与系统文件
 .idea/
@@ -23,5 +29,5 @@
 Thumbs.db
 
 # 编译产物
+/public/build
 /public/storage
-storage/database.sqlite
