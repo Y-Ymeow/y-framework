@@ -43,3 +43,4 @@ datalog/
 /public/storage
 /public/assets
 /datalog
+.atomcode/
