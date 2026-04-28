@@ -1,0 +1,300 @@
+<?php
+
+declare(strict_types=1);
+
+use Framework\Intl\Translator;
+
+function env(string $key, mixed $default = null): mixed
+{
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+    if ($value === false || $value === null) {
+        return $default instanceof \Closure ? $default() : $default;
+    }
+
+    switch (strtolower((string)$value)) {
+        case 'true':
+        case '(true)':
+            return true;
+        case 'false':
+        case '(false)':
+            return false;
+        case 'empty':
+        case '(empty)':
+            return '';
+        case 'null':
+        case '(null)':
+            return null;
+    }
+
+    if (str_starts_with((string)$value, '"') && str_ends_with((string)$value, '"')) {
+        return substr((string)$value, 1, -1);
+    }
+
+    return $value;
+}
+
+function base_path(string $path = ''): string
+{
+    $base = dirname(__DIR__, 2);
+    return $path ? $base . '/' . ltrim($path, '/') : $base;
+}
+
+function storage_path(string $path = ''): string
+{
+    return base_path('storage' . ($path ? '/' . ltrim($path, '/') : ''));
+}
+
+function logger(string $message, array $context = []): void
+{
+    static $logManager = null;
+    if ($logManager === null) {
+        $logManager = new \Framework\Log\LogManager(['name' => 'app', 'path' => storage_path('logs/app.log')]);
+    }
+    $logManager->info($message, $context);
+}
+
+function config(string $key, mixed $default = null): mixed
+{
+    static $config = null;
+    if ($config === null) {
+        $config = [];
+        $configDir = base_path('config');
+        if (is_dir($configDir)) {
+            foreach (glob($configDir . '/*.php') as $file) {
+                $name = basename($file, '.php');
+                $config[$name] = require $file;
+            }
+        }
+    }
+
+    $keys = explode('.', $key);
+    $current = $config;
+
+    foreach ($keys as $segment) {
+        if (is_array($current) && array_key_exists($segment, $current)) {
+            $current = $current[$segment];
+        } else {
+            return $default instanceof \Closure ? $default() : $default;
+        }
+    }
+
+    return $current;
+}
+
+function asset(string $path): string
+{
+    $baseUrl = config('app.url', '');
+    return rtrim($baseUrl, '/') . '/assets/' . ltrim($path, '/');
+}
+
+function media_url(string $path): string
+{
+    $baseUrl = config('app.url', '');
+    return rtrim($baseUrl, '/') . '/media/' . ltrim($path, '/');
+}
+
+function download_url(string $path): string
+{
+    $baseUrl = config('app.url', '');
+    return rtrim($baseUrl, '/') . '/download/' . ltrim($path, '/');
+}
+
+function stream_url(string $path): string
+{
+    $baseUrl = config('app.url', '');
+    return rtrim($baseUrl, '/') . '/stream/' . ltrim($path, '/');
+}
+
+function public_path(string $path = ''): string
+{
+    return base_path('public' . ($path ? '/' . ltrim($path, '/') : ''));
+}
+
+function vite(string $entry): string
+{
+    return \Framework\Support\Asset::vite($entry);
+}
+
+function vite_css(string $entry): array
+{
+    return \Framework\Support\Asset::viteCss($entry);
+}
+
+function redirect(string $url, int $status = 302): \Framework\Http\Response
+{
+    return new \Framework\Http\Response('', $status, ['Location' => $url]);
+}
+
+function abort(int $code, string $message = ''): never
+{
+    throw new \Framework\Http\HttpException($code, $message);
+}
+
+function now(): \DateTimeImmutable
+{
+    return new \DateTimeImmutable();
+}
+
+function today(): \DateTimeImmutable
+{
+    return new \DateTimeImmutable('today');
+}
+
+function str_contains_all(string $haystack, string ...$needles): bool
+{
+    foreach ($needles as $needle) {
+        if (!str_contains($haystack, $needle)) return false;
+    }
+    return true;
+}
+
+function str_contains_any(string $haystack, string ...$needles): bool
+{
+    foreach ($needles as $needle) {
+        if (!str_contains($haystack, $needle)) return true;
+    }
+    return false;
+}
+
+function auth(): \Framework\Auth\AuthManager
+{
+    static $instance = null;
+    if ($instance === null) {
+        $app = \Framework\Foundation\Application::getInstance() ?? app();
+        $instance = $app->make(\Framework\Auth\AuthManager::class);
+    }
+    return $instance;
+}
+
+function app(): \Framework\Foundation\Application
+{
+    return $GLOBALS['app'] ?? throw new \RuntimeException('Application not initialized');
+}
+
+function db(): \Framework\Database\Connection
+{
+    return app()->make(\Framework\Database\Connection::class);
+}
+
+function user(): ?\Framework\Auth\User
+{
+    return auth()->user();
+}
+
+
+if (!function_exists('debug')) {
+    function debug(mixed ...$data): void
+    {
+        \Framework\DebugBar\DebugBar::debug(...$data);
+    }
+}
+
+if (!function_exists('dump')) {
+    function dump(mixed ...$data): void
+    {
+        \Framework\Support\VarDumper::dump(...$data);
+    }
+}
+
+if (!function_exists('info')) {
+    function info(string $message): void
+    {
+        \Framework\DebugBar\DebugBar::info($message);
+    }
+}
+
+if (!function_exists('warn')) {
+    function warn(string $message): void
+    {
+        \Framework\DebugBar\DebugBar::warning($message);
+    }
+}
+
+if (!function_exists('error')) {
+    function error(string $message): void
+    {
+        \Framework\DebugBar\DebugBar::error($message);
+    }
+}
+
+if (!function_exists('success')) {
+    function success(string $message): void
+    {
+        \Framework\DebugBar\DebugBar::success($message);
+    }
+}
+
+if (!function_exists('t')) {
+    function t(string $key, array $replace = [], ?string $locale = null): string
+    {
+        return Translator::get($key, $replace, $locale);
+    }
+}
+
+if (!function_exists('choice')) {
+    function choice(string $key, int|float|array $number, array $replace = [], ?string $locale = null): string
+    {
+        return Translator::choice($key, $number, $replace, $locale);
+    }
+}
+
+if (!function_exists('locale')) {
+    function locale(?string $newLocale = null): string
+    {
+        if ($newLocale !== null) {
+            Translator::setLocale($newLocale);
+        }
+        return Translator::getLocale();
+    }
+}
+
+
+if (!function_exists('recordUrl')) {
+    function recordUrl(string $resource, int $id): string
+    {
+        return \Framework\Admin\AdminResourceController::recordUrl($resource, $id);
+    }
+}
+
+if (!function_exists('recordDeleteUrl')) {
+    function recordDeleteUrl(string $resource, mixed $id): string
+    {
+        return \Framework\Admin\AdminResourceController::deleteUrl($resource, $id);
+    }
+}
+
+if (!function_exists('recordEditUrl')) {
+    function recordEditUrl(string $resource, mixed $id): string
+    {
+        return \Framework\Admin\AdminResourceController::editUrl($resource, $id);
+    }
+}
+
+if (!function_exists('recordCreateUrl')) {
+    function recordCreateUrl(string $resource, mixed $id): string
+    {
+        return \Framework\Admin\AdminResourceController::createUrl($resource, $id);
+    }
+}
+
+if (!function_exists('recordIndexUrl')) {
+    function recordIndexUrl(string $resource): string
+    {
+        return \Framework\Admin\AdminResourceController::indexUrl($resource);
+    }
+}
+
+if (!function_exists('recordCustomUrl')) {
+    function recordCustomUrl(string $resource, string $action): string
+    {
+        return \Framework\Admin\AdminResourceController::customUrl($resource, $action);
+    }
+}
+
+if (!function_exists('recordCustomRecordUrl')) {
+    function recordCustomRecordUrl(string $resource, mixed $id, string $action): string
+    {
+        return \Framework\Admin\AdminResourceController::customRecordUrl($resource, $id, $action);
+    }
+}

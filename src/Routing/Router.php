@@ -4,96 +4,326 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
-use Framework\Http\NotFoundHttpException;
+use Framework\Component\LiveComponent;
+use Framework\Foundation\Application;
 use Framework\Http\Request;
+use Framework\Http\Response;
+use Framework\Routing\Attribute as Attr;
+use Framework\Support\Finder;
+use Framework\UX\UXComponent;
+use Framework\View\Base\Element;
 
-final class Router
+class Router
 {
-    /**
-     * @var list<RouteDefinition>
-     */
     private array $routes = [];
+    private Application $app;
 
-    /**
-     * @param list<RouteDefinition> $routes
-     */
-    public function __construct(array $routes = [])
+    public function __construct(Application $app)
     {
-        $this->routes = $routes;
+        $this->app = $app;
     }
 
-    public function add(RouteDefinition $route): void
+    public function addRoute(string $method, string $path, callable $handler, string $name = ''): void
     {
-        $this->routes[] = $route;
+        $this->routes[] = [
+            'method' => $method,
+            'path' => $path,
+            'name' => $name ?: ($method . ':' . $path),
+            'handler' => $handler,
+            'middleware' => [],
+        ];
     }
 
-    public function match(Request $request): CompiledRoute
+    public function get(string $path, callable $handler, string $name = ''): void
     {
-        $uri = rtrim($request->uri(), '/') ?: '/';
+        $this->addRoute('GET', $path, $handler, $name);
+    }
+
+    public function post(string $path, callable $handler, string $name = ''): void
+    {
+        $this->addRoute('POST', $path, $handler, $name);
+    }
+
+    public function put(string $path, callable $handler, string $name = ''): void
+    {
+        $this->addRoute('PUT', $path, $handler, $name);
+    }
+
+    public function delete(string $path, callable $handler, string $name = ''): void
+    {
+        $this->addRoute('DELETE', $path, $handler, $name);
+    }
+
+    public function any(string $path, callable $handler, string $name = ''): void
+    {
+        foreach (['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'] as $method) {
+            $this->addRoute($method, $path, $handler, $name);
+        }
+    }
+
+    public function loadCache(string $cacheFile): bool
+    {
+        if (file_exists($cacheFile)) {
+            $this->routes = require $cacheFile;
+            return true;
+        }
+        return false;
+    }
+
+    public function scan(string|array $directories): void
+    {
+        $finder = new Finder();
+        $finder->in($directories)->files()->name('*.php')->recursive(true);
+        $files = $finder->getIterator();
+
+        foreach ($files as $file) {
+            $className = $this->getClassFromFile($file->getRealPath());
+            if ($className === null) continue;
+
+            try {
+                $reflection = new \ReflectionClass($className);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $this->registerClass($reflection);
+        }
+    }
+
+    public function registerClass(\ReflectionClass $reflection): void
+    {
+        $classAttrs = $reflection->getAttributes(Attr\Route::class);
+        if (empty($classAttrs)) return;
+
+        $routeAttr = $classAttrs[0]->newInstance();
+        $prefix = $routeAttr->prefix;
+        $classMiddleware = $routeAttr->middleware;
+
+        $middlewareAttrs = $reflection->getAttributes(Attr\Middleware::class);
+        foreach ($middlewareAttrs as $ma) {
+            $m = $ma->newInstance();
+            $classMiddleware = array_merge($classMiddleware, (array)$m->middleware);
+        }
+
+        foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $this->registerMethod($reflection->getName(), $method, $prefix, $classMiddleware);
+        }
+    }
+
+    private function registerMethod(string $className, \ReflectionMethod $method, string $prefix, array $classMiddleware): void
+    {
+        $httpAttrs = [
+            Attr\Get::class => 'GET',
+            Attr\Post::class => 'POST',
+            Attr\Put::class => 'PUT',
+            Attr\Delete::class => 'DELETE',
+        ];
+
+        foreach ($httpAttrs as $attrClass => $httpMethod) {
+            $attrs = $method->getAttributes($attrClass);
+            if (empty($attrs)) continue;
+
+            $attr = $attrs[0]->newInstance();
+            $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
+            $name = $attr->name ?: ($className . '::' . $method->getName());
+            $middleware = array_merge($classMiddleware, $attr->middleware);
+
+            $methodMiddlewareAttrs = $method->getAttributes(Attr\Middleware::class);
+            foreach ($methodMiddlewareAttrs as $ma) {
+                $m = $ma->newInstance();
+                $middleware = array_merge($middleware, (array)$m->middleware);
+            }
+
+            $this->routes[] = [
+                'method' => $httpMethod,
+                'path' => $path,
+                'name' => $name,
+                'handler' => [$className, $method->getName()],
+                'middleware' => $middleware,
+            ];
+        }
+    }
+
+    public function dispatch(Request $request): Response
+    {
         $method = $request->method();
+        $path = $request->path();
 
         foreach ($this->routes as $route) {
-            if (! in_array($method, $route->methods, true)) {
-                continue;
-            }
+            if ($route['method'] !== $method) continue;
 
-            $path = rtrim($route->path, '/') ?: '/';
+            $params = $this->matchPath($route['path'], $path);
+            if ($params === false) continue;
 
-            if ($path === $uri) {
-                return new CompiledRoute($route);
-            }
-
-            if ($route->pattern === '') {
-                continue;
-            }
-
-            if (! preg_match($route->pattern, $uri, $matches)) {
-                continue;
-            }
-
-            $parameters = [];
-
-            foreach ($route->parameterNames as $index => $name) {
-                $parameters[$name] = $matches[$index + 1] ?? '';
-            }
-
-            return new CompiledRoute($route, $parameters);
+            return $this->invoke($route, $request, $params);
         }
 
-        throw new NotFoundHttpException('Route not found.');
+        return Response::html(Element::make('h1')->text('404 Not Found'), 404);
     }
 
-    /**
-     * @param list<array{path: string, methods: list<string>, handler: mixed, name: ?string, pattern?: string, parameterNames?: list<string>, middlewares?: list<string>}> $payload
-     */
-    public static function fromCompiled(array $payload): self
+    private function matchPath(string $routePath, string $requestPath): array|false
     {
-        $routes = [];
+        $routeParts = explode('/', trim($routePath, '/'));
+        $requestParts = explode('/', trim($requestPath, '/'));
 
-        foreach ($payload as $item) {
-            $compiled = isset($item['pattern'], $item['parameterNames'])
-                ? ['pattern' => $item['pattern'], 'parameterNames' => $item['parameterNames']]
-                : RoutePattern::compile($item['path']);
+        $params = [];
+        $wildcardIndex = null;
+        $wildcardName = null;
 
-            $routes[] = new RouteDefinition(
-                path: $item['path'],
-                methods: $item['methods'],
-                handler: $item['handler'],
-                name: $item['name'],
-                pattern: $compiled['pattern'],
-                parameterNames: $compiled['parameterNames'],
-                middlewares: $item['middlewares'] ?? [],
-            );
+        for ($i = 0; $i < count($routeParts); $i++) {
+            $routePart = $routeParts[$i];
+
+            if (str_starts_with($routePart, '{') && str_ends_with($routePart, '}')) {
+                if (str_contains($routePart, '...')) {
+                    $wildcardIndex = $i;
+                    $wildcardName = trim($routePart, '{}.');
+                    break;
+                }
+
+                if (!isset($requestParts[$i])) {
+                    return false;
+                }
+
+                $paramName = trim($routePart, '{}');
+                $params[$paramName] = $requestParts[$i];
+            } else {
+                if (!isset($requestParts[$i]) || $requestParts[$i] !== $routePart) {
+                    return false;
+                }
+            }
         }
 
-        return new self($routes);
+        if ($wildcardIndex !== null) {
+            $remainingParts = array_slice($requestParts, $wildcardIndex);
+            $params[$wildcardName] = implode('/', $remainingParts);
+            return $params;
+        }
+
+        if (count($routeParts) !== count($requestParts)) {
+            return false;
+        }
+
+        return $params;
     }
 
-    /**
-     * @return list<RouteDefinition>
-     */
-    public function all(): array
+    private function invoke(array $route, Request $request, array $params): Response
+    {
+        $request->setRoute(
+            $route['name'] ?? '',
+            is_array($route['handler'])
+                ? ((is_object($route['handler'][0]) ? get_class($route['handler'][0]) : $route['handler'][0]) . '::' . $route['handler'][1])
+                : 'closure',
+            $params
+        );
+
+        $handler = $route['handler'];
+
+        logger('Handler: ', $handler);
+
+        if ($handler instanceof \Closure) {
+            return $this->invokeCallable($handler, $request, $params);
+        }
+
+        if (is_array($handler)) {
+            [$classOrInstance, $methodName] = $handler;
+            $instance = is_object($classOrInstance) ? $classOrInstance : $this->app->make($classOrInstance);
+
+
+
+            $ref = new \ReflectionMethod($instance, $methodName);
+            $args = $this->resolveArguments($ref, $request, $params);
+            $result = $ref->invoke($instance, ...$args);
+
+            if ($instance instanceof LiveComponent) {
+                // 如果结果已经是 Response 或 Document，直接返回
+                if ($result instanceof Response) {
+                    return $result;
+                }
+
+                // 返回实例本身，这样 Document::main() 就能接收并正确处理它
+                return $this->normalizeResponse($instance);
+            }
+
+            return $this->normalizeResponse($result);
+        }
+
+        if (is_callable($handler)) {
+            return $this->invokeCallable($handler, $request, $params);
+        }
+
+        return Response::html('Invalid route handler', 500);
+    }
+
+    private function invokeCallable(callable $handler, Request $request, array $params): Response
+    {
+        $ref = new \ReflectionFunction($handler);
+        $args = $this->resolveArguments($ref, $request, $params);
+        $result = $handler(...$args);
+
+        return $this->normalizeResponse($result);
+    }
+
+    private function resolveArguments(\ReflectionFunctionAbstract $reflector, Request $request, array $params): array
+    {
+        $args = [];
+        foreach ($reflector->getParameters() as $param) {
+            $name = $param->getName();
+            $type = $param->getType();
+
+            if ($type && $type instanceof \ReflectionNamedType && $type->getName() === Request::class) {
+                $args[] = $request;
+            } elseif (isset($params[$name])) {
+                $args[] = $params[$name];
+            } elseif ($param->isDefaultValueAvailable()) {
+                $args[] = $param->getDefaultValue();
+            } else {
+                $args[] = null;
+            }
+        }
+        return $args;
+    }
+
+    private function normalizeResponse(mixed $result): Response
+    {
+        if ($result instanceof Response) {
+            return $result;
+        }
+
+        if (is_array($result)) {
+            return Response::json($result);
+        }
+
+        if (is_string($result)) {
+            return Response::html($result);
+        }
+
+        if ($result instanceof LiveComponent || $result instanceof Element || $result instanceof UXComponent) {
+            return Response::html($result);
+        }
+
+        return Response::html(Element::make('div')->text('No content'), 204);
+    }
+
+    public function getRoutes(): array
     {
         return $this->routes;
+    }
+
+    private function getClassFromFile(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+
+        if (
+            preg_match('/namespace\s+([^;]+);/i', $content, $ns) &&
+            preg_match('/class\s+(\w+)/i', $content, $class)
+        ) {
+            return $ns[1] . '\\' . $class[1];
+        }
+
+        if (preg_match('/class\s+(\w+)/i', $content, $class)) {
+            return $class[1];
+        }
+
+        return null;
     }
 }

@@ -4,47 +4,110 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
-final class Session
+class Session
 {
-    public function __construct()
+    private bool $started = false;
+
+    public function start(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        if ($this->started || session_status() === PHP_SESSION_ACTIVE) return;
+        session_start();
+        $this->started = true;
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
+        $this->start();
         return $_SESSION[$key] ?? $default;
     }
 
     public function set(string $key, mixed $value): void
     {
+        $this->start();
         $_SESSION[$key] = $value;
+    }
+
+    public function has(string $key): bool
+    {
+        $this->start();
+        return array_key_exists($key, $_SESSION);
     }
 
     public function remove(string $key): void
     {
+        $this->start();
         unset($_SESSION[$key]);
     }
 
     public function flash(string $key, mixed $value): void
     {
+        $this->start();
         $_SESSION['_flash'][$key] = $value;
     }
 
     public function getFlash(string $key, mixed $default = null): mixed
     {
+        $this->start();
         $value = $_SESSION['_flash'][$key] ?? $default;
         unset($_SESSION['_flash'][$key]);
         return $value;
     }
 
+    public function hasFlash(string $key): bool
+    {
+        $this->start();
+        return isset($_SESSION['_flash'][$key]);
+    }
+
+    public function all(): array
+    {
+        $this->start();
+        return $_SESSION;
+    }
+
+    public function clear(): void
+    {
+        $this->start();
+        $_SESSION = [];
+    }
+
+    public function destroy(): void
+    {
+        $this->start();
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params['path'], $params['domain'],
+                $params['secure'], $params['httponly']
+            );
+        }
+        session_destroy();
+        $this->started = false;
+    }
+
+    public function regenerate(): void
+    {
+        $this->start();
+        session_regenerate_id(true);
+    }
+
+    public function getId(): string
+    {
+        $this->start();
+        return session_id();
+    }
+
     public function token(): string
     {
-        if (!isset($_SESSION['_token'])) {
-            $_SESSION['_token'] = bin2hex(random_bytes(32));
+        if (!$this->has('_token')) {
+            $this->set('_token', bin2hex(random_bytes(32)));
         }
-        return $_SESSION['_token'];
+        return $this->get('_token');
+    }
+
+    public function verifyToken(string $token): bool
+    {
+        return hash_equals($this->get('_token', ''), $token);
     }
 }

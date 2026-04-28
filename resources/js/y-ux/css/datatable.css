@@ -1,0 +1,311 @@
+/* ===== DataTable ===== */
+.ux-data-table-wrapper {
+    width: 100%;
+}
+
+.ux-data-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ux-data-table-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+.ux-data-table-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.ux-data-table-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* Search */
+.ux-data-table-search {
+    display: flex;
+    align-items: stretch;
+}
+
+.ux-data-table-search-input {
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #111827;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    min-width: 200px;
+}
+
+.ux-data-table-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.ux-data-table-search-input::placeholder {
+    color: #9ca3af;
+}
+
+.ux-data-table-search-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    background-color: #3b82f6;
+    border: 1px solid #3b82f6;
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+.ux-data-table-search-btn:hover {
+    background-color: #2563eb;
+}
+
+/* Actions */
+.ux-data-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ux-data-table-action-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    color: #374151;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ux-data-table-action-btn:hover {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
+}
+
+/* Table */
+.ux-data-table {
+    width: 100%;
+    background-color: #fff;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.ux-data-table-sm {
+    font-size: 12px;
+}
+
+.ux-data-table-lg {
+    font-size: 16px;
+}
+
+.ux-data-table-thead {
+    background-color: #f9fafb;
+}
+
+.ux-data-table-row {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ux-data-table-row:hover {
+    background-color: #f9fafb;
+}
+
+.ux-data-table-striped .ux-data-table-row:nth-child(odd) {
+    background-color: #fafafa;
+}
+
+.ux-data-table-row.ux-data-table-row-odd {
+    background-color: #fafafa;
+}
+
+.ux-data-table-cell {
+    padding: 12px 16px;
+    vertical-align: middle;
+    color: #374151;
+}
+
+.ux-data-table-th {
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+}
+
+.ux-data-table-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.ux-data-table-sortable:hover .ux-data-table-sort-icon {
+    color: #6b7280;
+}
+
+.ux-data-table-sort-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ux-data-table-sort-title {
+    flex: 1;
+}
+
+.ux-data-table-sort-icon {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    color: #d1d5db;
+    line-height: 1;
+}
+
+.ux-data-table-sort-icon .bi {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.ux-data-table-sorted .ux-data-table-sort-icon {
+    color: #3b82f6;
+}
+
+.ux-data-table-sort-asc .bi-sort-down,
+.ux-data-table-sort-desc .bi-sort-up-alt {
+    opacity: 0.3;
+}
+
+.ux-data-table-sort-asc .bi-sort-up-alt,
+.ux-data-table-sort-desc .bi-sort-down {
+    opacity: 1;
+}
+
+.ux-data-table-align-center .ux-data-table-sort-wrapper {
+    justify-content: center;
+}
+
+.ux-data-table-align-right .ux-data-table-sort-wrapper {
+    justify-content: flex-end;
+}
+
+/* Alignment */
+.ux-data-table-align-left {
+    text-align: left;
+}
+
+.ux-data-table-align-center {
+    text-align: center;
+}
+
+.ux-data-table-align-right {
+    text-align: right;
+}
+
+/* Selection */
+.ux-data-table-selection {
+    width: 40px;
+    text-align: center;
+}
+
+.ux-data-table-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Empty */
+.ux-data-table-empty-content {
+    text-align: center;
+    padding: 40px 0;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* Pagination wrapper */
+.ux-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.ux-pagination-perpage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.ux-pagination-perpage-select {
+    padding: 4px 8px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.ux-pagination-perpage-label,
+.ux-pagination-perpage-suffix {
+    white-space: nowrap;
+}
+
+.ux-data-table-checkbox-all {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Loading state */
+.ux-data-table-wrapper.y-loading-root {
+    position: relative;
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.ux-data-table-wrapper.y-loading-root::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin-top: -12px;
+    margin-left: -12px;
+    border: 2px solid #3b82f6;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ux-spin 0.6s linear infinite;
+    z-index: 10;
+}
+
+@keyframes ux-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+

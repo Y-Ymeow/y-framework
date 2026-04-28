@@ -4,151 +4,184 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
-final class Request
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
+
+class Request
 {
-    /**
-     * @param array<string, string> $headers
-     * @param array<string, mixed> $query
-     * @param array<string, mixed> $request
-     * @param array<string, mixed> $attributes
-     */
-    public function __construct(
-        private readonly string $method,
-        private readonly string $uri,
-        private readonly array $headers = [],
-        private readonly array $query = [],
-        private readonly array $request = [],
-        private array $attributes = [],
-    ) {
-    }
+    private SymfonyRequest $sfRequest;
+    private ?\Closure $routeCallback = null;
+    private array $routeParams = [];
+    private ?string $routeName = null;
+    private ?string $routeHandler = null;
 
-    public static function capture(): self
+    public function __construct(?SymfonyRequest $sfRequest = null)
     {
-        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-        $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        $headers = function_exists('getallheaders') ? getallheaders() : [];
-
-        return new self($method, $uri, $headers, $_GET, $_POST);
+        $this->sfRequest = $sfRequest ?? SymfonyRequest::createFromGlobals();
     }
 
     public function method(): string
     {
-        return $this->method;
+        return $this->sfRequest->getMethod();
     }
 
-    public function uri(): string
+    public function path(): string
     {
-        return $this->uri;
+        $path = $this->sfRequest->getRequestUri();
+        $path = parse_url($path, PHP_URL_PATH);
+        return $path ?: '/';
     }
 
-    public function query(string $key, mixed $default = null): mixed
+    public function url(): string
     {
-        return $this->query[$key] ?? $default;
+        return $this->sfRequest->getUri();
     }
 
     public function input(string $key, mixed $default = null): mixed
     {
-        return $this->request[$key] ?? $default;
+        if ($this->isJson()) {
+            $data = $this->json();
+            if ($data !== null && array_key_exists($key, $data)) {
+                return $data[$key];
+            }
+        }
+        
+        $all = $this->all();
+        return $all[$key] ?? $default;
     }
 
-    public function all(): array
+    public function query(string $key, mixed $default = null): mixed
     {
-        return $this->request;
+        return $this->sfRequest->query->get($key, $default);
+    }
+
+    public function post(string $key, mixed $default = null): mixed
+    {
+        return $this->sfRequest->request->get($key, $default);
+    }
+
+    public function json(): ?array
+    {
+        return json_decode($this->sfRequest->getContent(), true);
     }
 
     public function header(string $key, ?string $default = null): ?string
     {
-        return $this->headers[$key] ?? $this->headers[strtolower($key)] ?? $default;
+        return $this->sfRequest->headers->get($key, $default);
     }
 
-    public function setAttribute(string $key, mixed $value): void
+    public function all(): array
     {
-        $this->attributes[$key] = $value;
+        return array_merge(
+            $this->sfRequest->query->all(),
+            $this->sfRequest->request->all(),
+            $this->json() ?? []
+        );
     }
 
-    public function attribute(string $key, mixed $default = null): mixed
+    public function cookie(string $key, ?string $default = null): ?string
     {
-        return $this->attributes[$key] ?? $default;
+        return $this->sfRequest->cookies->get($key, $default);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function attributes(): array
+    public function ip(): string
     {
-        return $this->attributes;
+        return $this->sfRequest->getClientIp() ?? '127.0.0.1';
     }
 
-    public function routeParam(string $key, mixed $default = null): mixed
+    public function host(): string
     {
-        $routeParameters = $this->attributes['routeParameters'] ?? [];
-
-        return is_array($routeParameters) ? ($routeParameters[$key] ?? $default) : $default;
+        return $this->sfRequest->getHost() ?? 'localhost';
     }
 
-    /**
-     * 极简验证逻辑
-     */
-    public function validate(array $rules): array
+    public function isMethod(string $method): bool
     {
-        $data = $this->all();
-        $validated = [];
-        $errors = [];
-
-        foreach ($rules as $field => $ruleStr) {
-            $value = $data[$field] ?? null;
-            $rulesArray = explode('|', $ruleStr);
-
-            foreach ($rulesArray as $rule) {
-                if ($rule === 'required' && empty($value)) {
-                    $errors[$field][] = "Field {$field} is required.";
-                }
-                // 这里可以继续添加更多原生规则，如 email, min, max
-            }
-
-            $validated[$field] = $value;
-        }
-
-        if (!empty($errors)) {
-            // 这里可以抛出异常，由 Kernel 捕获并返回 422
-            throw new \RuntimeException("Validation failed: " . json_encode($errors));
-        }
-
-        return $validated;
+        return $this->sfRequest->isMethod($method);
     }
 
-    /**
-     * 极简授权逻辑
-     */
-    public function can(callable $checker): void
+    public function isAjax(): bool
     {
-        if (!$checker($this)) {
-            throw new \RuntimeException("Unauthorized action.", 403);
-        }
+        return $this->sfRequest->isXmlHttpRequest();
     }
 
-    /**
-     * 处理文件上传
-     */
-    public function file(string $key): ?array
+    public function ajax(): bool
     {
-        return $_FILES[$key] ?? null;
+        return $this->isAjax();
     }
 
-    public function moveFile(string $key, string $destination): ?string
+    public function getRequestUri(): string
     {
-        $file = $this->file($key);
-        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+        return $this->sfRequest->getRequestUri();
+    }
+
+    public function getUri(): string
+    {
+        return $this->sfRequest->getUri();
+    }
+
+    public function getMethod(): string
+    {
+        return $this->sfRequest->getMethod();
+    }
+
+    public function isJson(): bool
+    {
+        $ct = $this->sfRequest->headers->get('Content-Type', '');
+        return str_contains($ct, 'application/json');
+    }
+
+    public function expectsJson(): bool
+    {
+        $accept = $this->sfRequest->headers->get('Accept', '');
+        return str_contains($accept, 'application/json') || $this->isAjax();
+    }
+
+    public function file(string $key): ?\Symfony\Component\HttpFoundation\File\UploadedFile
+    {
+        return $this->sfRequest->files->get($key);
+    }
+
+    public function setRoute(string $name, string $handler, array $params = []): self
+    {
+        $this->routeName = $name;
+        $this->routeHandler = $handler;
+        $this->routeParams = $params;
+        return $this;
+    }
+
+    public function route(): ?object
+    {
+        if ($this->routeName === null) {
             return null;
         }
+        return new class($this->routeName, $this->routeHandler, $this->routeParams) {
+            public function __construct(
+                private string $name,
+                private string $handler,
+                private array $params
+            ) {}
+            public function getName(): string { return $this->name; }
+            public function getActionName(): string { return $this->handler; }
+            public function getHandler(): string { return $this->handler; }
+            public function parameters(): array { return $this->params; }
+        };
+    }
 
-        $filename = bin2hex(random_bytes(8)) . '_' . basename($file['name']);
-        $target = rtrim($destination, '/') . '/' . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $target)) {
-            return $filename;
-        }
+    public function routeName(): ?string { return $this->routeName; }
+    public function routeHandler(): ?string { return $this->routeHandler; }
+    public function routeParams(): array { return $this->routeParams; }
 
-        return null;
+    public function getSfRequest(): SymfonyRequest
+    {
+        return $this->sfRequest;
+    }
+
+    public static function createFromGlobals(): self
+    {
+        return new self(SymfonyRequest::createFromGlobals());
+    }
+
+    public static function create(string $uri, string $method = 'GET', array $parameters = [], array $cookies = [], array $files = [], array $server = [], $content = null): self
+    {
+        return new self(SymfonyRequest::create($uri, $method, $parameters, $cookies, $files, $server, $content));
     }
 }

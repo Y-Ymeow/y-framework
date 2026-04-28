@@ -4,163 +4,409 @@ declare(strict_types=1);
 
 namespace Framework\Database;
 
-final class QueryBuilder
+class QueryBuilder
 {
-    /**
-     * @var list<string>
-     */
-    private array $columns = ['*'];
-
-    /**
-     * @var list<string>
-     */
+    private Connection $connection;
+    private string $table;
+    private array $selects = ['*'];
     private array $wheres = [];
-
-    /**
-     * @var list<string>
-     */
-    private array $orders = [];
-
-    /**
-     * @var array<int|string, mixed>
-     */
-    private array $bindings = [];
-
+    private array $whereBindings = [];
+    private array $joins = [];
+    private array $orderBy = [];
     private ?int $limit = null;
-    private int $bindingIndex = 0;
+    private ?int $offset = null;
+    private array $groupBy = [];
+    private array $having = [];
+    private array $havingBindings = [];
 
-    public function __construct(
-        private readonly Connection $connection,
-        private readonly string $table,
-    ) {
+    public function __construct(Connection $connection, string $table)
+    {
+        $this->connection = $connection;
+        $this->table = $table;
     }
 
     public function select(string ...$columns): self
     {
-        if ($columns !== []) {
-            $this->columns = $columns;
+        $this->selects = SqlValidator::validateColumns($columns);
+        return $this;
+    }
+
+    public function where(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'AND'): self
+    {
+        if ($value === null && $operator !== null) {
+            $value = $operator;
+            $operator = '=';
         }
 
+        SqlValidator::validateColumn($column);
+        SqlValidator::validateOperator($operator);
+
+        $this->wheres[] = [
+            'type' => 'basic',
+            'column' => $column,
+            'operator' => $operator,
+            'value' => $value,
+            'boolean' => $boolean,
+        ];
+        $this->whereBindings[] = $value;
+
         return $this;
     }
 
-    public function where(string $column, string $operator, mixed $value): self
+    public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
     {
-        $placeholder = 'p' . $this->bindingIndex++;
-        $this->wheres[] = sprintf('%s %s :%s', $column, $operator, $placeholder);
-        $this->bindings[$placeholder] = $value;
+        return $this->where($column, $operator, $value, 'OR');
+    }
 
+    public function whereIn(string $column, array $values): self
+    {
+        SqlValidator::validateColumn($column);
+        $this->wheres[] = [
+            'type' => 'in',
+            'column' => $column,
+            'values' => $values,
+            'boolean' => 'AND',
+        ];
+        foreach ($values as $v) {
+            $this->whereBindings[] = $v;
+        }
         return $this;
     }
 
-    public function whereRaw(string $expression, array $bindings = []): self
+    public function whereNull(string $column): self
     {
-        $this->wheres[] = $expression;
-        $this->bindings = array_merge($this->bindings, $bindings);
-
+        SqlValidator::validateColumn($column);
+        $this->wheres[] = [
+            'type' => 'null',
+            'column' => $column,
+            'boolean' => 'AND',
+        ];
         return $this;
+    }
+
+    public function whereNotNull(string $column): self
+    {
+        SqlValidator::validateColumn($column);
+        $this->wheres[] = [
+            'type' => 'not_null',
+            'column' => $column,
+            'boolean' => 'AND',
+        ];
+        return $this;
+    }
+
+    public function whereLike(string $column, string $pattern): self
+    {
+        $this->wheres[] = [
+            'type' => 'basic',
+            'column' => $column,
+            'operator' => 'LIKE',
+            'value' => $pattern,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $pattern;
+        return $this;
+    }
+
+    public function whereBetween(string $column, mixed $min, mixed $max): self
+    {
+        $this->wheres[] = [
+            'type' => 'between',
+            'column' => $column,
+            'min' => $min,
+            'max' => $max,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $min;
+        $this->whereBindings[] = $max;
+        return $this;
+    }
+
+    public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
+    {
+        SqlValidator::validateTable($table);
+        SqlValidator::validateColumn($first);
+        SqlValidator::validateOperator($operator);
+        SqlValidator::validateColumn($second);
+
+        $joinType = strtoupper($type);
+        $allowedTypes = ['INNER', 'LEFT', 'RIGHT', 'CROSS', 'FULL'];
+        if (!in_array($joinType, $allowedTypes, true)) {
+            throw new \InvalidArgumentException("Invalid join type: {$type}. Allowed types: " . implode(', ', $allowedTypes));
+        }
+
+        $this->joins[] = [
+            'table' => $table,
+            'first' => $first,
+            'operator' => $operator,
+            'second' => $second,
+            'type' => $joinType,
+        ];
+        return $this;
+    }
+
+    public function leftJoin(string $table, string $first, string $operator, string $second): self
+    {
+        return $this->join($table, $first, $operator, $second, 'LEFT');
+    }
+
+    public function rightJoin(string $table, string $first, string $operator, string $second): self
+    {
+        return $this->join($table, $first, $operator, $second, 'RIGHT');
     }
 
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $direction = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
-        $this->orders[] = $column . ' ' . $direction;
-
+        SqlValidator::validateColumn($column);
+        $direction = SqlValidator::validateDirection($direction);
+        $this->orderBy[] = SqlValidator::escapeIdentifier($column) . " {$direction}";
         return $this;
+    }
+
+    public function latest(string $column = 'created_at'): self
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    public function oldest(string $column = 'created_at'): self
+    {
+        return $this->orderBy($column, 'ASC');
     }
 
     public function limit(int $limit): self
     {
         $this->limit = $limit;
+        return $this;
+    }
 
+    public function offset(int $offset): self
+    {
+        $this->offset = $offset;
+        return $this;
+    }
+
+    public function groupBy(string ...$columns): self
+    {
+        $validated = SqlValidator::validateColumns($columns);
+        $this->groupBy = $validated;
+        return $this;
+    }
+
+    public function having(string $column, string $operator, mixed $value): self
+    {
+        SqlValidator::validateColumn($column);
+        $operator = SqlValidator::validateOperator($operator);
+        $this->having[] = SqlValidator::escapeIdentifier($column) . " {$operator} ?";
+        $this->havingBindings[] = $value;
         return $this;
     }
 
     public function get(): array
     {
-        return $this->connection->select($this->toSql(), $this->bindings);
+        return $this->connection->query($this->toSql(), $this->getBindings());
     }
 
     public function first(): ?array
     {
-        $clone = clone $this;
-        $clone->limit(1);
-
-        return $clone->connection->first($clone->toSql(), $clone->bindings);
+        return $this->connection->queryOne($this->limit(1)->toSql(), $this->getBindings());
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function insert(array $data): bool
+    public function find(mixed $id, string $column = 'id'): ?array
     {
-        $columns = array_keys($data);
-        $placeholders = [];
-        $bindings = [];
+        return $this->where($column, $id)->first();
+    }
 
-        foreach ($data as $column => $value) {
-            $placeholders[] = ':' . $column;
-            $bindings[$column] = $value;
+    public function count(string $column = '*'): int
+    {
+        if ($column !== '*') {
+            SqlValidator::validateColumn($column);
         }
-
-        $sql = sprintf(
-            'INSERT INTO %s (%s) VALUES (%s)',
-            $this->table,
-            implode(', ', $columns),
-            implode(', ', $placeholders),
-        );
-
-        return $this->connection->execute($sql, $bindings);
+        $column = SqlValidator::escapeIdentifier($column);
+        $originalSelects = $this->selects;
+        $this->selects = ["COUNT({$column}) as _count"];
+        $result = $this->connection->queryOne($this->toSql(), $this->getBindings());
+        $this->selects = $originalSelects;
+        return (int)($result['_count'] ?? 0);
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function update(array $data): bool
+    public function sum(string $column): mixed
     {
-        $sets = [];
-        $bindings = $this->bindings;
+        SqlValidator::validateColumn($column);
+        $column = SqlValidator::escapeIdentifier($column);
+        $originalSelects = $this->selects;
+        $this->selects = ["SUM({$column}) as _sum"];
+        $result = $this->connection->queryOne($this->toSql(), $this->getBindings());
+        $this->selects = $originalSelects;
+        return $result['_sum'] ?? 0;
+    }
 
-        foreach ($data as $column => $value) {
-            $placeholder = 'u_' . $column;
-            $sets[] = $column . ' = :' . $placeholder;
-            $bindings[$placeholder] = $value;
+    public function avg(string $column): mixed
+    {
+        SqlValidator::validateColumn($column);
+        $column = SqlValidator::escapeIdentifier($column);
+        $originalSelects = $this->selects;
+        $this->selects = ["AVG({$column}) as _avg"];
+        $result = $this->connection->queryOne($this->toSql(), $this->getBindings());
+        $this->selects = $originalSelects;
+        return $result['_avg'] ?? 0;
+    }
+
+    public function max(string $column): mixed
+    {
+        SqlValidator::validateColumn($column);
+        $column = SqlValidator::escapeIdentifier($column);
+        $originalSelects = $this->selects;
+        $this->selects = ["MAX({$column}) as _max"];
+        $result = $this->connection->queryOne($this->toSql(), $this->getBindings());
+        $this->selects = $originalSelects;
+        return $result['_max'] ?? null;
+    }
+
+    public function min(string $column): mixed
+    {
+        SqlValidator::validateColumn($column);
+        $column = SqlValidator::escapeIdentifier($column);
+        $originalSelects = $this->selects;
+        $this->selects = ["MIN({$column}) as _min"];
+        $result = $this->connection->queryOne($this->toSql(), $this->getBindings());
+        $this->selects = $originalSelects;
+        return $result['_min'] ?? null;
+    }
+
+    public function exists(): bool
+    {
+        return $this->count() > 0;
+    }
+
+    public function doesntExist(): bool
+    {
+        return !$this->exists();
+    }
+
+    public function paginate(int $perPage = 15, int $page = 1): array
+    {
+        $total = (clone $this)->count();
+        $offset = ($page - 1) * $perPage;
+        $items = $this->limit($perPage)->offset($offset)->get();
+
+        return [
+            'data' => $items,
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => (int)ceil($total / $perPage),
+            'from' => $offset + 1,
+            'to' => min($offset + $perPage, $total),
+        ];
+    }
+
+    public function insert(array $data): int
+    {
+        return $this->connection->insert($this->table, $data);
+    }
+
+    public function update(array $data): int
+    {
+        [$whereSql, $whereBindings] = $this->buildWhere();
+        if (empty($whereSql)) {
+            throw new \RuntimeException('Update without WHERE clause is not allowed');
         }
-
-        $sql = sprintf('UPDATE %s SET %s%s', $this->table, implode(', ', $sets), $this->compileWhere());
-
-        return $this->connection->execute($sql, $bindings);
+        return $this->connection->update($this->table, $data, $whereSql, $whereBindings);
     }
 
-    public function delete(): bool
+    public function delete(): int
     {
-        $sql = sprintf('DELETE FROM %s%s', $this->table, $this->compileWhere());
-
-        return $this->connection->execute($sql, $this->bindings);
+        [$whereSql, $whereBindings] = $this->buildWhere();
+        if (empty($whereSql)) {
+            throw new \RuntimeException('Delete without WHERE clause is not allowed');
+        }
+        return $this->connection->delete($this->table, $whereSql, $whereBindings);
     }
 
     public function toSql(): string
     {
-        $sql = sprintf('SELECT %s FROM %s', implode(', ', $this->columns), $this->table);
-        $sql .= $this->compileWhere();
+        $select = implode(', ', $this->selects);
+        $table = SqlValidator::escapeIdentifier($this->table);
+        $sql = "SELECT {$select} FROM {$table}";
 
-        if ($this->orders !== []) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orders);
+        if (!empty($this->joins)) {
+            foreach ($this->joins as $join) {
+                $joinTable = SqlValidator::escapeIdentifier($join['table']);
+                $first = SqlValidator::escapeIdentifier($join['first']);
+                $second = SqlValidator::escapeIdentifier($join['second']);
+                $sql .= " {$join['type']} JOIN {$joinTable} ON {$first} {$join['operator']} {$second}";
+            }
         }
 
-        if ($this->limit !== null) {
-            $sql .= ' LIMIT ' . $this->limit;
+        [$whereSql] = $this->buildWhere();
+        if ($whereSql) $sql .= " WHERE {$whereSql}";
+
+        if (!empty($this->groupBy)) {
+            $groupColumns = array_map(fn($col) => SqlValidator::escapeIdentifier($col), $this->groupBy);
+            $sql .= ' GROUP BY ' . implode(', ', $groupColumns);
         }
+
+        if (!empty($this->having)) {
+            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+        }
+
+        if (!empty($this->orderBy)) {
+            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+        }
+
+        if ($this->limit !== null) $sql .= " LIMIT {$this->limit}";
+        if ($this->offset !== null) $sql .= " OFFSET {$this->offset}";
 
         return $sql;
     }
 
-    private function compileWhere(): string
+    public function getBindings(): array
     {
-        if ($this->wheres === []) {
-            return '';
+        return array_merge($this->whereBindings, $this->havingBindings);
+    }
+
+    private function buildWhere(): array
+    {
+        if (empty($this->wheres)) return ['', []];
+
+        $clauses = [];
+        $bindings = [];
+
+        foreach ($this->wheres as $i => $where) {
+            $clause = '';
+            if ($i > 0) $clause = $where['boolean'] . ' ';
+            $column = SqlValidator::escapeIdentifier($where['column']);
+
+            switch ($where['type']) {
+                case 'basic':
+                    $clause .= "{$column} {$where['operator']} ?";
+                    $bindings[] = $where['value'];
+                    break;
+                case 'in':
+                    $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+                    $clause .= "{$column} IN ({$placeholders})";
+                    foreach ($where['values'] as $value) {
+                        $bindings[] = $value;
+                    }
+                    break;
+                case 'null':
+                    $clause .= "{$column} IS NULL";
+                    break;
+                case 'not_null':
+                    $clause .= "{$column} IS NOT NULL";
+                    break;
+                case 'between':
+                    $clause .= "{$column} BETWEEN ? AND ?";
+                    $bindings[] = $where['min'];
+                    $bindings[] = $where['max'];
+                    break;
+            }
+
+            $clauses[] = $clause;
         }
 
-        return ' WHERE ' . implode(' AND ', $this->wheres);
+        return [implode(' ', $clauses), $bindings];
     }
+
+    private function __clone() {}
 }

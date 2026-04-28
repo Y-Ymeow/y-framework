@@ -11,6 +11,8 @@
 /storage/cache/*
 !/storage/cache/.gitkeep
 /storage/logs/*
+/storage/debug/
+/storage/uploads/
 !/storage/logs/.gitkeep
 
 # 数据库
@@ -27,7 +29,17 @@
 .vscode/
 .DS_Store
 Thumbs.db
+composer.lock
+bun.lock
+.codex
+package-lock.json
+.phpunit.result.cache
+
+migrations/
+datalog/
 
 # 编译产物
 /public/build
 /public/storage
+/public/assets
+/datalog

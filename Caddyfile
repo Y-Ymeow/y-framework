@@ -3,7 +3,7 @@
     frankenphp
 }
 
-localhost {
+localhost:8080 {
     # 根目录指向 public
     root * public/
     

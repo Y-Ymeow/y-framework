@@ -1,24 +1,28 @@
 {
   "name": "ymeow/php-framework",
-  "description": "A compiled, performance-oriented PHP framework skeleton.",
+  "description": "Anti-MVC, route-first, component-driven PHP framework.",
   "type": "project",
   "license": "MIT",
   "require": {
-    "php": "^8.4"
+    "php": "^8.4",
+    "monolog/monolog": "^3.0",
+    "psr/simple-cache": "^3.0",
+    "symfony/cache": "^7.0",
+    "symfony/console": "^7.0",
+    "symfony/http-foundation": "^7.0",
+    "vlucas/phpdotenv": "^5.6"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.0"
   },
   "autoload": {
     "psr-4": {
       "Framework\\": "src/",
-      "App\\": "app/"
+      "App\\": "app/",
+      "Admin\\": "admin/"
     },
     "files": [
-      "src/Routing/Functions.php",
-      "functions/helpers.php",
-      "functions/http.php",
-      "functions/routing.php",
-      "functions/database.php",
-      "functions/db_extra.php",
-      "functions/ui.php"
+      "src/Support/helpers.php"
     ]
   },
   "autoload-dev": {
@@ -27,9 +31,7 @@
     }
   },
   "scripts": {
-    "serve": "php -S 127.0.0.1:8000 -t public public/index.php",
-    "route:cache": "php bin/console route:cache",
-    "cache:clear": "php bin/console cache:clear"
+    "serve": "php -S 127.0.0.1:8000 -t public public/index.php"
   },
   "config": {
     "sort-packages": true

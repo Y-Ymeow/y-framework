@@ -4,126 +4,187 @@ declare(strict_types=1);
 
 namespace Framework\Database;
 
+use Framework\DebugBar\DebugBar;
 use PDO;
 use PDOStatement;
 
-final class Connection
+class Connection
 {
     private ?PDO $pdo = null;
+    private string $dsn;
+    private string $username;
+    private string $password;
+    private array $options;
+    private string $prefix = '';
+    private int $queryCount = 0;
+    private array $queries = [];
+    private ?\Psr\Log\LoggerInterface $logger = null;
 
-    /**
-     * @param array<string, mixed> $config
-     */
-    public function __construct(
-        private readonly array $config,
-    ) {
+    public function setLogger(\Psr\Log\LoggerInterface $logger): void
+    {
+        $this->logger = $logger;
     }
 
-    public function pdo(): PDO
+    public function __construct(string $dsn, string $username = '', string $password = '', array $options = [])
     {
-        if ($this->pdo instanceof PDO) {
-            return $this->pdo;
+        $this->dsn = $dsn;
+        $this->username = $username;
+        $this->password = $password;
+        $this->options = array_merge([
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ], $options);
+    }
+
+    public static function make(array $config): self
+    {
+        $driver = $config['driver'] ?? 'mysql';
+        $prefix = $config['prefix'] ?? '';
+
+        $dsn = match ($driver) {
+            'mysql' => "mysql:host={$config['host']};port=" . ($config['port'] ?? 3306) . ";dbname={$config['database']};charset=utf8mb4",
+            'sqlite' => "sqlite:" . self::resolveSqlitePath($config['database'] ?? ':memory:'),
+            'pgsql' => "pgsql:host={$config['host']};port=" . ($config['port'] ?? 5432) . ";dbname={$config['database']}",
+            default => $config['dsn'] ?? $config['database'],
+        };
+
+        $conn = new self($dsn, $config['username'] ?? '', $config['password'] ?? '', $config['options'] ?? []);
+        $conn->prefix = $prefix;
+        return $conn;
+    }
+
+    private static function resolveSqlitePath(string $path): string
+    {
+        if ($path === ':memory:') {
+            return $path;
         }
 
-        $options = $this->config['options'] ?? [];
-        $options[PDO::ATTR_ERRMODE] ??= PDO::ERRMODE_EXCEPTION;
-        $options[PDO::ATTR_DEFAULT_FETCH_MODE] ??= PDO::FETCH_ASSOC;
-        $options[PDO::ATTR_EMULATE_PREPARES] ??= false;
+        if (!str_starts_with($path, '/')) {
+            $path = base_path($path);
+        }
 
-        $this->pdo = new PDO(
-            $this->config['dsn'],
-            $this->config['username'] ?? null,
-            $this->config['password'] ?? null,
-            $options,
-        );
+        return $path;
+    }
 
+    public function getPdo(): PDO
+    {
+        if ($this->pdo === null) {
+            $this->pdo = new PDO($this->dsn, $this->username, $this->password, $this->options);
+        }
         return $this->pdo;
     }
 
-    /**
-     * @param array<int|string, mixed> $bindings
-     */
-    public function select(string $sql, array $bindings = []): array
+    public function getDriverName(): string
     {
-        return $this->run($sql, $bindings)->fetchAll();
+        return $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
-    /**
-     * @param array<int|string, mixed> $bindings
-     */
-    public function first(string $sql, array $bindings = []): ?array
+    public function query(string $sql, array $bindings = []): array
     {
-        $row = $this->run($sql, $bindings)->fetch();
-
-        return $row === false ? null : $row;
+        $stmt = $this->execute($sql, $bindings);
+        return $stmt->fetchAll();
     }
 
-    /**
-     * @param array<int|string, mixed> $bindings
-     */
-    public function execute(string $sql, array $bindings = []): bool
+    public function queryOne(string $sql, array $bindings = []): ?array
     {
-        return $this->run($sql, $bindings)->rowCount() >= 0;
+        $stmt = $this->execute($sql, $bindings);
+        $result = $stmt->fetch();
+        return $result ?: null;
     }
 
-    /**
-     * @param array<int|string, mixed> $bindings
-     */
-    public function statement(string $sql, array $bindings = []): PDOStatement
+    public function execute(string $sql, array $bindings = []): PDOStatement
     {
-        return $this->run($sql, $bindings);
+        $this->queryCount++;
+        $start = microtime(true);
+        
+        $stmt = $this->getPdo()->prepare($sql);
+        $stmt->execute($bindings);
+        
+        $elapsed = (microtime(true) - $start) * 1000;
+        
+        $this->queries[] = [
+            'sql' => $sql,
+            'bindings' => $bindings,
+            'time' => number_format($elapsed, 2) . 'ms',
+            'raw_time' => $elapsed,
+        ];
+        
+        if ($this->logger && config('app.debug', false)) {
+            $this->logger->debug('Database Query', [
+                'sql' => $sql,
+                'bindings' => $bindings,
+                'time' => number_format($elapsed, 2) . 'ms'
+            ]);
+        }
+        
+        return $stmt;
     }
 
-    public function beginTransaction(): bool
+    public function getQueries(): array
     {
-        return $this->pdo()->beginTransaction();
+        return $this->queries;
     }
 
-    public function commit(): bool
+    public function getTotalQueryTime(): string
     {
-        return $this->pdo()->commit();
+        $total = array_sum(array_column($this->queries, 'raw_time'));
+        return number_format($total, 2) . 'ms';
     }
 
-    public function rollBack(): bool
+    public function insert(string $table, array $data): int
     {
-        return $this->pdo()->rollBack();
+        $table = $this->prefix . $table;
+        $columns = implode(', ', array_map(fn($col) => "`{$col}`", array_keys($data)));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        $sql = "INSERT INTO `{$table}` ({$columns}) VALUES ({$placeholders})";
+        $this->execute($sql, array_values($data));
+        return (int)$this->getPdo()->lastInsertId();
     }
 
-    /**
-     * @param callable(self): mixed $callback
-     */
+    public function update(string $table, array $data, string $where, array $whereBindings = []): int
+    {
+        $table = $this->prefix . $table;
+        $sets = implode(', ', array_map(fn($col) => "`{$col}` = ?", array_keys($data)));
+        $sql = "UPDATE `{$table}` SET {$sets} WHERE {$where}";
+        $stmt = $this->execute($sql, array_merge(array_values($data), $whereBindings));
+        return $stmt->rowCount();
+    }
+
+    public function delete(string $table, string $where, array $bindings = []): int
+    {
+        $table = $this->prefix . $table;
+        $sql = "DELETE FROM `{$table}` WHERE {$where}";
+        $stmt = $this->execute($sql, $bindings);
+        return $stmt->rowCount();
+    }
+
+    public function table(string $table): QueryBuilder
+    {
+        return new QueryBuilder($this, $this->prefix . $table);
+    }
+
     public function transaction(callable $callback): mixed
     {
-        $this->beginTransaction();
-
+        $pdo = $this->getPdo();
+        $pdo->beginTransaction();
         try {
             $result = $callback($this);
-            $this->commit();
-
+            $pdo->commit();
             return $result;
-        } catch (\Throwable $exception) {
-            if ($this->pdo()->inTransaction()) {
-                $this->rollBack();
-            }
-
-            throw $exception;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
         }
     }
 
-    /**
-     * @param array<int|string, mixed> $bindings
-     */
-    private function run(string $sql, array $bindings = []): PDOStatement
+    public function getQueryCount(): int
     {
-        $statement = $this->pdo()->prepare($sql);
+        return $this->queryCount;
+    }
 
-        foreach ($bindings as $key => $value) {
-            $parameter = is_int($key) ? $key + 1 : (str_starts_with((string) $key, ':') ? (string) $key : ':' . $key);
-            $statement->bindValue($parameter, $value);
-        }
-
-        $statement->execute();
-
-        return $statement;
+    public function getPrefix(): string
+    {
+        return $this->prefix;
     }
 }

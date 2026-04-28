@@ -1,0 +1,63 @@
+# ymeow/php-framework
+
+A modern, lightweight, Anti-MVC, route-first, component-driven PHP framework.
+
+## Core Philosophy
+- **Route-First**: Routes are defined using PHP 8 Attributes directly on controllers.
+- **Component-Driven**: Server-driven responsive UI via `LiveComponent`.
+- **Lightweight**: Minimal dependencies, optimized for performance and developer experience.
+
+## Technical Stack
+- **Language**: PHP 8.4+
+- **DI Container**: php-di
+- **HTTP Layer**: Symfony HttpFoundation
+- **CLI**: Symfony Console
+- **Frontend**: Vite + Idiomorph (for DOM patching)
+- **Styling**: Tailwind CSS
+
+## Project Structure
+- `src/`: Framework core logic.
+- `app/`: Application-specific logic (Controllers, Components, Jobs).
+- `admin/`: Admin-specific logic and pages.
+- `config/`: Configuration files.
+- `routes/`: Special route definitions (e.g., `schedule.php`).
+- `public/`: Web server root directory.
+- `storage/`: Cache, logs, and temporary files.
+- `database/` & `migrations/`: Database schema and migration files.
+- `docs/`: Project documentation.
+
+## Key Architectural Patterns
+### 1. Routing
+- Uses attributes like `#[Route('/path')]`, `#[Get('/')]`, `#[Post('/')]`.
+- Supports middleware via `#[Middleware(['auth'])]`.
+- Routing is scanned and can be cached using `php bin/console route:cache`.
+
+### 2. LiveComponents
+- Server-driven components that handle their own state and actions.
+- State is compressed and base64 encoded: `base64(binary_sig + gzcompress(serialize(data)))`.
+- Action mapping can be cached using `php bin/console live:cache`.
+
+### 3. Lifecycle & Hooks
+- Implements an Action/Filter system similar to WordPress.
+- Core hooks: `app.booting`, `app.booted`, `request.received`, `response.created`, `response.sending`, `response.sent`.
+- Listeners are registered via `#[HookListener('hook.name')]`.
+
+### 4. Database & ORM
+- Custom QueryBuilder and Model implementation.
+- Migration system for schema versioning.
+
+## Common CLI Commands
+- `php bin/console route:list`: List all registered routes.
+- `php bin/console route:cache`: Generate route cache.
+- `php bin/console live:cache`: Generate LiveComponent action cache.
+- `php bin/console migrate`: Run pending migrations.
+- `php bin/console make:component {Name}`: Create a new LiveComponent.
+
+## Essential Helpers
+- `app()`: Get the Application instance.
+- `config('key')`: Get configuration value.
+- `db()`: Get database connection.
+- `auth()`: Get authentication manager.
+- `user()`: Get current authenticated user.
+- `redirect('/path')`: Return a redirect response.
+- `abort(code, message)`: Throw an HTTP exception.
