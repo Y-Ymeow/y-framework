@@ -16,6 +16,7 @@ class Application
     {
         $this->basePath = rtrim($basePath, '/');
         self::$instance = $this;
+        $GLOBALS['app'] = $this;
 
         if (file_exists($this->basePath . '/.env')) {
             $dotenv = \Dotenv\Dotenv::createImmutable($this->basePath);

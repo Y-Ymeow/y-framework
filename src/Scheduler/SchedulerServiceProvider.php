@@ -7,18 +7,18 @@ namespace Framework\Scheduler;
 use Framework\Foundation\ServiceProvider;
 use Framework\Routing\Router;
 
+if (!function_exists(__NAMESPACE__ . '\schedule')) {
+    function schedule(callable $callback): ScheduledCommand
+    {
+        return app()->make(Scheduler::class)->call($callback);
+    }
+}
+
 class SchedulerServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         app()->singleton(Scheduler::class, fn() => new Scheduler());
-        
-        if (!function_exists('schedule')) {
-            function schedule(callable $callback): ScheduledCommand
-            {
-                return app()->make(Scheduler::class)->call($callback);
-            }
-        }
     }
 
     public function boot(): void
@@ -30,7 +30,5 @@ class SchedulerServiceProvider extends ServiceProvider
                 $kernel(app()->make(Scheduler::class));
             }
         }
-
-        // 路由会自动通过属性扫描注册，不需要在这里手动添加
     }
 }

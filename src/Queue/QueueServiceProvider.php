@@ -8,19 +8,19 @@ use Framework\Foundation\Application;
 use Framework\Foundation\ServiceProvider;
 use Framework\Routing\Router;
 
+if (!function_exists(__NAMESPACE__ . '\queue')) {
+    function queue(string|callable $job, array $data = [], ?string $queue = null, int $delay = 0): bool
+    {
+        return QueueManager::push($job, $data, $queue, $delay);
+    }
+}
+
 class QueueServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $config = config('queue', []);
         QueueManager::init($config);
-
-        if (!function_exists('queue')) {
-            function queue(string|callable $job, array $data = [], ?string $queue = null, int $delay = 0): bool
-            {
-                return QueueManager::push($job, $data, $queue, $delay);
-            }
-        }
     }
 
     public function boot(): void

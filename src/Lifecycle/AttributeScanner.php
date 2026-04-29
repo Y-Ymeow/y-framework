@@ -82,15 +82,22 @@ class AttributeScanner
 
     private function scanHookAttributes(ReflectionClass $reflection): void
     {
+        $className = $reflection->getName();
+
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
             foreach ($method->getAttributes(\Framework\Events\Attribute\HookListener::class) as $attr) {
                 $listener = $attr->newInstance();
                 $instance = $this->resolveInstance($reflection);
                 if ($instance === null) continue;
 
+                $methodName = $method->getName();
+                $callback = function (...$args) use ($instance, $methodName) {
+                    return $instance->{$methodName}(...$args);
+                };
+
                 \Framework\Events\Hook::addAction(
                     $listener->hook,
-                    [$instance, $method->getName()],
+                    $callback,
                     $listener->priority,
                     $listener->acceptedArgs
                 );
@@ -101,9 +108,14 @@ class AttributeScanner
                 $instance = $this->resolveInstance($reflection);
                 if ($instance === null) continue;
 
+                $methodName = $method->getName();
+                $callback = function (...$args) use ($instance, $methodName) {
+                    return $instance->{$methodName}(...$args);
+                };
+
                 \Framework\Events\Hook::addFilter(
                     $filter->hook,
-                    [$instance, $method->getName()],
+                    $callback,
                     $filter->priority,
                     $filter->acceptedArgs
                 );
@@ -210,15 +222,6 @@ class AttributeScanner
     {
         try {
             if ($reflection->isInstantiable()) {
-                $className = $reflection->getName();
-                
-                if (function_exists('app')) {
-                    try {
-                        return app($className);
-                    } catch (\Throwable) {
-                    }
-                }
-                
                 return $reflection->newInstance();
             }
         } catch (\Throwable) {
