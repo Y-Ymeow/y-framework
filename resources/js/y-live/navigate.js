@@ -1,6 +1,7 @@
 // Navigate System - data-navigate 无刷新导航
 import { createSafeFragment } from './core/dom.js';
 import { setupLiveComponent } from './core/state.js';
+import { initDirectives } from '../y-directive/directives.js';
 
 let progressBarEl = null;
 
@@ -143,11 +144,32 @@ export async function navigate(url, options = {}) {
 function replaceNavigateHtml(target, html) {
     target.replaceChildren(createSafeFragment(html));
 
-    target.querySelectorAll('[data-live]').forEach(el => {
-        if (!el._y_live_ready) {
-            setupLiveComponent(el);
+    // 使用全局 L 来重新绑定所有指令和 Live 组件
+    if (window.L && typeof window.L.boot === 'function' && target === document.body) {
+        // 全量引导 —— body 替换的场景
+        window.L.boot();
+    } else {
+        // 片段替换场景
+        // 1. 引导核心指令系统 (Y-UI)
+        if (window.Y && typeof window.Y.boot === 'function') {
+            window.Y.boot(target);
         }
-    });
 
+        // 2. 初始化 y-directive (data-text, data-on, data-bind 等)
+        initDirectives(target);
+
+        // 3. 引导 Live 组件
+        const dispatchAction = window.L && window.L.dispatch;
+        const liveEls = target.querySelectorAll('[data-live]');
+        if (target.hasAttribute('data-live')) {
+            setupLiveComponent(target, dispatchAction);
+        }
+        liveEls.forEach(el => {
+            delete el._y_live_ready;
+            setupLiveComponent(el, dispatchAction);
+        });
+    }
+
+    // 4. 重新绑定导航链接
     bindNavigateLinks(target);
 }

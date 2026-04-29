@@ -352,6 +352,10 @@ class DataTable extends UXComponent
         $this->buildElement($wrapper);
         $wrapper->class('ux-data-table-wrapper');
 
+        if ($this->fragmentName) {
+            $wrapper->liveFragment($this->fragmentName);
+        }
+
         $hasToolbar = $this->title || $this->header || $this->searchable || !empty($this->actions) || !empty($this->batchActions);
 
         if ($hasToolbar) {
@@ -493,30 +497,37 @@ class DataTable extends UXComponent
             if (!empty($col['sortable'])) {
                 $th->class('ux-data-table-sortable');
                 $th->data('sort-key', $col['dataKey']);
-                $th->state([
-                    'sorted' => 'up',
-                ]);
-                $th->data('on:click', 'sorted = sorted === "up" ? "down" : "up"');
 
                 $isCurrentSort = $this->sortField === $col['dataKey'];
+                $currentDir = strtolower(trim($this->sortDirection));
+
                 if ($isCurrentSort) {
                     $th->class('ux-data-table-sorted');
-                    $th->class('ux-data-table-sort-' . $this->sortDirection);
+                    $th->class('ux-data-table-sort-' . $currentDir);
                 }
 
                 $sortWrapper = Element::make('div')->class('ux-data-table-sort-wrapper');
                 $sortWrapper->child(Element::make('span')->class('ux-data-table-sort-title')->text($col['title']));
 
                 $sortIcon = Element::make('span')->class('ux-data-table-sort-icon');
-                $sortIcon->child(Element::make('i')->class('bi bi-sort-up-alt')->cloak()->data('show', 'sorted === "up"'));
-                $sortIcon->child(Element::make('i')->class('bi bi-sort-down')->cloak()->data('show', 'sorted === "down"'));
-                $sortWrapper->child($sortIcon);
 
+                if ($isCurrentSort) {
+                    if ($currentDir === 'asc') {
+                        $sortIcon->child(Element::make('i')->class('bi bi-sort-up-alt'));
+                    } else {
+                        $sortIcon->child(Element::make('i')->class('bi bi-sort-down'));
+                    }
+                } else {
+                    // 非当前排序字段显示淡色默认图标
+                    $sortIcon->child(Element::make('i')->class('bi bi-sort-down text-gray-300'));
+                }
+
+                $sortWrapper->child($sortIcon);
                 $th->child($sortWrapper);
 
                 $sortAction = $this->sortAction ?? $this->liveAction;
                 if ($sortAction) {
-                    $nextDir = ($isCurrentSort && $this->sortDirection === 'asc') ? 'desc' : 'asc';
+                    $nextDir = ($isCurrentSort && $currentDir === 'asc') ? 'desc' : 'asc';
                     $th->liveAction($sortAction, 'click');
                     $th->data('action-params', json_encode([
                         'sortField' => $col['dataKey'],
@@ -540,10 +551,6 @@ class DataTable extends UXComponent
     protected function buildTbody(): Element
     {
         $tbody = Element::make('tbody')->class('ux-data-table-tbody');
-
-        if ($this->fragmentName) {
-            $tbody->liveFragment($this->fragmentName);
-        }
 
         $data = $this->dataSource;
         $isEmpty = empty($data) || !is_array($data);

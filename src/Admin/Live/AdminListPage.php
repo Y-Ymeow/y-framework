@@ -54,8 +54,16 @@ class AdminListPage extends LiveComponent
     #[LiveAction]
     public function sort(array $params): void
     {
-        $this->sortField = $params['sortField'] ?? $this->sortField;
-        $this->sortDirection = $params['sortDirection'] ?? $this->sortDirection;
+        $newField = $params['sortField'] ?? $this->sortField;
+
+        // 同一列点击 → 切换方向；不同列 → 默认 asc
+        if ($newField === $this->sortField) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortDirection = 'asc';
+        }
+
+        $this->sortField = $newField;
         $this->refresh('admin-list-table');
     }
 
