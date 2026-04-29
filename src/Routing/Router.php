@@ -92,40 +92,64 @@ class Router
 
     public function registerClass(\ReflectionClass $reflection): void
     {
-        $classAttrs = $reflection->getAttributes(Attr\Route::class);
-        if (empty($classAttrs)) return;
+        // 处理 RouteGroup 属性
+        $groupAttrs = $reflection->getAttributes(Attr\RouteGroup::class);
+        $prefix = '';
+        $classMiddleware = [];
+        $groupName = '';
 
-        $routeAttr = $classAttrs[0]->newInstance();
-        $prefix = $routeAttr->prefix;
-        $classMiddleware = $routeAttr->middleware;
+        if (!empty($groupAttrs)) {
+            $groupAttr = $groupAttrs[0]->newInstance();
+            $prefix = $groupAttr->prefix;
+            $classMiddleware = $groupAttr->middleware;
+            $groupName = $groupAttr->name;
+        }
 
+        // 处理 Middleware 属性
         $middlewareAttrs = $reflection->getAttributes(Attr\Middleware::class);
         foreach ($middlewareAttrs as $ma) {
             $m = $ma->newInstance();
             $classMiddleware = array_merge($classMiddleware, (array)$m->middleware);
         }
 
+        // 处理类级别的 Route 属性
+        $classRouteAttrs = $reflection->getAttributes(Attr\Route::class);
+        foreach ($classRouteAttrs as $ra) {
+            $routeAttr = $ra->newInstance();
+            $path = rtrim($prefix . '/' . ltrim($routeAttr->path, '/'), '/') ?: '/';
+            $methods = (array)$routeAttr->methods;
+            $name = $routeAttr->name ?: ($groupName . ($routeAttr->name ? '.' : '') . $reflection->getShortName());
+            $middleware = array_merge($classMiddleware, $routeAttr->middleware);
+
+            $handlerMethod = '__invoke';
+            if ($reflection->isSubclassOf(\Framework\Component\LiveComponent::class)) {
+                $handlerMethod = 'render';
+            }
+
+            foreach ($methods as $method) {
+                $this->routes[] = [
+                    'method' => strtoupper($method),
+                    'path' => $path,
+                    'name' => $name,
+                    'handler' => [$reflection->getName(), $handlerMethod],
+                    'middleware' => $middleware,
+                ];
+            }
+        }
+
+        // 处理方法级别的路由属性
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            $this->registerMethod($reflection->getName(), $method, $prefix, $classMiddleware);
+            $this->registerMethod($reflection->getName(), $method, $prefix, $classMiddleware, $groupName);
         }
     }
 
-    private function registerMethod(string $className, \ReflectionMethod $method, string $prefix, array $classMiddleware): void
+    private function registerMethod(string $className, \ReflectionMethod $method, string $prefix, array $classMiddleware, string $groupName = ''): void
     {
-        $httpAttrs = [
-            Attr\Get::class => 'GET',
-            Attr\Post::class => 'POST',
-            Attr\Put::class => 'PUT',
-            Attr\Delete::class => 'DELETE',
-        ];
-
-        foreach ($httpAttrs as $attrClass => $httpMethod) {
-            $attrs = $method->getAttributes($attrClass);
-            if (empty($attrs)) continue;
-
-            $attr = $attrs[0]->newInstance();
+        $attrs = $method->getAttributes(Attr\Route::class);
+        foreach ($attrs as $attrRef) {
+            $attr = $attrRef->newInstance();
+            
             $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
-            $name = $attr->name ?: ($className . '::' . $method->getName());
             $middleware = array_merge($classMiddleware, $attr->middleware);
 
             $methodMiddlewareAttrs = $method->getAttributes(Attr\Middleware::class);
@@ -134,13 +158,18 @@ class Router
                 $middleware = array_merge($middleware, (array)$m->middleware);
             }
 
-            $this->routes[] = [
-                'method' => $httpMethod,
-                'path' => $path,
-                'name' => $name,
-                'handler' => [$className, $method->getName()],
-                'middleware' => $middleware,
-            ];
+            $methods = (array)$attr->methods;
+            $name = $attr->name ?: ($groupName ? $groupName . '.' : '') . $method->getName();
+
+            foreach ($methods as $httpMethod) {
+                $this->routes[] = [
+                    'method' => strtoupper($httpMethod),
+                    'path' => $path,
+                    'name' => $name,
+                    'handler' => [$className, $method->getName()],
+                    'middleware' => $middleware,
+                ];
+            }
         }
     }
 

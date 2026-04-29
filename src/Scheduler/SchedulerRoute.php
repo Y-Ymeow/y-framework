@@ -9,10 +9,10 @@ use Framework\Routing\Attribute\Route;
 use Framework\Http\Request;
 use Framework\Http\Response;
 
-#[Route('/_schedule')]
+#[Route('/_schedule', name: 'schedule')]
 class SchedulerRoute
 {
-    #[Post('/run')]
+    #[Route('/run', methods: ['POST'], name: 'run')]
     public function run(Request $request): Response
     {
         $token = $request->header('x-schedule-token') ?? $request->input('token', '');

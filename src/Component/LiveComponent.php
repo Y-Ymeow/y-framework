@@ -41,8 +41,42 @@ abstract class LiveComponent
         if (!isset(self::$idCounter[$key])) self::$idCounter[$key] = 0;
         self::$idCounter[$key]++;
         $this->componentId = $key . '-' . self::$idCounter[$key];
-        $this->mount();
+        
+        // 执行 boot 周期
+        $this->boot();
+
+        // 只有首次请求执行 mount
+        if (!isset($_POST['_state'])) {
+            $this->mount();
+        }
     }
+
+    /**
+     * 生命周期：组件实例创建时触发
+     */
+    public function boot(): void {}
+
+    /**
+     * 生命周期：仅在组件首次挂载时触发
+     */
+    public function mount(): void {}
+
+    /**
+     * 生命周期：在状态从请求恢复（Hydration）完成后触发
+     */
+    public function hydrate(): void {}
+
+    /**
+     * 生命周期：在状态序列化发往前端（Dehydration）开始前触发
+     */
+    public function dehydrate(): void {}
+
+    /**
+     * 生命周期钩子：当任何公开属性更新后触发
+     */
+    public function updated(string $name, mixed $value): void {}
+
+    abstract public function render(): string|Element;
 
     /**
      * 内置属性同步方法，支持 data-live-model
@@ -64,7 +98,7 @@ abstract class LiveComponent
         }
 
         $prop = $ref->getProperty($property);
-        
+
         // 只有非静态属性可以同步
         if ($prop->isStatic()) {
             return;
@@ -72,23 +106,21 @@ abstract class LiveComponent
 
         // 执行更新
         $oldValue = $prop->isInitialized($this) ? $prop->getValue($this) : null;
-        
+
         // 类型转换
         $type = $prop->getType();
         $castedValue = $this->castParam($value, $type);
-        
+
         $prop->setValue($this, $castedValue);
 
         // 调用生命周期钩子: updatedProperty($value, $oldValue)
         $hookName = 'updated' . ucfirst($property);
-        if (method_exists($this, $hookName)) {
+        if (is_callable([$this, $hookName])) {
             $this->{$hookName}($castedValue, $oldValue);
         }
 
         // 通用钩子: updated($property, $value)
-        if (method_exists($this, 'updated')) {
-            $this->updated($property, $castedValue);
-        }
+        $this->updated($property, $castedValue);
 
         // 默认触发一次刷新，以确保 UI 同步
         $this->refresh();
@@ -105,12 +137,11 @@ abstract class LiveComponent
         return $this;
     }
 
-    public function mount(): void {}
-
-    abstract public function render(): string|Element;
-
     public function toHtml(bool $onlyFragment = false): string
     {
+        // 渲染前执行 dehydrate 钩子
+        $this->dehydrate();
+
         $content = $this->render();
 
         if (!($content instanceof Element)) {
@@ -121,13 +152,13 @@ abstract class LiveComponent
         $content->attr('data-live-id', $this->componentId);
         $content->attr('data-live-state', $this->serializeState());
         $content->attr('data-state', json_encode($this->getDataForFrontend(), JSON_UNESCAPED_UNICODE));
-        
+
         // 记录监听器信息，供前端优化收集逻辑
         $listeners = $this->getLiveListeners();
         if (!empty($listeners)) {
             $content->attr('data-live-listeners', implode(',', array_keys($listeners)));
         }
-        
+
         return $content->render($onlyFragment);
     }
 
@@ -164,13 +195,12 @@ abstract class LiveComponent
 
         foreach ($ref->getProperties() as $prop) {
             if ($prop->isStatic()) continue;
-            
+
             $internalProps = ['componentId', 'operations', 'refreshFragments', 'manualUpdates', 'actionCache', 'liveActions'];
             if (in_array($prop->getName(), $internalProps)) continue;
 
             if ($prop->isPublic()) continue;
 
-            $prop->setAccessible(true);
             $value = $prop->getValue($this);
 
             if ($this->isSerializable($value)) {
@@ -180,14 +210,43 @@ abstract class LiveComponent
 
         // 安全增强：记录公开属性的指纹，防止前端篡改 _data
         $publicData = $this->getPublicProperties();
-        $data['__checksum'] = md5(json_encode($publicData, JSON_UNESCAPED_UNICODE));
+        $data['__checksum'] = $this->generateDataChecksum($publicData);
 
         $serialized = serialize($data);
         $compressed = function_exists('gzcompress') ? gzcompress($serialized) : $serialized;
-        
+
         $sig = hash_hmac('sha256', static::class . 'state' . $compressed, $this->liveSigningKey(), true);
-        
+
         return base64_encode($sig . $compressed);
+    }
+
+    /**
+     * 生成一致的数据指纹
+     */
+    private function generateDataChecksum(array $data): string
+    {
+        // 递归排序和规范化（转为字符串），确保 JSON 字符串一致性并消除类型差异
+        $this->recursiveNormalize($data);
+
+        return md5(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+    }
+
+    /**
+     * 递归规范化数组：排序并转为字符串
+     */
+    private function recursiveNormalize(array &$array): void
+    {
+        ksort($array);
+        foreach ($array as &$value) {
+            if (is_array($value)) {
+                $this->recursiveNormalize($value);
+            } else {
+                // 将所有非数组值转为字符串，以抹平 1 vs "1" 的差异
+                if ($value !== null) {
+                    $value = (string)$value;
+                }
+            }
+        }
     }
 
     /**
@@ -225,27 +284,27 @@ abstract class LiveComponent
             $serialized = $compressed;
         }
 
-        // 使用 JSON 反序列化替代 PHP 原生 unserialize，杜绝 PHP 对象注入
-        $data = @json_decode($serialized, true);
-        if (!is_array($data)) {
-            // 兼容旧格式：尝试 PHP unserialize，但限制对象类型
-            $data = @unserialize($serialized, ['allowed_classes' => false]);
-            if (!is_array($data)) return;
-        }
+        $data = @unserialize($serialized, ['allowed_classes' => false]);
+        if (!is_array($data)) return;
 
         if (isset($data['__checksum'])) {
             $this->stateChecksum = $data['__checksum'];
             unset($data['__checksum']);
         }
 
-        $allowed = $this->allowedStateProperties();
-
+        $ref = new \ReflectionClass($this);
         foreach ($data as $name => $value) {
-            if (!in_array($name, $allowed, true)) {
-                continue; // 跳过不在白名单中的属性
+            if ($ref->hasProperty($name)) {
+                $prop = $ref->getProperty($name);
+                // 恢复私有/受保护属性
+                if (!$prop->isPublic()) {
+                    $prop->setValue($this, $value);
+                }
             }
-            $this->{$name} = $value;
         }
+
+        // 属性恢复后执行 hydrate 钩子
+        $this->hydrate();
     }
 
     /**
@@ -261,12 +320,14 @@ abstract class LiveComponent
         if ($this->stateChecksum !== null) {
             $tempData = $data;
             unset($tempData['_isReactive']); // 过滤前端特定标记
-            
-            $currentChecksum = md5(json_encode($tempData, JSON_UNESCAPED_UNICODE));
+
+            $currentChecksum = $this->generateDataChecksum($tempData);
             if (!hash_equals($this->stateChecksum, $currentChecksum)) {
-                // 如果指纹不对，说明数据被篡改了（除非是预期的 data-model 更新，但那应该在 _params 里）
-                // 注意：只有在执行非属性更新类 Action 时才强制校验
-                // 这里我们采取严格模式
+                // 打印调试信息（生产环境应移除）
+                if (config('app.debug')) {
+                    error_log("Checksum mismatch! Expected: {$this->stateChecksum}, Got: {$currentChecksum}");
+                    error_log("Data: " . json_encode($tempData));
+                }
                 throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
             }
         }
@@ -274,7 +335,7 @@ abstract class LiveComponent
         $ref = new \ReflectionClass($this);
         foreach ($data as $name => $value) {
             if ($name === '_isReactive') continue; // 过滤前端标记
-            
+
             if ($ref->hasProperty($name)) {
                 $prop = $ref->getProperty($name);
                 if ($prop->isPublic() && !$prop->isStatic()) {
@@ -610,12 +671,12 @@ abstract class LiveComponent
     protected function liveSigningKey(): string
     {
         $appKey = (string) config('app.key', 'secret-fallback');
-        
+
         // 核心安全增强：将 Session Token 混入签名密钥
         // 这样每个用户的签名密钥都是唯一的，state 字符串无法跨用户/跨会话使用
         $session = new \Framework\Http\Session();
         $sessionToken = $session->token();
-        
+
         return hash_hmac('sha256', $sessionToken, $appKey);
     }
 }

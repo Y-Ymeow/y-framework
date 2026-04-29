@@ -13,10 +13,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
 
 #[AsCommand(
-    name: 'make:component',
-    description: 'Create a new Live Component',
+    name: 'make:job',
+    description: 'Create a new Job class',
 )]
-class MakeComponentCommand extends Command
+class MakeJobCommand extends Command
 {
     private Application $app;
 
@@ -28,7 +28,7 @@ class MakeComponentCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the component (e.g. UserList)');
+        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the job (e.g. ProcessImage)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -41,7 +41,7 @@ class MakeComponentCommand extends Command
         $filePath = $this->getFilePath($name);
 
         if (file_exists($filePath)) {
-            $io->error("Component [{$name}] already exists!");
+            $io->error("Job [{$name}] already exists!");
             return Command::FAILURE;
         }
 
@@ -53,7 +53,7 @@ class MakeComponentCommand extends Command
         $content = $this->getStub($className, $namespace);
         file_put_contents($filePath, $content);
 
-        $io->success("Component [{$className}] created successfully.");
+        $io->success("Job [{$className}] created successfully.");
         $io->note("Path: {$filePath}");
 
         return Command::SUCCESS;
@@ -70,13 +70,13 @@ class MakeComponentCommand extends Command
         $parts = explode('/', str_replace('\\', '/', $name));
         array_pop($parts);
         $subNamespace = empty($parts) ? '' : '\\' . implode('\\', $parts);
-        return "App\\Components" . $subNamespace;
+        return "App\\Jobs" . $subNamespace;
     }
 
     private function getFilePath(string $name): string
     {
         $name = str_replace('\\', '/', $name);
-        return $this->app->basePath("app/Components/{$name}.php");
+        return $this->app->basePath("app/Jobs/{$name}.php");
     }
 
     private function getStub(string $className, string $namespace): string
@@ -88,36 +88,16 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
-use Framework\View\Base\Element;
-
-class {$className} extends LiveComponent
+class {$className}
 {
-    public int \$count = 0;
-
-    public function mount(): void
+    public function handle(array \$data = []): void
     {
-        // 组件挂载时的初始化逻辑
+        // 任务处理逻辑
     }
 
-    #[LiveAction]
-    public function increment(): void
+    public function failed(array \$data = [], ?\Throwable \$e = null): void
     {
-        \$this->count++;
-    }
-
-    public function render(): string|Element
-    {
-        return Element::make('div')
-            ->class('p-4 border rounded shadow-sm bg-white')
-            ->children(
-                Element::make('span')->class('text-lg font-bold')->text("Count: {\$this->count}"),
-                Element::make('button')
-                    ->class('ml-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600')
-                    ->attr('data-action', 'increment')
-                    ->text('Increment')
-            );
+        // 任务失败处理逻辑
     }
 }
 PHP;

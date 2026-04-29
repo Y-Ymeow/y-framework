@@ -7,14 +7,14 @@ namespace Framework\Component;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\Session;
-use Framework\Routing\Attribute\Post;
 use Framework\Routing\Attribute\Route;
+use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\FragmentRegistry;
 
-#[Route]
+#[RouteGroup('/live', name: 'live')]
 class LiveComponentResolver
 {
-    #[Post('/live/update')]
+    #[Route('/update', ['POST'], name: 'live.update')]
     public function handle(Request $request): Response
     {
         $session = new Session();
@@ -34,7 +34,7 @@ class LiveComponentResolver
         $state = $request->input('_state', '');
         $publicData = $request->input('_data', []);
         $params = $request->input('_params', []);
-        
+
         if (!is_array($publicData)) $publicData = [];
         if (!is_array($params)) $params = [];
 
@@ -48,24 +48,24 @@ class LiveComponentResolver
 
         try {
             \Framework\Component\LiveEventBus::reset();
-            
+
             $components = $request->input('_components');
             if (!is_array($components)) {
                 $components = [];
             }
-            
+
             foreach ($components as $compData) {
                 if (empty($compData['class']) || empty($compData['id']) || empty($compData['state'])) {
                     continue;
                 }
-                
+
                 \Framework\Component\LiveEventBus::storeComponentState(
                     $compData['id'],
                     $compData['class'],
                     $compData['state']
                 );
             }
-            
+
             $component = new $componentClass();
 
             if (!($component instanceof LiveComponent)) {
@@ -119,9 +119,9 @@ class LiveComponentResolver
                     $emittedEvent['event'],
                     $component->getComponentId()
                 );
-                
+
                 foreach ($listeners as $listener) {
-                    $this->processComponentUpdate($listener['componentId'], $response, function($comp) use ($listener, $emittedEvent) {
+                    $this->processComponentUpdate($listener['componentId'], $response, function ($comp) use ($listener, $emittedEvent) {
                         $handler = $listener['handler'];
                         if (method_exists($comp, $handler)) {
                             $comp->$handler($emittedEvent['data']);
@@ -133,7 +133,7 @@ class LiveComponentResolver
             // 2. 处理手动指定的更新 (updateComponent)
             $manualUpdates = method_exists($component, 'getManualUpdates') ? $component->getManualUpdates() : [];
             foreach ($manualUpdates as $targetId => $patchData) {
-                $this->processComponentUpdate($targetId, $response, function($comp) use ($patchData) {
+                $this->processComponentUpdate($targetId, $response, function ($comp) use ($patchData) {
                     // 简单地应用补丁
                     if (method_exists($comp, 'deserializeState')) {
                         // 这里我们实际上是想更新组件的属性
@@ -141,7 +141,6 @@ class LiveComponentResolver
                         foreach ($patchData as $key => $val) {
                             if ($ref->hasProperty($key)) {
                                 $prop = $ref->getProperty($key);
-                                $prop->setAccessible(true);
                                 $prop->setValue($comp, $val);
                             }
                         }
@@ -155,11 +154,11 @@ class LiveComponentResolver
                 FragmentRegistry::reset();
                 FragmentRegistry::setTargets($refreshTargets);
                 $component->render();
-                
+
                 foreach (FragmentRegistry::getFragments() as $name => $data) {
                     $response['fragments'][] = [
-                        'name' => $name, 
-                        'html' => $data['element']->render(), 
+                        'name' => $name,
+                        'html' => $data['element']->render(),
                         'mode' => $data['mode']
                     ];
                 }
@@ -183,9 +182,8 @@ class LiveComponentResolver
                     $response['operations'] = array_merge($response['operations'], $componentOps);
                 }
             }
-            
-            return Response::json($response);
 
+            return Response::json($response);
         } catch (\Throwable $e) {
             return Response::json([
                 'success' => false,
@@ -195,7 +193,7 @@ class LiveComponentResolver
         }
     }
 
-    #[Post('/live/navigate')]
+    #[Route('/navigate', ['POST'], name: 'live.navigate')]
     public function navigate(Request $request): Response
     {
         $url = $request->input('url', '');
@@ -232,7 +230,6 @@ class LiveComponentResolver
                 'title' => $title,
                 'fragments' => $fragments,
             ]);
-
         } catch (\Throwable $e) {
             // 临时调试日志
             $logFile = __DIR__ . '/../../storage/logs/navigate-error.log';
@@ -246,7 +243,7 @@ class LiveComponentResolver
         }
     }
 
-    #[Post('/live/intl')]
+    #[Route('/intl', ['POST'], name: 'live.intl')]
     public function intl(Request $request): Response
     {
         $keys = $request->input('keys', []);
@@ -271,40 +268,33 @@ class LiveComponentResolver
     private function extractNavigateFragments(string $html): array
     {
         $fragments = [];
+        $dom = \Framework\Support\Dom::load($html);
 
-        // 使用 DOMDocument 解析 HTML 以正确处理嵌套
-        libxml_use_internal_errors(true);
-        $dom = new \DOMDocument();
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-        libxml_clear_errors();
-
-        $xpath = new \DOMXPath($dom);
-        $nodes = $xpath->query('//*[@data-navigate-fragment]');
+        $nodes = $dom->query('//*[@data-navigate-fragment]');
 
         foreach ($nodes as $node) {
-            $fragmentName = $node->getAttribute('data-navigate-fragment');
-            // 过滤非法字符，只允许字母、数字、连字符、下划线
-            $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '', $fragmentName);
-            if (empty($safeName)) {
-                continue;
+            if ($node instanceof \DOMElement) {
+                $fragmentName = $node->getAttribute('data-navigate-fragment');
+                $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '', $fragmentName);
+
+                if (empty($safeName)) {
+                    continue;
+                }
+
+                $fragments[] = [
+                    'name' => $safeName,
+                    'html' => $dom->getInnerHtml($node),
+                ];
             }
-            // 获取节点的 innerHTML (子元素内容)
-            $innerHtml = '';
-            foreach ($node->childNodes as $child) {
-                $innerHtml .= $dom->saveHTML($child);
-            }
-            $fragments[] = [
-                'name' => $safeName,
-                'html' => $innerHtml,
-            ];
         }
 
         // 如果没有找到任何 fragment，返回整个 body 作为默认
         if (empty($fragments)) {
-            if (preg_match('/<body[^>]*>(.*?)<\/body>/s', $html, $match)) {
+            $bodyContent = $dom->getBodyContent();
+            if (!empty($bodyContent)) {
                 $fragments[] = [
                     'name' => 'body',
-                    'html' => $match[1],
+                    'html' => $bodyContent,
                 ];
             }
         }
@@ -314,10 +304,7 @@ class LiveComponentResolver
 
     private function extractTitle(string $html): string
     {
-        if (preg_match('/<title[^>]*>(.*?)<\/title>/s', $html, $match)) {
-            return trim($match[1]);
-        }
-        return '';
+        return \Framework\Support\Dom::load($html)->getTitle();
     }
 
     private function processComponentUpdate(string $componentId, array &$response, callable $callback): void
@@ -330,7 +317,6 @@ class LiveComponentResolver
         $comp->named($componentId);
         $comp->deserializeState($stateInfo['state']);
 
-        $before = $comp->getDataForFrontend();
         $callback($comp);
         $after = $comp->getDataForFrontend();
 

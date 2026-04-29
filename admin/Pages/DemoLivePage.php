@@ -16,7 +16,6 @@ use Framework\View\Text;
 use Framework\View\Document\Document;
 use Framework\View\LiveResponse;
 
-#[Route('/demo')]
 class DemoLivePage
 {
     private const FADE_UP_TRANSITION = <<<'JS'
@@ -53,7 +52,8 @@ JS;
 }
 JS;
 
-    #[Get('/')]
+
+    #[Route('/demo')]
     public function index(): \Framework\Http\Response
     {
         $flagGen = new FlagGenerator();

@@ -13,10 +13,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
 
 #[AsCommand(
-    name: 'make:component',
-    description: 'Create a new Live Component',
+    name: 'make:command',
+    description: 'Create a new console command',
 )]
-class MakeComponentCommand extends Command
+class MakeCommandCommand extends Command
 {
     private Application $app;
 
@@ -28,20 +28,23 @@ class MakeComponentCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the component (e.g. UserList)');
+        $this
+            ->addArgument('name', InputArgument::REQUIRED, 'The name of the command class')
+            ->addArgument('command', InputArgument::OPTIONAL, 'The terminal command name');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $name = $input->getArgument('name');
+        $commandName = $input->getArgument('command') ?: 'app:' . strtolower($name);
         
         $className = $this->getClassName($name);
         $namespace = $this->getNamespace($name);
         $filePath = $this->getFilePath($name);
 
         if (file_exists($filePath)) {
-            $io->error("Component [{$name}] already exists!");
+            $io->error("Command [{$name}] already exists!");
             return Command::FAILURE;
         }
 
@@ -50,11 +53,12 @@ class MakeComponentCommand extends Command
             mkdir($dir, 0755, true);
         }
 
-        $content = $this->getStub($className, $namespace);
+        $content = $this->getStub($className, $namespace, $commandName);
         file_put_contents($filePath, $content);
 
-        $io->success("Component [{$className}] created successfully.");
+        $io->success("Command [{$className}] created successfully.");
         $io->note("Path: {$filePath}");
+        $io->note("Command: php bin/console {$commandName}");
 
         return Command::SUCCESS;
     }
@@ -70,16 +74,16 @@ class MakeComponentCommand extends Command
         $parts = explode('/', str_replace('\\', '/', $name));
         array_pop($parts);
         $subNamespace = empty($parts) ? '' : '\\' . implode('\\', $parts);
-        return "App\\Components" . $subNamespace;
+        return "App\\Commands" . $subNamespace;
     }
 
     private function getFilePath(string $name): string
     {
         $name = str_replace('\\', '/', $name);
-        return $this->app->basePath("app/Components/{$name}.php");
+        return $this->app->basePath("app/Commands/{$name}.php");
     }
 
-    private function getStub(string $className, string $namespace): string
+    private function getStub(string $className, string $namespace, string $commandName): string
     {
         return <<<PHP
 <?php
@@ -88,36 +92,25 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
-use Framework\View\Base\Element;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
-class {$className} extends LiveComponent
+#[AsCommand(
+    name: '{$commandName}',
+    description: 'Command description',
+)]
+class {$className} extends Command
 {
-    public int \$count = 0;
-
-    public function mount(): void
+    protected function execute(InputInterface \$input, OutputInterface \$output): int
     {
-        // 组件挂载时的初始化逻辑
-    }
+        \$io = new SymfonyStyle(\$input, \$output);
 
-    #[LiveAction]
-    public function increment(): void
-    {
-        \$this->count++;
-    }
+        \$io->success('Command executed successfully!');
 
-    public function render(): string|Element
-    {
-        return Element::make('div')
-            ->class('p-4 border rounded shadow-sm bg-white')
-            ->children(
-                Element::make('span')->class('text-lg font-bold')->text("Count: {\$this->count}"),
-                Element::make('button')
-                    ->class('ml-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600')
-                    ->attr('data-action', 'increment')
-                    ->text('Increment')
-            );
+        return Command::SUCCESS;
     }
 }
 PHP;

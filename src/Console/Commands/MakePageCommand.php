@@ -8,15 +8,16 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
 
 #[AsCommand(
-    name: 'make:component',
-    description: 'Create a new Live Component',
+    name: 'make:page',
+    description: 'Create a new Page (Live Component with route)',
 )]
-class MakeComponentCommand extends Command
+class MakePageCommand extends Command
 {
     private Application $app;
 
@@ -28,20 +29,23 @@ class MakeComponentCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the component (e.g. UserList)');
+        $this
+            ->addArgument('name', InputArgument::REQUIRED, 'The name of the page (e.g. UserProfile)')
+            ->addOption('route', 'r', InputOption::VALUE_OPTIONAL, 'The route path', null);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $name = $input->getArgument('name');
+        $route = $input->getOption('route') ?: '/' . strtolower($name);
         
         $className = $this->getClassName($name);
         $namespace = $this->getNamespace($name);
         $filePath = $this->getFilePath($name);
 
         if (file_exists($filePath)) {
-            $io->error("Component [{$name}] already exists!");
+            $io->error("Page [{$name}] already exists!");
             return Command::FAILURE;
         }
 
@@ -50,11 +54,12 @@ class MakeComponentCommand extends Command
             mkdir($dir, 0755, true);
         }
 
-        $content = $this->getStub($className, $namespace);
+        $content = $this->getStub($className, $namespace, $route);
         file_put_contents($filePath, $content);
 
-        $io->success("Component [{$className}] created successfully.");
+        $io->success("Page [{$className}] created successfully.");
         $io->note("Path: {$filePath}");
+        $io->note("Route: {$route}");
 
         return Command::SUCCESS;
     }
@@ -70,16 +75,16 @@ class MakeComponentCommand extends Command
         $parts = explode('/', str_replace('\\', '/', $name));
         array_pop($parts);
         $subNamespace = empty($parts) ? '' : '\\' . implode('\\', $parts);
-        return "App\\Components" . $subNamespace;
+        return "App\\Pages" . $subNamespace;
     }
 
     private function getFilePath(string $name): string
     {
         $name = str_replace('\\', '/', $name);
-        return $this->app->basePath("app/Components/{$name}.php");
+        return $this->app->basePath("app/Pages/{$name}.php");
     }
 
-    private function getStub(string $className, string $namespace): string
+    private function getStub(string $className, string $namespace, string $route): string
     {
         return <<<PHP
 <?php
@@ -89,34 +94,27 @@ declare(strict_types=1);
 namespace {$namespace};
 
 use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Routing\Attribute\Route;
 use Framework\View\Base\Element;
 
+#[Route('{$route}')]
 class {$className} extends LiveComponent
 {
-    public int \$count = 0;
+    public string \$title = 'Welcome to {$className}';
 
     public function mount(): void
     {
-        // 组件挂载时的初始化逻辑
+        // 页面挂载时的初始化逻辑
     }
 
-    #[LiveAction]
-    public function increment(): void
-    {
-        \$this->count++;
-    }
-
+    #[Route('/', methods: 'GET')]
     public function render(): string|Element
     {
         return Element::make('div')
-            ->class('p-4 border rounded shadow-sm bg-white')
+            ->class('p-8 max-w-4xl mx-auto')
             ->children(
-                Element::make('span')->class('text-lg font-bold')->text("Count: {\$this->count}"),
-                Element::make('button')
-                    ->class('ml-4 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600')
-                    ->attr('data-action', 'increment')
-                    ->text('Increment')
+                Element::make('h1')->class('text-3xl font-bold mb-4')->text(\$this->title),
+                Element::make('p')->class('text-gray-600')->text('This is a newly created page.')
             );
     }
 }

@@ -23,14 +23,14 @@ class SchedulerServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $kernel = require base_path('routes/schedule.php');
-        if (is_callable($kernel)) {
-            $kernel(app()->make(Scheduler::class));
+        $schedulePath = base_path('routes/schedule.php');
+        if (file_exists($schedulePath)) {
+            $kernel = require $schedulePath;
+            if (is_callable($kernel)) {
+                $kernel(app()->make(Scheduler::class));
+            }
         }
 
-        $router = app()->make(Router::class);
-        if ($router) {
-            $router->post('/_schedule/run', [new SchedulerRoute(), 'run']);
-        }
+        // 路由会自动通过属性扫描注册，不需要在这里手动添加
     }
 }

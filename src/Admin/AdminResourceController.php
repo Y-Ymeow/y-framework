@@ -6,23 +6,20 @@ namespace Framework\Admin;
 
 use Framework\Http\Request;
 use Framework\Http\Response;
-use Framework\Routing\Attribute\Get;
-use Framework\Routing\Attribute\Post;
-use Framework\Routing\Attribute\Put;
-use Framework\Routing\Attribute\Delete;
 use Framework\Routing\Attribute\Route;
 use Framework\Admin\Live\AdminListPage;
 use Framework\Admin\Live\AdminFormPage;
 use Framework\Admin\Live\AdminLayout;
+use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\Container;
 use Framework\View\Link;
 use Framework\View\Listing;
 use Framework\View\Text;
 
-#[Route(prefix: '/admin')]
+#[RouteGroup('/admin', name: 'admin')]
 class AdminResourceController
 {
-    #[Get('/')]
+    #[Route('/', name: 'admin.dashboard')]
     public function dashboard(): Response
     {
         $resources = AdminManager::getResources();
@@ -44,10 +41,11 @@ class AdminResourceController
                 $title = $resourceClass::getTitle();
                 $el->child(
                     Listing::li()
-                    ->child(Link::make()
-                    ->href("/admin/{$name}")
-                    ->text($title)
-                    )
+                        ->child(
+                            Link::make()
+                                ->href("/admin/{$name}")
+                                ->text($title)
+                        )
                 );
             }
         }
@@ -60,10 +58,11 @@ class AdminResourceController
                 $title = $pageClass::getTitle();
                 $el->child(
                     Listing::li()
-                    ->child(Link::make()
-                    ->href("/admin/{$name}")
-                    ->text($title)
-                    )
+                        ->child(
+                            Link::make()
+                                ->href("/admin/{$name}")
+                                ->text($title)
+                        )
                 );
             }
         }
@@ -71,7 +70,7 @@ class AdminResourceController
         return Response::html($el);
     }
 
-    #[Get('/{resource}')]
+    #[Route('/{resource}', name: 'admin.resource')]
     public function index(string $resource): Response
     {
         $resourceClass = AdminManager::getResource($resource);
@@ -81,17 +80,17 @@ class AdminResourceController
 
         $layout = new AdminLayout();
         $layout->activeMenu = $resource;
-        
+
         $listPage = new AdminListPage();
         $listPage->named("admin-list-{$resource}");
         $listPage->resourceName = $resource;
-        
+
         $layout->content = $listPage;
 
         return Response::html($layout);
     }
 
-    #[Get('/{resource}/create')]
+    #[Route('/{resource}/create', name: 'admin.resource.create')]
     public function create(string $resource): Response
     {
         $resourceClass = AdminManager::getResource($resource);
@@ -101,17 +100,17 @@ class AdminResourceController
 
         $layout = new AdminLayout();
         $layout->activeMenu = $resource;
-        
+
         $formPage = new AdminFormPage();
         $formPage->named("admin-form-{$resource}-create");
         $formPage->resourceName = $resource;
-        
+
         $layout->content = $formPage;
 
         return Response::html($layout);
     }
 
-    #[Get('/{resource}/{id}/edit')]
+    #[Route('/{resource}/{id}/edit', name: 'admin.resource.edit')]
     public function edit(string $resource, int $id): Response
     {
         $resourceClass = AdminManager::getResource($resource);
@@ -121,12 +120,12 @@ class AdminResourceController
 
         $layout = new AdminLayout();
         $layout->activeMenu = $resource;
-        
+
         $formPage = new AdminFormPage();
         $formPage->named("admin-form-{$resource}-{$id}");
         $formPage->resourceName = $resource;
         $formPage->recordId = $id;
-        
+
         $layout->content = $formPage;
 
         return Response::html($layout);

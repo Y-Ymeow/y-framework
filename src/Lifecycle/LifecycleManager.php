@@ -96,6 +96,20 @@ class LifecycleManager
         }
     }
 
+    public function registerSchedule(array $schedule): void
+    {
+        Hook::fire('schedules.registering', $schedule);
+        
+        // 我们可以直接让 Scheduler 处理，或者先存起来
+        $scheduler = app()->make(\Framework\Scheduler\Scheduler::class);
+        if ($scheduler) {
+            $scheduler->call(function() use ($schedule) {
+                $instance = app()->make($schedule['class']);
+                return app()->call([$instance, $schedule['method']]);
+            })->cron($schedule['expression']);
+        }
+    }
+
     public function flushPending(): void
     {
         foreach ($this->pendingRegistrations as $type => $items) {

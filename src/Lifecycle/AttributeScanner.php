@@ -46,6 +46,24 @@ class AttributeScanner
         $this->scanRouteAttributes($reflection);
         $this->scanComponentAttributes($reflection);
         $this->scanAdminResourceAttributes($reflection);
+        $this->scanScheduleAttributes($reflection);
+    }
+
+    private function scanScheduleAttributes(ReflectionClass $reflection): void
+    {
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
+            $attrs = $method->getAttributes(\Framework\Scheduler\Attribute\Schedule::class);
+            foreach ($attrs as $attr) {
+                $scheduleAttr = $attr->newInstance();
+                
+                // 注册到 Scheduler
+                $this->manager->registerSchedule([
+                    'class' => $reflection->getName(),
+                    'method' => $method->getName(),
+                    'expression' => $scheduleAttr->expression,
+                ]);
+            }
+        }
     }
 
     private function scanAdminResourceAttributes(ReflectionClass $reflection): void
@@ -95,40 +113,78 @@ class AttributeScanner
 
     private function scanRouteAttributes(ReflectionClass $reflection): void
     {
-        $classAttrs = $reflection->getAttributes(\Framework\Routing\Attribute\Route::class);
+        // 处理 RouteGroup 属性
+        $groupAttrs = $reflection->getAttributes(\Framework\Routing\Attribute\RouteGroup::class);
         $prefix = '';
         $classMiddleware = [];
+        $groupName = '';
 
-        if (!empty($classAttrs)) {
-            $routeAttr = $classAttrs[0]->newInstance();
-            $prefix = $routeAttr->prefix;
-            $classMiddleware = $routeAttr->middleware;
+        if (!empty($groupAttrs)) {
+            $groupAttr = $groupAttrs[0]->newInstance();
+            $prefix = $groupAttr->prefix;
+            $classMiddleware = $groupAttr->middleware;
+            $groupName = $groupAttr->name;
         }
 
-        $httpAttrs = [
-            \Framework\Routing\Attribute\Get::class => 'GET',
-            \Framework\Routing\Attribute\Post::class => 'POST',
-            \Framework\Routing\Attribute\Put::class => 'PUT',
-            \Framework\Routing\Attribute\Delete::class => 'DELETE',
-        ];
+        // 处理 Middleware 属性
+        $middlewareAttrs = $reflection->getAttributes(\Framework\Routing\Attribute\Middleware::class);
+        foreach ($middlewareAttrs as $ma) {
+            $m = $ma->newInstance();
+            $classMiddleware = array_merge($classMiddleware, (array)$m->middleware);
+        }
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            foreach ($httpAttrs as $attrClass => $httpMethod) {
-                $attrs = $method->getAttributes($attrClass);
-                if (empty($attrs)) continue;
+        // 处理类级别的 Route 属性
+        $classRouteAttrs = $reflection->getAttributes(\Framework\Routing\Attribute\Route::class);
+        foreach ($classRouteAttrs as $ra) {
+            $routeAttr = $ra->newInstance();
+            $path = rtrim($prefix . '/' . ltrim($routeAttr->path, '/'), '/') ?: '/';
+            $methods = (array)$routeAttr->methods;
+            $name = $routeAttr->name ?: ($groupName . ($routeAttr->name ? '.' : '') . $reflection->getShortName());
+            $middleware = array_merge($classMiddleware, $routeAttr->middleware);
 
-                $attr = $attrs[0]->newInstance();
-                $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
-                $name = $attr->name ?: ($reflection->getName() . '::' . $method->getName());
-                $middleware = array_merge($classMiddleware, $attr->middleware);
+            $handlerMethod = '__invoke';
+            if ($reflection->isSubclassOf(\Framework\Component\LiveComponent::class)) {
+                $handlerMethod = 'render';
+            }
 
+            foreach ($methods as $method) {
                 $this->manager->registerRoute([
-                    'method' => $httpMethod,
+                    'method' => strtoupper($method),
                     'path' => $path,
-                    'handler' => [$reflection->getName(), $method->getName()],
+                    'handler' => [$reflection->getName(), $handlerMethod],
                     'name' => $name,
                     'middleware' => $middleware,
                 ]);
+            }
+        }
+
+        // 处理方法级别的路由属性
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(\Framework\Routing\Attribute\Route::class);
+            foreach ($attrs as $attrRef) {
+                $attr = $attrRef->newInstance();
+                
+                $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
+                $middleware = array_merge($classMiddleware, $attr->middleware);
+
+                $methodMiddlewareAttrs = $method->getAttributes(\Framework\Routing\Attribute\Middleware::class);
+                foreach ($methodMiddlewareAttrs as $ma) {
+                    $m = $ma->newInstance();
+                    $middleware = array_merge($middleware, (array)$m->middleware);
+                }
+
+                $methods = (array)$attr->methods;
+                $name = $attr->name ?: ($groupName ? $groupName . '.' : '') . $method->getName();
+
+                foreach ($methods as $httpMethod) {
+                    $this->manager->registerRoute([
+                        'method' => strtoupper($httpMethod),
+                        'path' => $path,
+                        'handler' => [$reflection->getName(), $method->getName()],
+                        'name' => $name,
+                        'middleware' => $middleware,
+                    ]);
+                }
             }
         }
     }
