@@ -44,3 +44,5 @@ datalog/
 /public/assets
 /datalog
 .atomcode/
+database/demo-live.sqlite
+database
