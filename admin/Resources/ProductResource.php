@@ -42,6 +42,16 @@ class ProductResource implements ResourceInterface
         return 'admin/products';
     }
 
+    public function getHeader(): mixed
+    {
+        return null;
+    }
+
+    public function getFooter(): mixed
+    {
+        return null;
+    }
+
     public function configureForm(FormBuilder $form): void
     {
         $form->text('name', '商品名称', ['required' => true])

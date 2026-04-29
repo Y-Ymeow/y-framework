@@ -3,15 +3,12 @@
 namespace App\Admin\Resources;
 
 use Framework\Admin\Attribute\AdminResource;
-use Framework\Routing\Attribute\Get;
-use Framework\Routing\Attribute\Post;
-use Framework\Routing\Attribute\Put;
-use Framework\Routing\Attribute\Delete;
-use Framework\Admin\Resource\ResourceInterface;
-use Framework\Http\Response;
+use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
-use Framework\Database\Model;
+use Framework\View\Base\Element;
+use Framework\UX\UI\Button;
+use Framework\Auth\User;
 
 #[AdminResource(
     name: 'users',
@@ -19,7 +16,7 @@ use Framework\Database\Model;
     title: '用户管理',
     icon: 'heroicon.users',
 )]
-class UserResource implements ResourceInterface
+class UserResource extends BaseResource
 {
     public static function getName(): string
     {
@@ -55,7 +52,6 @@ class UserResource implements ResourceInterface
             ->column('email', '邮箱')
             ->column('role', '角色')
             ->column('created_at', '创建时间')
-            // 直接注册行操作组件
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()
@@ -68,91 +64,22 @@ class UserResource implements ResourceInterface
             });
     }
 
-    /**
-     * 手动注册 LiveActions
-     */
+    public function getListBeforeTable(): mixed
+    {
+        return Element::make('div')->class('admin-list-stats')->text('用户管理');
+    }
+
+    public function getFormHeader(bool $isEdit, ?object $record = null): mixed
+    {
+        if ($isEdit && $record) {
+            return Element::make('div')->class('admin-form-info')
+                ->child(Element::make('p')->text('最后修改时间: ' . ($record->updated_at ?? '未知')));
+        }
+        return null;
+    }
+
     public function getLiveActions(): array
     {
         return [];
     }
-
-    #[Get('/')]
-    public function index(): Response
-    {
-        $table = new DataTable();
-        $this->configureTable($table);
-        
-        $users = User::query()->orderByDesc('id')->limit(20)->get();
-        $table->dataSource($users->toArray());
-        
-        return view('admin.users.index', [
-            'table' => $table,
-        ]);
-    }
-
-    #[Get('/create')]
-    public function create(): Response
-    {
-        $form = new FormBuilder();
-        $form->action('/admin/users')->method('POST');
-        $this->configureForm($form);
-        
-        return view('admin.users.form', [
-            'form' => $form,
-            'title' => '创建用户',
-        ]);
-    }
-
-    #[Post('/')]
-    public function store(): Response
-    {
-        $user = User::create(request()->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-        ]));
-        
-        return redirect('/admin/users')->with('success', '用户创建成功');
-    }
-
-    #[Get('/{id}/edit')]
-    public function edit(int $id): Response
-    {
-        $user = User::findOrFail($id);
-        
-        $form = new FormBuilder();
-        $form->action("/admin/users/{$id}")->method('PUT');
-        $this->configureForm($form);
-        
-        return view('admin.users.form', [
-            'form' => $form,
-            'model' => $user,
-            'title' => '编辑用户',
-        ]);
-    }
-
-    #[Put('/{id}')]
-    public function update(int $id): Response
-    {
-        $user = User::findOrFail($id);
-        $user->update(request()->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-        ]));
-        
-        return redirect('/admin/users')->with('success', '用户更新成功');
-    }
-
-    #[Delete('/{id}')]
-    public function destroy(int $id): Response
-    {
-        $user = User::findOrFail($id);
-        $user->delete();
-        
-        return redirect('/admin/users')->with('success', '用户删除成功');
-    }
-}
-
-class User extends Model
-{
-    protected string $table = 'users';
 }

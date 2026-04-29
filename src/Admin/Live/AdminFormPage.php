@@ -8,8 +8,10 @@ use Framework\Component\LiveComponent;
 use Framework\Component\Attribute\LiveAction;
 use Framework\Admin\AdminManager;
 use Framework\Admin\Resource\ResourceInterface;
+use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\View\Base\Element;
+use Framework\UX\UXComponent;
 
 class AdminFormPage extends LiveComponent
 {
@@ -108,6 +110,84 @@ class AdminFormPage extends LiveComponent
         );
         $wrapper->child($headerEl);
 
+        if ($resource instanceof BaseResource) {
+            $this->renderFormLifecycle($wrapper, $resource, $isEdit);
+        } else {
+            $headerContent = $resource->getHeader();
+            if ($headerContent !== null) {
+                $wrapper->child($this->resolveContent($headerContent));
+            }
+
+            if ($this->saved) {
+                $wrapper->child(
+                    Element::make('div')->class('admin-form-success')->text($isEdit ? '更新成功！' : '创建成功！')
+                );
+            }
+
+            if (!empty($this->formErrors)) {
+                $errorBox = Element::make('div')->class('admin-form-errors');
+                foreach ($this->formErrors as $field => $message) {
+                    $errorBox->child(
+                        Element::make('div')->class('admin-form-error-item')->text("{$field}: {$message}")
+                    );
+                }
+                $wrapper->child($errorBox);
+            }
+
+            $form = new FormBuilder();
+            $form->id('admin-form');
+            $resource->configureForm($form);
+            $form->fill($this->formData);
+
+            $wrapper->child($form->render());
+
+            $actionsEl = Element::make('div')->class('admin-form-actions');
+            $actionsEl->child(
+                Element::make('button')
+                    ->class('admin-btn admin-btn-primary')
+                    ->attr('type', 'submit')
+                    ->attr('form', 'admin-form')
+                    ->liveAction('save', 'click')
+                    ->text('保存')
+            );
+            $actionsEl->child(
+                Element::make('button')
+                    ->class('admin-btn admin-btn-secondary')
+                    ->attr('type', 'button')
+                    ->liveAction('resetForm')
+                    ->text('重置')
+            );
+            $wrapper->child($actionsEl);
+
+            $footerContent = $resource->getFooter();
+            if ($footerContent !== null) {
+                $wrapper->child($this->resolveContent($footerContent));
+            }
+        }
+
+        return $wrapper;
+    }
+
+    protected function renderFormLifecycle(Element $wrapper, BaseResource $resource, bool $isEdit): void
+    {
+        $record = $this->recordId ? $resource::getModel()::find($this->recordId) : null;
+        $resource->setRecord($record);
+
+        $beforeHeader = $resource->getFormBeforeHeader($isEdit, $record);
+        if ($beforeHeader !== null) {
+            $wrapper->child($this->resolveContent($beforeHeader));
+        }
+
+        $formHeader = $resource->getFormHeader($isEdit, $record) ?? $resource->getHeader();
+        if ($formHeader !== null) {
+            $wrapper->child($this->resolveContent($formHeader));
+        }
+
+        $afterHeader = $resource->getFormAfterHeader($isEdit, $record);
+        if ($afterHeader !== null) {
+            $wrapper->child($this->resolveContent($afterHeader));
+        }
+
         if ($this->saved) {
             $wrapper->child(
                 Element::make('div')->class('admin-form-success')->text($isEdit ? '更新成功！' : '创建成功！')
@@ -124,12 +204,22 @@ class AdminFormPage extends LiveComponent
             $wrapper->child($errorBox);
         }
 
+        $beforeForm = $resource->getFormBeforeForm($isEdit, $record);
+        if ($beforeForm !== null) {
+            $wrapper->child($this->resolveContent($beforeForm));
+        }
+
         $form = new FormBuilder();
         $form->id('admin-form');
         $resource->configureForm($form);
         $form->fill($this->formData);
 
         $wrapper->child($form->render());
+
+        $afterForm = $resource->getFormAfterForm($isEdit, $record);
+        if ($afterForm !== null) {
+            $wrapper->child($this->resolveContent($afterForm));
+        }
 
         $actionsEl = Element::make('div')->class('admin-form-actions');
         $actionsEl->child(
@@ -149,7 +239,31 @@ class AdminFormPage extends LiveComponent
         );
         $wrapper->child($actionsEl);
 
-        return $wrapper;
+        $beforeFooter = $resource->getFormBeforeFooter($isEdit, $record);
+        if ($beforeFooter !== null) {
+            $wrapper->child($this->resolveContent($beforeFooter));
+        }
+
+        $formFooter = $resource->getFormFooter($isEdit, $record) ?? $resource->getFooter();
+        if ($formFooter !== null) {
+            $wrapper->child($this->resolveContent($formFooter));
+        }
+
+        $afterFooter = $resource->getFormAfterFooter($isEdit, $record);
+        if ($afterFooter !== null) {
+            $wrapper->child($this->resolveContent($afterFooter));
+        }
+    }
+
+    /**
+     * 将 Resource getHeader/getFooter 的返回值统一解析为 Element
+     */
+    protected function resolveContent(mixed $content): mixed
+    {
+        if ($content instanceof Element || $content instanceof UXComponent || $content instanceof LiveComponent) {
+            return $content;
+        }
+        return Element::make('div')->text((string)$content);
     }
 
     protected function loadRecord(): void

@@ -4,7 +4,6 @@ namespace Framework\Admin\Resource;
 
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
-use Framework\Database\Model;
 
 interface ResourceInterface
 {
@@ -15,6 +14,18 @@ interface ResourceInterface
 
     public function configureForm(FormBuilder $form): void;
     public function configureTable(DataTable $table): void;
+
+    /**
+     * 列表页 / 表单页通用：渲染在内容区上方
+     * 返回 Element|UXComponent|string|null
+     */
+    public function getHeader(): mixed;
+
+    /**
+     * 列表页 / 表单页通用：渲染在内容区下方
+     * 返回 Element|UXComponent|string|null
+     */
+    public function getFooter(): mixed;
 
     /**
      * 手动注册 LiveActions

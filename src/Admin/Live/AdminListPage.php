@@ -8,11 +8,11 @@ use Framework\Component\LiveComponent;
 use Framework\Component\Attribute\LiveAction;
 use Framework\Admin\AdminManager;
 use Framework\Admin\Resource\ResourceInterface;
+use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Data\DataTable;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
-use Framework\Component\UXComponent;
-use Framework\View\Document\AssetRegistry;
+use Framework\UX\UXComponent;
 
 class AdminListPage extends LiveComponent
 {
@@ -157,10 +157,81 @@ class AdminListPage extends LiveComponent
         $headerEl->child(Element::make('div')->class('admin-list-actions')->child($createLink));
         $wrapper->child($headerEl);
 
+        if ($resource instanceof BaseResource) {
+            $this->renderListLifecycle($wrapper, $resource);
+        } else {
+            $headerContent = $resource->getHeader();
+            if ($headerContent !== null) {
+                $wrapper->child($this->resolveContent($headerContent));
+            }
+
+            $tableHtml = $this->buildTable($resource)->render();
+            $wrapper->child($tableHtml);
+
+            $footerContent = $resource->getFooter();
+            if ($footerContent !== null) {
+                $wrapper->child($this->resolveContent($footerContent));
+            }
+        }
+
+        return $wrapper;
+    }
+
+    protected function renderListLifecycle(Element $wrapper, BaseResource $resource): void
+    {
+        $beforeHeader = $resource->getListBeforeHeader();
+        if ($beforeHeader !== null) {
+            $wrapper->child($this->resolveContent($beforeHeader));
+        }
+
+        $resourceHeader = $resource->getListHeader() ?? $resource->getHeader();
+        if ($resourceHeader !== null) {
+            $wrapper->child($this->resolveContent($resourceHeader));
+        }
+
+        $afterHeader = $resource->getListAfterHeader();
+        if ($afterHeader !== null) {
+            $wrapper->child($this->resolveContent($afterHeader));
+        }
+
+        $beforeTable = $resource->getListBeforeTable();
+        if ($beforeTable !== null) {
+            $wrapper->child($this->resolveContent($beforeTable));
+        }
+
         $tableHtml = $this->buildTable($resource)->render();
         $wrapper->child($tableHtml);
 
-        return $wrapper;
+        $afterTable = $resource->getListAfterTable();
+        if ($afterTable !== null) {
+            $wrapper->child($this->resolveContent($afterTable));
+        }
+
+        $beforeFooter = $resource->getListBeforeFooter();
+        if ($beforeFooter !== null) {
+            $wrapper->child($this->resolveContent($beforeFooter));
+        }
+
+        $resourceFooter = $resource->getListFooter() ?? $resource->getFooter();
+        if ($resourceFooter !== null) {
+            $wrapper->child($this->resolveContent($resourceFooter));
+        }
+
+        $afterFooter = $resource->getListAfterFooter();
+        if ($afterFooter !== null) {
+            $wrapper->child($this->resolveContent($afterFooter));
+        }
+    }
+
+    /**
+     * 将 Resource getHeader/getFooter 的返回值统一解析为 Element
+     */
+    protected function resolveContent(mixed $content): mixed
+    {
+        if ($content instanceof Element || $content instanceof UXComponent || $content instanceof LiveComponent) {
+            return $content;
+        }
+        return Element::make('div')->text((string)$content);
     }
 
     protected function buildTable(ResourceInterface $resource): DataTable
