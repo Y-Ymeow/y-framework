@@ -8,6 +8,7 @@ import Accordion from './components/accordion.js';
 import Toast from './components/toast.js';
 import RichEditor from './components/richEditor.js';
 import { dataTable } from './components/dataTable.js';
+import Chart from './components/chart.js';
 
 const UXFramework = {
     ...UX,
@@ -19,6 +20,7 @@ const UXFramework = {
     toast: Toast,
     richEditor: RichEditor,
     dataTable,
+    chart: Chart,
 
     init() {
         UX.registerSafeAttrs();
@@ -29,6 +31,7 @@ const UXFramework = {
         Accordion.init();
         RichEditor.init();
         dataTable.init();
+        Chart.init();
 
         if (window.L) this.hookLive(window.L);
         window.addEventListener('l:ready', (e) => this.hookLive(e.detail || window.L));
@@ -59,4 +62,4 @@ window.UX = UXFramework;
 document.addEventListener('DOMContentLoaded', () => UXFramework.init());
 
 export default UXFramework;
-export { Modal, Drawer, Tabs, Dropdown, Accordion, Toast, RichEditor, dataTable };
+export { Modal, Drawer, Tabs, Dropdown, Accordion, Toast, RichEditor, dataTable, Chart };

@@ -14,6 +14,8 @@ export const UX = {
         'data-ux-toast-close',
         'data-tab-target',
         'data-accordion-multiple',
+        'data-ux-chart',
+        'data-chart-config',
         'data-action',
         'data-editor',
         'data-input-id',

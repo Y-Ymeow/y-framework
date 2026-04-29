@@ -36,8 +36,9 @@ use Framework\UX\UI\Avatar;
 use Framework\UX\UI\Steps;
 use Framework\UX\UI\Pagination;
 use Framework\UX\UI\Skeleton;
+use Framework\UX\Chart\Chart;
 
-#[Route('/admin/ux-demo')]
+#[Route('/ux-demo')]
 class UxDemoPage extends LiveComponent
 {
     public int $count = 0;
@@ -47,7 +48,6 @@ class UxDemoPage extends LiveComponent
     public int $currentPage = 1;
     public string $activeTab = 'tab-profile';
 
-    #[Get('/')]
     public function index(): Response
     {
         debug('UX 组件演示');
@@ -63,7 +63,7 @@ class UxDemoPage extends LiveComponent
     #[LiveAction]
     public function increment(): void
     {
-                debug('UX 组件演示');
+        debug('UX 组件演示');
 
         info('UX 组件演示');
         $this->count++;
@@ -115,6 +115,7 @@ class UxDemoPage extends LiveComponent
             $this->sectionPagination(),
             $this->sectionAvatar(),
             $this->sectionSkeleton(),
+            $this->sectionChart(),
 
             Element::make('hr')->class('my-12'),
             Text::p(Text::small('UX 组件演示 - 驱动于框架核心 Live 系统'))->class('text-center text-gray-400')
@@ -262,6 +263,28 @@ class UxDemoPage extends LiveComponent
             Text::h2('11. 骨架屏 (Skeleton)')->class('mb-4'),
             Skeleton::make()->avatar(),
             Skeleton::make()->text()->count(2)->width('60%')
+        );
+    }
+
+    private function sectionChart(): Element
+    {
+        return Container::make()->class('mb-12')->children(
+            Text::h2('12. 图表 (Chart)')->class('mb-4'),
+            Grid::make()->cols(2)->gap(4)->children(
+                Chart::make()
+                    ->id('sales-chart')
+                    ->type('line')
+                    ->title('销售趋势')
+                    ->height(350)
+                    ->labels(['1月', '2月', '3月', '4月', '5月', '6月'])
+                    ->dataset('销售额', [12000, 19000, 15000, 18000, 22000, 25000], ['borderColor' => '#3b82f6', 'backgroundColor' => 'rgba(59, 130, 246, 0.1)']),
+                Chart::make()
+                    ->type('bar')
+                    ->title('产品分布')
+                    ->height(350)
+                    ->labels(['产品A', '产品B', '产品C', '产品D'])
+                    ->dataset('销量', [45, 78, 32, 65], ['backgroundColor' => ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']])
+            )
         );
     }
 }
