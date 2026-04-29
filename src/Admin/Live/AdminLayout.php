@@ -19,8 +19,14 @@ class AdminLayout extends LiveComponent
 {
     public string $activeMenu = '';
     public bool $sidebarCollapsed = false;
-    public mixed $content = null;
     public array $expandedGroups = [];
+    protected mixed $content = null;
+
+    public function setContent(mixed $content): self
+    {
+        $this->content = $content;
+        return $this;
+    }
 
     public function mount(): void
     {

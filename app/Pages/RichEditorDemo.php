@@ -85,7 +85,6 @@ class RichEditorDemo extends LiveComponent
         $this->refresh();
     }
 
-    #[Get('/')]
     public function render(): Element
     {
         $wrapper = Element::make('div')

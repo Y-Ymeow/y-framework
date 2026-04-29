@@ -473,3 +473,41 @@ Element::make('h1')->intl('messages.welcome');
 ### Y.executeOperation(op)
 
 手动执行一个 operation 对象。
+
+## 脚本收集器与按需加载 (Asset Registry)
+
+为了安全和性能，框架不再鼓励使用内联 `<script>` 标签。取而代之的是一套命名的脚本收集系统。
+
+### 1. 注册脚本
+
+在 PHP 中全局或按需注册命名的脚本块：
+
+```php
+Document::registerScript('chart-lib', "console.log('Chart library initialized');");
+```
+
+### 2. 声明依赖
+
+任何 `Element` 都可以声明它依赖某些脚本。框架会自动去重并合并请求：
+
+```php
+// 只有当这个元素被渲染时，对应的 JS 才会通过 /_js 路由加载
+Element::make('div')
+    ->requireScript('chart-lib')
+    ->html('<canvas id="myChart"></canvas>');
+```
+
+### 3. 快捷方式
+
+在 `Document` 实例中直接注册并使用：
+
+```php
+$doc->script('custom-logic', "alert('Hello!');");
+```
+
+### 4. 工作原理
+
+- 脚本内容通过 `cache()` 存储在服务端。
+- 渲染时，框架通过 `<script src="/_js?ids=id1,id2&v=hash" defer></script>` 统一加载。
+- 浏览器会缓存这些合并后的脚本，且支持 `immutable` 缓存策略。
+

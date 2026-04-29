@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar;
 
+use Framework\View\Document\AssetRegistry;
+
 class DebugBar
 {
     private static ?self $instance = null;
@@ -34,13 +36,31 @@ class DebugBar
         ];
     }
 
-    public static function info(string $message): void { self::message($message, 'info'); }
-    public static function warning(string $message): void { self::message($message, 'warning'); }
-    public static function error(string $message): void { self::message($message, 'error'); }
-    public static function success(string $message): void { self::message($message, 'success'); }
+    public static function info(string $message): void
+    {
+        self::message($message, 'info');
+    }
+    public static function warning(string $message): void
+    {
+        self::message($message, 'warning');
+    }
+    public static function error(string $message): void
+    {
+        self::message($message, 'error');
+    }
+    public static function success(string $message): void
+    {
+        self::message($message, 'success');
+    }
 
-    public static function getMessages(): array { return self::$messages; }
-    public static function getDebugData(): array { return self::$debugData; }
+    public static function getMessages(): array
+    {
+        return self::$messages;
+    }
+    public static function getDebugData(): array
+    {
+        return self::$debugData;
+    }
 
     public function __construct(?string $key = null)
     {
@@ -50,8 +70,16 @@ class DebugBar
         if ($key !== null) {
             $this->key = $key;
         } else {
-            $this->key = $this->storage->generateKey();
+            // 优先从请求头获取父页面的 Debug ID
+            $headerKey = $_SERVER['HTTP_X_DEBUG_KEY'] ?? null;
+            if ($headerKey && $headerKey !== '') {
+                $this->key = $headerKey;
+            } else {
+                $this->key = $this->storage->generateKey();
+            }
         }
+
+        AssetRegistry::getInstance()->registerScript('debug-bar', DebugBarSource::renderJs());
     }
 
     public static function getInstance(): self
@@ -62,8 +90,14 @@ class DebugBar
         return self::$instance;
     }
 
-    public function getKey(): string { return $this->key; }
-    public function getStartTime(): float { return $this->startTime; }
+    public function getKey(): string
+    {
+        return $this->key;
+    }
+    public function getStartTime(): float
+    {
+        return $this->startTime;
+    }
 
     public function addCollector(CollectorInterface $collector): void
     {

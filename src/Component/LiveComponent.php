@@ -316,29 +316,34 @@ abstract class LiveComponent
             $data = $data['_raw'];
         }
 
+        $ref = new \ReflectionClass($this);
+        $publicProps = $this->allowedStateProperties();
+        
         // 校验完整性：确保前端传回的公开数据与服务端上次签发的快照一致
         if ($this->stateChecksum !== null) {
-            $tempData = $data;
-            unset($tempData['_isReactive']); // 过滤前端特定标记
-
-            $currentChecksum = $this->generateDataChecksum($tempData);
+            // 关键：只提取 PHP 类中存在的公开属性进行校验，忽略所有前端“杂质”
+            $dataToVerify = [];
+            foreach ($publicProps as $propName) {
+                if (array_key_exists($propName, $data)) {
+                    $dataToVerify[$propName] = $data[$propName];
+                }
+            }
+            
+            $currentChecksum = $this->generateDataChecksum($dataToVerify);
             if (!hash_equals($this->stateChecksum, $currentChecksum)) {
-                // 打印调试信息（生产环境应移除）
                 if (config('app.debug')) {
                     error_log("Checksum mismatch! Expected: {$this->stateChecksum}, Got: {$currentChecksum}");
-                    error_log("Data: " . json_encode($tempData));
+                    error_log("Verified Data: " . json_encode($dataToVerify));
                 }
                 throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
             }
         }
 
-        $ref = new \ReflectionClass($this);
+        // 填充属性
         foreach ($data as $name => $value) {
-            if ($name === '_isReactive') continue; // 过滤前端标记
-
-            if ($ref->hasProperty($name)) {
+            if (in_array($name, $publicProps, true)) {
                 $prop = $ref->getProperty($name);
-                if ($prop->isPublic() && !$prop->isStatic()) {
+                if (!$prop->isStatic()) {
                     $prop->setValue($this, $this->castParam($value, $prop->getType()));
                 }
             }

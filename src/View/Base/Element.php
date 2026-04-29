@@ -233,6 +233,18 @@ class Element
         return $this;
     }
 
+    /**
+     * 声明当前元素依赖特定的命名的 JS 脚本
+     */
+    public function requireScript(string ...$ids): static
+    {
+        $registry = \Framework\View\Document\AssetRegistry::getInstance();
+        foreach ($ids as $id) {
+            $registry->requireScript($id);
+        }
+        return $this;
+    }
+
     private function attrString(array $attrs): string
     {
         $attrStr = '';

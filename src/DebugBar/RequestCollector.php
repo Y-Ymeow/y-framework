@@ -62,6 +62,7 @@ class RequestCollector implements CollectorInterface
         $isLive = str_contains($currentUrl, '/live');
 
         $entry = [
+            'id' => bin2hex(random_bytes(8)), // 唯一的请求 ID
             'url' => $currentUrl,
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
             'status' => http_response_code() ?: 200,

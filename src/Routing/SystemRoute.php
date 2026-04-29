@@ -7,7 +7,10 @@ namespace Framework\Routing;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\StreamedResponse;
+use Framework\Routing\Attribute\Route;
+use Framework\View\Document\AssetRegistry;
 
+#[Route('', name: 'system')]
 class SystemRoute
 {
     private string $basePath;
@@ -49,6 +52,7 @@ class SystemRoute
         return $route->handle($request, $path, false);
     }
 
+    #[Route('/_css', methods: ['GET'], name: 'css')]
     public function css(Request $request): Response
     {
         $debug = config('app.debug', true);
@@ -56,8 +60,36 @@ class SystemRoute
         return $route->handle($request);
     }
 
+    #[Route('/_js', methods: ['GET'], name: 'js')]
     public function js(Request $request): Response
     {
-        return new Response('', 200, ['Content-Type' => 'application/javascript']);
+        $idsStr = $request->input('ids', '');
+        if (empty($idsStr)) {
+            return new Response('', 200, ['Content-Type' => 'application/javascript']);
+        }
+
+        $ids = explode(',', $idsStr);
+        $registry = AssetRegistry::getInstance();
+        $js = "/* Y-Framework Dynamic JS Resource */\n\n";
+
+        foreach ($ids as $id) {
+            // 首先从 Registry 内存尝试获取
+            $content = $registry->getScriptContent($id);
+            
+            // 如果内存没有，从缓存读取
+            if ($content === null && function_exists('cache')) {
+                $content = cache()->get('js_resource:' . $id);
+            }
+
+            if ($content) {
+                $js .= "/* --- ID: {$id} --- */\n";
+                $js .= $content . "\n\n";
+            }
+        }
+
+        return new Response($js, 200, [
+            'Content-Type' => 'application/javascript',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
     }
 }

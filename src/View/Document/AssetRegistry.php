@@ -10,7 +10,8 @@ class AssetRegistry
     private array $cssFiles = [];
     private array $jsFiles = [];
     private array $inlineStyles = [];
-    private array $inlineScripts = [];
+    private array $namedScripts = []; // [id => code]
+    private array $requestedScripts = []; // [id => true]
     private array $loaded = [];
 
     public static function getInstance(): self
@@ -24,6 +25,36 @@ class AssetRegistry
     public static function reset(): void
     {
         self::$instance = null;
+    }
+
+    /**
+     * 注册命名的 JS 代码块（持久化到缓存）
+     */
+    public function registerScript(string $id, string $js): self
+    {
+        $this->namedScripts[$id] = $js;
+        
+        // 自动将注册的脚本标记为“待加载”，这样就不需要手动调用 requireScript 了
+        $this->requireScript($id);
+
+        if (function_exists('cache')) {
+            cache()->set('js_resource:' . $id, $js, 3600);
+        }
+        return $this;
+    }
+
+    /**
+     * 请求加载特定的脚本 ID
+     */
+    public function requireScript(string $id): self
+    {
+        $this->requestedScripts[$id] = true;
+        return $this;
+    }
+
+    public function getScriptContent(string $id): ?string
+    {
+        return $this->namedScripts[$id] ?? null;
     }
 
     public function css(string $href, ?string $id = null): self
@@ -46,31 +77,15 @@ class AssetRegistry
         return $this;
     }
 
-    public function inlineStyle(string $css): self
-    {
-        $hash = md5($css);
-        if (!isset($this->loaded['style:' . $hash])) {
-            $this->inlineStyles[] = $css;
-            $this->loaded['style:' . $hash] = true;
-        }
-        return $this;
-    }
-
-    public function inlineScript(string $js): self
-    {
-        $hash = md5($js);
-        if (!isset($this->loaded['script:' . $hash])) {
-            $this->inlineScripts[] = $js;
-            $this->loaded['script:' . $hash] = true;
-        }
-        return $this;
-    }
-
+    /**
+     * 核心资源注册
+     */
     public function core(): self
     {
+        // 显式注册 CSS 路由
         $this->css('/_css', 'generated-css');
-        // y-ui 的集成由项目自身通过 js() 加载 resources/js/ux.js 处理，
-        // 但我们在这里预留一个钩子或者核心 CSS
+        
+        // 我们不需要在这里显式 add js，因为 renderJs 会自动根据收集到的 ID 生成链接
         return $this;
     }
 
@@ -80,10 +95,8 @@ class AssetRegistry
             $this->js('http://localhost:5173/@vite/client', true, 'vite-client', true);
         }
         $this->js(vite('resources/js/ui.js'), true, 'ui-js', true);
-        $cssIndex = 0;
-        foreach (vite_css('resources/js/ui.js') as $cssUrl) {
-            $this->css($cssUrl, 'vite-ui-app-css-' . $cssIndex);
-            $cssIndex++;
+        foreach (vite_css('resources/js/ui.js') as $index => $cssUrl) {
+            $this->css($cssUrl, 'vite-ui-css-' . $index);
         }
         return $this;
     }
@@ -91,37 +104,10 @@ class AssetRegistry
     public function ux(): self
     {
         $this->js(vite('resources/js/ux.js'), true, 'ux-js', true);
-        $cssIndex = 0;
-        foreach (vite_css('resources/js/ux.js') as $cssUrl) {
-            $this->css($cssUrl, 'vite-ux-app-css-' . $cssIndex);
-            $cssIndex++;
+        foreach (vite_css('resources/js/ux.js') as $index => $cssUrl) {
+            $this->css($cssUrl, 'vite-ux-css-' . $index);
         }
         return $this;
-    }
-
-    public function getCssFiles(): array
-    {
-        return $this->cssFiles;
-    }
-
-    public function getJsFiles(): array
-    {
-        return $this->jsFiles;
-    }
-
-    public function getInlineStyles(): array
-    {
-        return $this->inlineStyles;
-    }
-
-    public function getInlineScripts(): array
-    {
-        return $this->inlineScripts;
-    }
-
-    public function isLoaded(string $key): bool
-    {
-        return isset($this->loaded[$key]);
     }
 
     public function renderCss(): string
@@ -144,17 +130,22 @@ class AssetRegistry
             $id = $js['id'] ? ' id="' . htmlspecialchars($js['id']) . '"' : '';
             $defer = $js['defer'] ? ' defer' : '';
             $module = $js['module'] ? ' type="module"' : '';
-            $attrs = '';
-            if (!empty($js['attrs'])) {
-                foreach ($js['attrs'] as $name => $value) {
-                    $attrs .= ' ' . htmlspecialchars($name) . '="' . htmlspecialchars((string)$value) . '"';
-                }
-            }
-            $html .= '<script src="' . htmlspecialchars($js['src']) . '"' . $defer . $module . $id . $attrs . '></script>';
+            $html .= '<script src="' . htmlspecialchars($js['src']) . '"' . $defer . $module . $id . '></script>';
         }
-        if (!empty($this->inlineScripts)) {
-            $html .= '<script>' . implode("\n", $this->inlineScripts) . '</script>';
+
+        // 核心改动：如果 requestedScripts 为空，但 namedScripts 有内容（比如 DebugBar 刚刚注册的）
+        // 或者显式合并所有 ID
+        $idsToLoad = array_unique(array_merge(
+            array_keys($this->requestedScripts),
+            array_keys($this->namedScripts)
+        ));
+
+        if (!empty($idsToLoad)) {
+            $ids = implode(',', $idsToLoad);
+            $v = substr(md5($ids), 0, 8);
+            $html .= '<script src="/_js?ids=' . urlencode($ids) . '&v=' . $v . '" defer></script>';
         }
+
         return $html;
     }
 }

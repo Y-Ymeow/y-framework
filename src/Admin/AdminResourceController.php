@@ -85,7 +85,7 @@ class AdminResourceController
         $listPage->named("admin-list-{$resource}");
         $listPage->resourceName = $resource;
 
-        $layout->content = $listPage;
+        $layout->setContent($listPage);
 
         return Response::html($layout);
     }
@@ -105,7 +105,7 @@ class AdminResourceController
         $formPage->named("admin-form-{$resource}-create");
         $formPage->resourceName = $resource;
 
-        $layout->content = $formPage;
+        $layout->setContent($formPage);
 
         return Response::html($layout);
     }
@@ -126,7 +126,7 @@ class AdminResourceController
         $formPage->resourceName = $resource;
         $formPage->recordId = $id;
 
-        $layout->content = $formPage;
+        $layout->setContent($formPage);
 
         return Response::html($layout);
     }

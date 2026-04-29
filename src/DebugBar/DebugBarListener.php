@@ -33,7 +33,7 @@ class DebugBarListener
         SqlCollector::register();
         RouteCollector::register();
         RequestCollector::register();
-        
+
         $this->debugBar->collect();
     }
 
@@ -48,18 +48,15 @@ class DebugBarListener
 
         $sfResponse = $response->getSfResponse();
         $contentType = $sfResponse->headers->get('Content-Type', '');
-        
+
         if (!str_contains($contentType, 'text/html')) {
             return $response;
         }
 
         $content = $sfResponse->getContent();
-        
+
         $component = new DebugBarComponent();
         $injectedHtml = (string)$component;
-        
-        $injectedHtml .= '<script>' . DebugBarSource::renderJs(json_encode(['debug_key' => $this->debugBar->getKey()])) . '</script>';
-
         if (str_contains($content, '</body>')) {
             $content = str_replace('</body>', $injectedHtml . '</body>', $content);
         } else {

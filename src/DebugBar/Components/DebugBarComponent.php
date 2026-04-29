@@ -28,9 +28,7 @@ class DebugBarComponent extends LiveComponent
     #[LiveListener('debugbar:update')]
     public function refreshData(): void
     {
-        if (empty($this->snapshot)) {
-            $this->snapshot = DebugBar::getInstance()->getSnapshot();
-        }
+        $this->snapshot = DebugBar::getInstance()->getSnapshot();
         $this->refresh('db-container');
     }
 
@@ -65,7 +63,7 @@ class DebugBarComponent extends LiveComponent
             $el->child($this->renderContentArea());
         }
 
-        return $el;
+        return $el->requireScript('debug-bar');
     }
 
     protected function renderStyles(): Element
@@ -296,11 +294,11 @@ CSS);
             $block->child(Element::make('div')->class('db-debug-header')->children(
                 Element::make('span')->text('Call #' . ($i + 1)),
                 Element::make("div")
-                ->style("float:right;color:#fe7e7e;user-select: none;")
-                ->children(
-                    Element::make('span')->text(htmlspecialchars($call['file'] . ' : ')),
-                    Element::make('span')->text(htmlspecialchars((string)$call['line'])),
-                ),
+                    ->style("float:right;color:#fe7e7e;user-select: none;")
+                    ->children(
+                        Element::make('span')->text(htmlspecialchars($call['file'] . ' : ')),
+                        Element::make('span')->text(htmlspecialchars((string)$call['line'])),
+                    ),
             ));
 
             foreach ($call['data'] as $var) {
