@@ -12,7 +12,7 @@ class LogServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LogManager::class, function () {
             $app = \Framework\Foundation\Application::getInstance();
-            $config = include $app->configPath('logging.php');
+            $config = config('logging');
             return new LogManager($config);
         });
 

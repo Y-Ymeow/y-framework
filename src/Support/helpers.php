@@ -36,6 +36,10 @@ function env(string $key, mixed $default = null): mixed
 
 function base_path(string $path = ''): string
 {
+    $app = \Framework\Foundation\Application::getInstance();
+    if ($app !== null) {
+        return $app->basePath($path);
+    }
     $base = dirname(__DIR__, 2);
     return $path ? $base . '/' . ltrim($path, '/') : $base;
 }
@@ -58,14 +62,7 @@ function config(string $key, mixed $default = null): mixed
 {
     static $config = null;
     if ($config === null) {
-        $config = [];
-        $configDir = base_path('config');
-        if (is_dir($configDir)) {
-            foreach (glob($configDir . '/*.php') as $file) {
-                $name = basename($file, '.php');
-                $config[$name] = require $file;
-            }
-        }
+        $config = \Framework\Config\ConfigManager::load();
     }
 
     $keys = explode('.', $key);
@@ -282,9 +279,9 @@ if (!function_exists('recordEditUrl')) {
 }
 
 if (!function_exists('recordCreateUrl')) {
-    function recordCreateUrl(string $resource, mixed $id): string
+    function recordCreateUrl(string $resource): string
     {
-        return \Framework\Admin\AdminResourceController::createUrl($resource, $id);
+        return \Framework\Admin\AdminResourceController::createUrl($resource);
     }
 }
 

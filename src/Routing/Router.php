@@ -9,6 +9,7 @@ use Framework\Foundation\Application;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Routing\Attribute as Attr;
+use Framework\Support\File;
 use Framework\Support\Finder;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
@@ -70,13 +71,19 @@ class Router
         return false;
     }
 
-    public function scan(string|array $directories): void
+    public function scan(string|array $directories, array $extendFiles = []): void
     {
         $finder = new Finder();
         $finder->in($directories)->files()->name('*.php')->recursive(true);
         $files = $finder->getIterator();
 
+        $files = array_merge($files, $extendFiles);
+
         foreach ($files as $file) {
+            if (is_string($file)) {
+                $file = new File($file);
+            }
+
             $className = $this->getClassFromFile($file->getRealPath());
             if ($className === null) continue;
 

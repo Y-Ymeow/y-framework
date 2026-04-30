@@ -12,7 +12,7 @@ class DatabaseServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Connection::class, function () {
             $app = \Framework\Foundation\Application::getInstance();
-            $config = include $app->configPath('database.php');
+            $config = config('database');
             $default = $config['default'] ?? 'sqlite';
             $dbConfig = $config['connections'][$default] ?? [];
             $conn = Connection::make($dbConfig);

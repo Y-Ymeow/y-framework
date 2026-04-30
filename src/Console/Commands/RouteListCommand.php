@@ -12,7 +12,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Helper\Table;
 use Framework\Foundation\Application;
 use Framework\Routing\Router;
-use Framework\Routing\SystemRoutesProvider;
+
 
 #[AsCommand(
     name: 'route:list',
@@ -45,19 +45,19 @@ class RouteListCommand extends Command
         $cacheLoaded = $router->loadCache($basePath . '/storage/cache/routes.php');
         
         if (!$cacheLoaded) {
-            // 注册系统路由
-            SystemRoutesProvider::register($router, $basePath);
-            
-            // 扫描属性路由
-            $scanDirs = config('routes.routes', config('app.scan_dirs', []));
+            $scanDirs = config('routes.routes', []);
             $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
-            $dirs[] = $basePath . '/src/Component';
-            $dirs[] = $basePath . '/admin/Pages';
-            $dirs = array_unique($dirs);
             $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
-            $router->scan($dirs);
-        } else {
-            // 缓存已加载，不需要再注册系统路由（缓存中已包含）
+
+            $frameworkDir = dirname(__DIR__, 3) . '/src';
+            $files = [
+                $frameworkDir . '/Component/Live/LiveComponentResolver.php',
+                $frameworkDir . '/Routing/SystemRoute.php',
+            ];
+
+            if (!empty($dirs)) {
+                $router->scan($dirs, $files);
+            }
         }
 
         $routes = $router->getRoutes();

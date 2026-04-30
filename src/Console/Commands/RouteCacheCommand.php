@@ -11,7 +11,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
 use Framework\Routing\Router;
-use Framework\Routing\SystemRoutesProvider;
+
 
 #[AsCommand(
     name: 'route:cache',
@@ -36,33 +36,22 @@ class RouteCacheCommand extends Command
         $this->app->bootstrapProviders();
         $router = $this->app->make(Router::class);
         
-        // 注册系统路由
+        // 扫描属性路由
         $basePath = $this->app->basePath();
-        SystemRoutesProvider::register($router, $basePath);
-
-        // 再扫描属性路由
-        $scanDirs = config('routes.routes', config('app.scan_dirs', []));
+        $scanDirs = config('routes.routes', []);
         $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
-        $dirs[] = $basePath . '/src/Component';
-        $dirs[] = $basePath . '/admin/Pages';
-        
-        $dirs = array_unique($dirs);
         $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
-        
-        $io->info('Scanning directories: ' . implode(', ', $dirs));
-        
-        $finder = new \Framework\Support\Finder();
-        $files = $finder->files()->in($dirs)->name('*.php')->getIterator();
-        $io->note('Found ' . count($files) . ' PHP files');
 
-        foreach ($files as $file) {
-            $classes = $this->getClassesFromFile($file->getRealPath());
-            foreach ($classes as $className) {
-                if (class_exists($className)) {
-                    $reflection = new \ReflectionClass($className);
-                    $router->registerClass($reflection);
-                }
-            }
+        $frameworkDir = dirname(__DIR__, 3) . '/src';
+        $files = [
+            $frameworkDir . '/Component/Live/LiveComponentResolver.php',
+            $frameworkDir . '/Routing/SystemRoute.php',
+        ];
+
+        $io->info('Scanning directories: ' . implode(', ', $dirs));
+
+        if (!empty($dirs)) {
+            $router->scan($dirs, $files);
         }
         
         $routes = $router->getRoutes();
@@ -79,47 +68,5 @@ class RouteCacheCommand extends Command
         $io->note("Cache path: {$cachePath}");
 
         return Command::SUCCESS;
-    }
-
-    private function getClassesFromFile(string $filePath): array
-    {
-        $classes = [];
-        $content = file_get_contents($filePath);
-        $tokens = token_get_all($content);
-        $namespace = '';
-        $count = count($tokens);
-
-        for ($i = 0; $i < $count; $i++) {
-            $token = $tokens[$i];
-
-            // 捕获命名空间
-            if (is_array($token) && $token[0] === T_NAMESPACE) {
-                $namespace = '';
-                for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === ';') break;
-                    if (is_array($tokens[$j])) {
-                        // 支持 T_STRING, T_NS_SEPARATOR 以及 PHP 8+ 的 T_NAME_QUALIFIED
-                        if (in_array($tokens[$j][0], [T_STRING, T_NS_SEPARATOR, T_NAME_QUALIFIED], true)) {
-                            $namespace .= $tokens[$j][1];
-                        }
-                    }
-                }
-                $i = $j;
-                continue;
-            }
-
-            // 捕获类名
-            if (is_array($token) && $token[0] === T_CLASS) {
-                for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j] === '{') break;
-                    if (is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
-                        $className = $tokens[$j][1];
-                        $classes[] = ($namespace ? $namespace . '\\' : '') . $className;
-                        break;
-                    }
-                }
-            }
-        }
-        return $classes;
     }
 }

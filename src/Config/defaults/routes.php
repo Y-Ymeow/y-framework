@@ -2,11 +2,6 @@
 
 return [
     'routes' => [
-        'src/Admin',
-        'admin/Pages',
-        'admin/Resources',
-        'app/Controllers',
-        'app/Pages',
     ],
 
     'middleware' => [

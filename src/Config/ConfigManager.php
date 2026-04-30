@@ -35,7 +35,7 @@ class ConfigManager
                 $user = require $file;
                 if (is_array($user)) {
                     if (isset($config[$name]) && is_array($config[$name])) {
-                        $config[$name] = array_replace_recursive($config[$name], $user);
+                        $config[$name] = self::mergeConfig($config[$name], $user);
                     } else {
                         $config[$name] = $user;
                     }
@@ -48,6 +48,33 @@ class ConfigManager
         self::replaceEnv($config);
 
         return $config;
+    }
+
+    /**
+     * 智能合并配置：关联数组递归合并，索引数组完全替换
+     */
+    private static function mergeConfig(array $default, array $user): array
+    {
+        $result = $default;
+
+        foreach ($user as $key => $value) {
+            if (is_int($key)) {
+                // 索引数组：完全替换
+                $result[$key] = $value;
+            } elseif (is_array($value) && isset($result[$key]) && is_array($result[$key])) {
+                // 关联数组：递归合并
+                $result[$key] = self::mergeConfig($result[$key], $value);
+            } else {
+                $result[$key] = $value;
+            }
+        }
+
+        // 清理多余的数字键（当用户数组比默认数组短时）
+        if (array_is_list($default) && array_is_list($user)) {
+            $result = array_slice($result, 0, count($user), true);
+        }
+
+        return $result;
     }
 
     private static function resolveBasePath(): string

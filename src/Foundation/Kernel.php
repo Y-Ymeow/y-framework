@@ -36,27 +36,29 @@ class Kernel
 
         // 尝试从缓存加载路由
         if (!$this->router->loadCache($basePath . '/storage/cache/routes.php')) {
-            $scanDirs = config('routes.routes', config('app.scan_dirs', []));
+            $scanDirs = config('routes.routes', []);
             $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
-
-            $componentDir = $basePath . '/src/Component';
-            if (is_dir($componentDir)) {
-                $dirs[] = $componentDir;
-            }
 
             $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
 
+            $frameworkDir = dirname(__DIR__, 2) . '/src';
+
+            $files = [
+                $frameworkDir . '/Component/Live/LiveComponentResolver.php',
+                $frameworkDir . '/Routing/SystemRoute.php',
+            ];
+
             if (!empty($dirs)) {
-                $this->router->scan($dirs);
+                $this->router->scan($dirs, $files);
             }
 
-            SystemRoutesProvider::register($this->router, $basePath);
+            //SystemRoutesProvider::register($this->router, $basePath);
         }
 
         // 加载 LiveComponent Action 缓存
         $liveCacheFile = $basePath . '/storage/cache/live_components.php';
         if (file_exists($liveCacheFile)) {
-            \Framework\Component\LiveComponent::setGlobalActionCache(require $liveCacheFile);
+            \Framework\Component\Live\LiveComponent::setGlobalActionCache(require $liveCacheFile);
         }
 
         Hook::fire('app.booted');

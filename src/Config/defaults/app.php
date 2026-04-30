@@ -32,10 +32,4 @@ return [
         'api' => [],
         'admin' => [],
     ],
-
-    'scan_dirs' => [
-        'admin/Pages',
-        'admin/Resources',
-        'app/Controllers',
-    ],
 ];

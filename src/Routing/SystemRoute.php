@@ -9,21 +9,22 @@ use Framework\Http\Response;
 use Framework\Http\StreamedResponse;
 use Framework\Http\StaticFile;
 use Framework\Routing\Attribute\Route;
+use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\Document\AssetRegistry;
 
-#[Route('', name: 'system')]
+#[RouteGroup('', name: 'system')]
 class SystemRoute
 {
     private string $basePath;
 
-    public function __construct(string $basePath)
+    public function __construct()
     {
-        $this->basePath = $basePath;
+        $this->basePath = base_path();
     }
 
     public static function __set_state(array $array): self
     {
-        return new self($array['basePath']);
+        return new self();
     }
 
     public function media(Request $request, string $path): Response
