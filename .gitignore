@@ -48,3 +48,11 @@ database/*.sqlite
 src/statics/node_modules/
 src/statics/bun.lock
 src/statics/package-lock.json
+
+skeleton/
+admin/
+app/
+config/
+database/
+resources/
+public/
