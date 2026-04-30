@@ -1,7 +1,8 @@
 {
-  "name": "ymeow/php-framework",
+  "name": "ymeow/framework",
   "description": "Anti-MVC, route-first, component-driven PHP framework.",
-  "type": "project",
+  "type": "library",
+  "version": "0.1.0-dev",
   "license": "MIT",
   "require": {
     "php": "^8.4",
@@ -17,9 +18,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Framework\\": "src/",
-      "App\\": "app/",
-      "Admin\\": "admin/"
+      "Framework\\": "src/"
     },
     "files": [
       "src/Support/helpers.php"
@@ -36,6 +35,6 @@
   "config": {
     "sort-packages": true
   },
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
   "prefer-stable": true
 }
