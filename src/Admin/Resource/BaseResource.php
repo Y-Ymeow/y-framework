@@ -53,9 +53,59 @@ abstract class BaseResource implements ResourceInterface
         return static::resolveDefaultTitle();
     }
 
-    public static function getRoutePrefix(): ?string
+    public static function getRoutes(): array
     {
-        return null;
+        $name = static::getName();
+        return [
+            "admin.resource.{$name}" => [
+                'method' => 'GET',
+                'path' => "/{$name}",
+                'handler' => \Framework\Admin\Live\AdminListPage::resource($name),
+            ],
+            "admin.resource.{$name}.create" => [
+                'method' => 'GET',
+                'path' => "/{$name}/create",
+                'handler' => \Framework\Admin\Live\AdminFormPage::resource($name),
+            ],
+            "admin.resource.{$name}.edit" => [
+                'method' => 'GET',
+                'path' => "/{$name}/{id}/edit",
+                'handler' => \Framework\Admin\Live\AdminFormPage::resource($name),
+            ],
+        ];
+    }
+
+    /**
+     * 为资源快捷创建自定义页面处理器（自动包裹 AdminLayout）
+     * 
+     * @param string $componentClass 组件类名
+     * @param array $props 初始属性
+     */
+    public static function page(string $componentClass, array $props = []): \Closure
+    {
+        $resourceName = static::getName();
+        return function (...$args) use ($componentClass, $props, $resourceName) {
+            $page = app()->make($componentClass);
+
+            // 注入属性
+            foreach ($props as $key => $value) {
+                if (property_exists($page, $key)) {
+                    $page->$key = $value;
+                }
+            }
+
+            // 如果组件有 named 方法，设置一个唯一的 ID
+            if (method_exists($page, 'named')) {
+                $shortName = strtolower((new \ReflectionClass($componentClass))->getShortName());
+                $page->named("admin-res-{$resourceName}-{$shortName}");
+            }
+
+            $layout = new \Framework\Admin\Live\AdminLayout();
+            $layout->activeMenu = $resourceName;
+            $layout->setContent($page);
+
+            return $layout;
+        };
     }
 
     public function configureForm(FormBuilder $form): void

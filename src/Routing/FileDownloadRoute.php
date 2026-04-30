@@ -7,6 +7,7 @@ namespace Framework\Routing;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\StreamedResponse;
+use Framework\View\Base\Element;
 
 class FileDownloadRoute
 {
@@ -30,7 +31,7 @@ class FileDownloadRoute
         $filePath = $this->resolvePath($path);
 
         if (!$filePath || !file_exists($filePath) || !is_file($filePath)) {
-            return Response::html('<h1>404 Not Found</h1>', 404);
+            return Response::html(Element::make('h1', '404 Not Found'), 404);
         }
 
         if (!$this->isAllowed($filePath)) {

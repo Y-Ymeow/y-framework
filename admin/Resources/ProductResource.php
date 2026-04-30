@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Admin\Resources;
 
 use Framework\Admin\Attribute\AdminResource;
-use Framework\Admin\Resource\ResourceInterface;
+use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\UX\Data\DataTableColumn;
@@ -20,7 +20,7 @@ use Framework\Database\Model;
     title: '商品管理',
     icon: 'heroicon.shopping-bag',
 )]
-class ProductResource implements ResourceInterface
+class ProductResource extends BaseResource
 {
     public static function getName(): string
     {
@@ -37,9 +37,19 @@ class ProductResource implements ResourceInterface
         return '商品管理';
     }
 
-    public static function getRoutePrefix(): ?string
+    public static function getRoutes(): array
     {
-        return 'admin/products';
+        $routes = parent::getRoutes();
+        $name = static::getName();
+
+        // 注册资源自定义页面: /admin/products/stats
+        $routes["admin.resource.{$name}.stats"] = [
+            'method' => 'GET',
+            'path' => "/{$name}/stats",
+            'handler' => static::page(\Admin\Pages\UxDemoPage::class), // 暂时借用 UxDemoPage 演示
+        ];
+
+        return $routes;
     }
 
     public function getHeader(): mixed

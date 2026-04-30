@@ -10,7 +10,10 @@ interface ResourceInterface
     public static function getName(): string;
     public static function getModel(): string;
     public static function getTitle(): string;
-    public static function getRoutePrefix(): ?string;
+    /**
+     * 获取资源定义的路由
+     */
+    public static function getRoutes(): array;
 
     public function configureForm(FormBuilder $form): void;
     public function configureTable(DataTable $table): void;

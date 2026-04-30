@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar\Components;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveListener;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveListener;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\DebugBar\DebugBar;
 use Framework\UX\UI\Badge;
 use Framework\UX\UI\Accordion;

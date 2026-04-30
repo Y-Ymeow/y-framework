@@ -37,8 +37,8 @@ class AssetRegistry
         // 自动将注册的脚本标记为“待加载”，这样就不需要手动调用 requireScript 了
         $this->requireScript($id);
 
-        if (function_exists('cache')) {
-            cache()->set('js_resource:' . $id, $js, 3600);
+        if (function_exists('\\cache')) {
+            \cache()->set('js_resource:' . $id, $js, 3600);
         }
         return $this;
     }
@@ -94,18 +94,18 @@ class AssetRegistry
         if (\Framework\Support\Asset::isDev()) {
             $this->js('http://localhost:5173/@vite/client', true, 'vite-client', true);
         }
-        $this->js(vite('resources/js/ui.js'), true, 'ui-js', true);
-        foreach (vite_css('resources/js/ui.js') as $index => $cssUrl) {
-            $this->css($cssUrl, 'vite-ui-css-' . $index);
+        $this->js(dist('ui.js'), true, 'ui-js', true);
+        foreach (dist_css('ui.js') as $index => $cssUrl) {
+            $this->css($cssUrl, 'dist-ui-css-' . $index);
         }
         return $this;
     }
 
     public function ux(): self
     {
-        $this->js(vite('resources/js/ux.js'), true, 'ux-js', true);
-        foreach (vite_css('resources/js/ux.js') as $index => $cssUrl) {
-            $this->css($cssUrl, 'vite-ux-css-' . $index);
+        $this->js(dist('ux.js'), true, 'ux-js', true);
+        foreach (dist_css('ux.js') as $index => $cssUrl) {
+            $this->css($cssUrl, 'dist-ux-css-' . $index);
         }
         return $this;
     }

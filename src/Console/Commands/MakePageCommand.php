@@ -93,7 +93,7 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Component\LiveComponent;
+use Framework\Component\Live\LiveComponent;
 use Framework\Routing\Attribute\Route;
 use Framework\View\Base\Element;
 

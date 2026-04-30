@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Admin\Pages;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\Get;
 use Framework\Http\Response;
@@ -50,25 +50,16 @@ class UxDemoPage extends LiveComponent
 
     public function index(): Response
     {
-        debug('UX 组件演示');
-
-        info('UX 组件演示');
-
         Document::setTitle('UX 组件演示');
         AssetRegistry::getInstance()->ux();
-        AssetRegistry::getInstance()->js(vite('resources/js/ux.js'));
         return Response::html($this->toHtml());
     }
 
     #[LiveAction]
     public function increment(): void
     {
-        debug('UX 组件演示');
-
-        info('UX 组件演示');
         $this->count++;
         $this->toast("计数增加到 {$this->count}");
-        // 自动收集模式：只需标记 refresh
         $this->refresh('counter-box');
     }
 
@@ -139,7 +130,6 @@ class UxDemoPage extends LiveComponent
     {
         return Container::make()->class('mb-12')->children(
             Text::h2('2. Live Action 交互')->class('mb-4'),
-            // 不需要 Wrapper，直接在 Element 上标记 liveFragment 即可
             Text::p()->children(
                 '当前计数: ',
                 Text::strong((string)$this->count)

@@ -155,7 +155,7 @@ class Document
 
     public function main(mixed $content): static
     {
-        if (!$content instanceof Element && !$content instanceof \Framework\Component\LiveComponent && !$content instanceof \Framework\UX\UXComponent) {
+        if (!$content instanceof Element && !$content instanceof \Framework\Component\Live\LiveComponent && !$content instanceof \Framework\UX\UXComponent) {
             throw new \InvalidArgumentException('Document::main() only accepts Element or LiveComponent.');
         }
         $this->main = $this->resolveContent($content);
@@ -214,7 +214,7 @@ class Document
     private function resolveContent(mixed $content): string
     {
         if ($content instanceof Element) return $content->render();
-        if ($content instanceof \Framework\Component\LiveComponent) return $content->toHtml();
+        if ($content instanceof \Framework\Component\Live\LiveComponent) return $content->toHtml();
         return (string)$content;
     }
 

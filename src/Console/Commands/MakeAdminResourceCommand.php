@@ -90,7 +90,7 @@ declare(strict_types=1);
 namespace {$namespace};
 
 use Framework\Admin\Attribute\AdminResource;
-use Framework\Admin\Resource\ResourceInterface;
+use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\UX\Data\DataTableColumn;
@@ -105,7 +105,7 @@ use Framework\Database\Model;
     title: '{$modelName}管理',
     icon: 'heroicon.collection',
 )]
-class {$className} implements ResourceInterface
+class {$className} extends BaseResource
 {
     public static function getName(): string
     {
@@ -120,11 +120,6 @@ class {$className} implements ResourceInterface
     public static function getTitle(): string
     {
         return '{$modelName}管理';
-    }
-
-    public static function getRoutePrefix(): ?string
-    {
-        return 'admin/{$resourceName}';
     }
 
     public function configureForm(FormBuilder \$form): void

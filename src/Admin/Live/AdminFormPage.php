@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Admin\Live;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Admin\AdminManager;
 use Framework\Admin\Resource\ResourceInterface;
 use Framework\Admin\Resource\BaseResource;
@@ -307,5 +307,25 @@ class AdminFormPage extends LiveComponent
         $resourceClass = AdminManager::getResource($this->resourceName);
         if (!$resourceClass) return null;
         return new $resourceClass();
+    }
+
+    public static function resource(string $resourceName): \Closure
+    {
+        return function ($id = null) use ($resourceName) {
+            $page = new static();
+            $page->resourceName = $resourceName;
+
+            if ($id !== null) {
+                $page->recordId = (int)$id;
+            }
+
+            $page->named("admin-form-{$resourceName}-" . ($id ?: 'create'));
+
+            $layout = new AdminLayout();
+            $layout->activeMenu = $resourceName;
+            $layout->setContent($page);
+
+            return $layout;
+        };
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar;
 
+use Framework\Component\Live\LiveEventBus;
 use Framework\Events\Hook;
 use Framework\Http\Request;
 use Framework\Http\Response;
@@ -53,6 +54,10 @@ class DebugBarListener
             return $response;
         }
 
+        if ($response->getStatus() !== 200) {
+            return $response;
+        }
+
         $content = $sfResponse->getContent();
 
         $component = new DebugBarComponent();
@@ -72,7 +77,7 @@ class DebugBarListener
         return $response;
     }
 
-    public function onLiveActionCompleted(array $response, \Framework\Component\LiveComponent $component, Request $request): array
+    public function onLiveActionCompleted(array $response, \Framework\Component\Live\LiveComponent $component, Request $request): array
     {
         if (!config('app.debug', false)) return $response;
 
@@ -103,15 +108,15 @@ class DebugBarListener
 
         $newSnapshot = $this->debugBar->getSnapshot();
 
-        \Framework\Component\LiveEventBus::recordEmittedEvent('debugbar:update', null);
+        LiveEventBus::recordEmittedEvent('debugbar:update', null);
 
-        $dbarListeners = \Framework\Component\LiveEventBus::findListenersForEvent(
+        $dbarListeners = LiveEventBus::findListenersForEvent(
             'debugbar:update',
             $component->getComponentId()
         );
 
         foreach ($dbarListeners as $listener) {
-            $stateInfo = \Framework\Component\LiveEventBus::getComponentState($listener['componentId']);
+            $stateInfo = LiveEventBus::getComponentState($listener['componentId']);
             if (!$stateInfo) continue;
 
             $class = $stateInfo['class'];

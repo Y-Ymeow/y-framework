@@ -39,7 +39,7 @@ class StaticFile
         $filePath = $this->resolve($path);
 
         if (!$filePath || !file_exists($filePath) || !is_file($filePath)) {
-            throw new HttpException(404, 'File not found');
+            return new Response('File Not Found', 404);
         }
 
         if ($this->enableHotlinkProtection && $host) {
@@ -79,14 +79,16 @@ class StaticFile
             return new Response('', 304, $headers);
         }
 
-        return new StreamedResponse(function() use ($filePath) {
+        $stream = new StreamedResponse(function() use ($filePath) {
             $stream = fopen($filePath, 'rb');
+
             while (!feof($stream)) {
                 echo fread($stream, 8192);
                 flush();
             }
             fclose($stream);
         }, 200, $headers);
+        return $stream;
     }
 
     private function checkHotlink(string $host): void

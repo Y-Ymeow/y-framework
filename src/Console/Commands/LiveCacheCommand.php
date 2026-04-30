@@ -10,9 +10,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
-use Symfony\Component\Finder\Finder;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Support\Finder;
 
 #[AsCommand(
     name: 'live:cache',

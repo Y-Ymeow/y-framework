@@ -45,3 +45,6 @@ datalog/
 /datalog
 .atomcode/
 database/*.sqlite
+src/statics/node_modules/
+src/statics/bun.lock
+src/statics/package-lock.json

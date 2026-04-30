@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Framework\Http;
 
 use Dom\Element;
-use Framework\Component\LiveComponent;
+use Framework\Component\Live\LiveComponent;
 use Framework\UX\UXComponent;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -72,5 +72,20 @@ class Response
     {
         $this->sfResponse->setStatusCode($code);
         return $this;
+    }
+
+    public function getStatus(): int
+    {
+        return $this->sfResponse->getStatusCode();
+    }
+
+    public function getStatusCode(): int
+    {
+        return $this->sfResponse->getStatusCode();
+    }
+
+    public function getContent(): string
+    {
+        return $this->sfResponse->getContent();
     }
 }

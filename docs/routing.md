@@ -152,23 +152,25 @@ php bin/console route:list
 
 ## Admin 路由系统
 
-Admin 后台使用通用的 Resource 路由模式，通过 `AdminResourceController` 统一处理所有 Resource 的 CRUD 路由：
+Admin 后台使用 Resource 路由模式。每个 Resource 类定义其资源配置（表单、表格）并自主注册其所需的路由。
 
 ### 路由结构
 
-| 路由 | HTTP 方法 | 用途 |
-|------|-----------|------|
-| `/admin/{resource}` | GET | 资源列表页（index） |
-| `/admin/{resource}/create` | GET | 创建资源表单（create） |
-| `/admin/{resource}/{id}/edit` | GET | 编辑资源表单（edit） |
+默认情况下，Resource 继承自 `BaseResource` 后会自动注册以下路由：
+
+| 路由名称 | 默认路径 | 处理器方法 | 用途 |
+|----------|----------|------------|------|
+| `admin.resource.{name}` | `/admin/{resource}` | `renderList` | 资源列表页 |
+| `admin.resource.{name}.create` | `/admin/{resource}/create` | `renderCreate` | 创建资源表单 |
+| `admin.resource.{name}.edit` | `/admin/{resource}/{id}/edit` | `renderEdit` | 编辑资源表单 |
 
 ### Resource 定义
 
-Resource 类定义资源配置（表单、表格），不需要手动注册路由：
+Resource 类通过继承 `BaseResource` 获取默认的路由注册能力：
 
 ```php
 use Framework\Admin\Attribute\AdminResource;
-use Framework\Admin\ResourceInterface;
+use Framework\Admin\Resource\BaseResource;
 
 #[AdminResource(
     name: 'products',
@@ -176,7 +178,7 @@ use Framework\Admin\ResourceInterface;
     title: '商品管理',
     icon: 'heroicon.shopping-bag',
 )]
-class ProductResource implements ResourceInterface
+class ProductResource extends BaseResource
 {
     public static function getName(): string { return 'products'; }
     public static function getModel(): string { return Product::class; }
@@ -189,29 +191,41 @@ class ProductResource implements ResourceInterface
 
 ### 工作原理
 
-1. `AttributeScanner` 扫描 `admin/Resources` 目录，读取 `#[AdminResource]` 属性
-2. 注册 Resource 到 `AdminManager`（不注册路由）
-3. `AdminResourceController` 的通配符路由 `/admin/{resource}` 匹配所有 Resource 路径
-4. 控制器根据 `{resource}` 参数从 `AdminManager` 获取对应的 Resource 类
-5. 使用 `AdminLayout` 包裹页面，提供统一的侧边栏、header、footer
+1. `AttributeScanner` 扫描 `admin/Resources` 目录，通过 `#[AdminResource]` 属性将 Resource 注册到 `AdminManager`。
+2. 在 `AdminServiceProvider` 引导过程中，调用 `AdminManager::registerRoutes()`。
+3. `AdminManager` 遍历所有已注册的 Resource，调用它们的 `getRoutes()` 静态方法。
+4. 路由被逐一注册到系统的 `Router` 中。
 
 ### 自定义路由
 
-如果 Resource 需要自定义路由（如特殊权限、自定义页面），可以在 Resource 类中直接定义路由方法：
+Resource 可以通过重写 `getRoutes()` 方法来增加、修改或移除路由：
 
 ```php
-#[AdminResource(name: 'products')]
-class ProductResource
+class ProductResource extends BaseResource
 {
-    #[Get('/export')]
-    public function export(): Response { ... }
-    
-    #[Post('/bulk-import')]
-    public function bulkImport(Request $request): Response { ... }
+    public static function getRoutes(): array
+    {
+        $routes = parent::getRoutes();
+        $name = static::getName();
+        
+        // 添加自定义页面路由
+        $routes["admin.resource.{$name}.stats"] = [
+            'method' => 'GET',
+            'path' => "/{$name}/stats",
+            'handler' => [static::class, 'renderStats'],
+        ];
+        
+        return $routes;
+    }
+
+    public static function renderStats(): Response
+    {
+        // 渲染自定义统计页面的逻辑
+    }
 }
 ```
 
-自定义路由会优先于通配符路由被匹配（如果扫描顺序配置正确）。
+这种机制比之前的通配符路由更灵活，因为它允许为每个资源精确定义路由和处理器，同时也方便了 URL 的生成和命名路由的使用。
 
 输出示例：
 ```

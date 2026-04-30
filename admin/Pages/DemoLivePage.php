@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Admin\Pages;
 
-use Framework\Component\Attribute\LiveAction;
-use Framework\Component\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
 use Framework\Database\Connection;
 use Framework\Routing\Attribute\Get;
 use Framework\Routing\Attribute\Route;

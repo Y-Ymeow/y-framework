@@ -122,17 +122,25 @@ class Menu extends UXComponent
         $link = Element::make('a')
             ->class(
                 'ux-menu-link',
-                'flex', 'items-center', 'gap-2',
-                'px-3', 'py-2',
-                'text-sm', 'text-gray-600', 'rounded',
-                'hover:bg-gray-100', 'hover:text-gray-900',
+                'flex',
+                'items-center',
+                'gap-2',
+                'px-3',
+                'py-2',
+                'text-sm',
+                'text-gray-600',
+                'rounded',
+                'hover:bg-gray-100',
+                'hover:text-gray-900',
                 'transition-colors'
             )
             ->attr('href', $href)
-            ->data('navigate', '');
+            ->data('navigate', '')
+            // 核心：利用 data-navigate 系统的自动高亮功能
+            ->data('active-target', '.ux-menu-item')
+            ->data('active-class', 'ux-menu-item-active');
 
         if ($item['active']) {
-            $link->class('bg-gray-100', 'text-gray-900', 'font-medium');
             $li->class('ux-menu-item-active');
         }
 
@@ -162,12 +170,22 @@ class Menu extends UXComponent
         $header = Element::make('button')
             ->class(
                 'ux-menu-group-header',
-                'w-full', 'flex', 'items-center', 'justify-between',
-                'px-3', 'py-2', 'mx-2',
-                'text-xs', 'font-semibold', 'text-gray-500',
-                'uppercase', 'tracking-wider',
-                'hover:text-gray-700', 'hover:bg-gray-50',
-                'rounded', 'transition-colors'
+                'w-full',
+                'flex',
+                'items-center',
+                'justify-between',
+                'px-3',
+                'py-2',
+                'mx-2',
+                'text-xs',
+                'font-semibold',
+                'text-gray-500',
+                'uppercase',
+                'tracking-wider',
+                'hover:text-gray-700',
+                'hover:bg-gray-50',
+                'rounded',
+                'transition-colors'
             )
             ->attr('type', 'button')
             ->attr('aria-expanded', $group['open'] ? 'true' : 'false');

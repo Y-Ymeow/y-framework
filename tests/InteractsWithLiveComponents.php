@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Framework\Component\LiveComponent;
+use Framework\Component\Live\LiveComponent;
 use Framework\Http\Request;
-use Framework\Component\LiveComponentResolver;
+use Framework\Component\Live\LiveComponentResolver;
 use Framework\Http\Session;
 
 trait InteractsWithLiveComponents

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\UX\Form;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\View\Base\Element;
 
 class LiveRichEditor extends LiveComponent

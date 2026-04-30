@@ -121,6 +121,16 @@ function vite_css(string $entry): array
     return \Framework\Support\Asset::viteCss($entry);
 }
 
+function dist(string $entry): string
+{
+    return \Framework\Support\Asset::dist($entry);
+}
+
+function dist_css(string $entry): array
+{
+    return \Framework\Support\Asset::distCss($entry);
+}
+
 function redirect(string $url, int $status = 302): \Framework\Http\Response
 {
     return new \Framework\Http\Response('', $status, ['Location' => $url]);

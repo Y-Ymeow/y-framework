@@ -8,6 +8,8 @@ class Asset
 {
     private static ?array $manifest = null;
     private static ?bool $isDev = null;
+    private static ?string $distPath = null;
+    private static ?string $distUrl = null;
 
     public static function isDev(): bool
     {
@@ -15,7 +17,6 @@ class Asset
             return self::$isDev;
         }
 
-        // 尝试连接 Vite Dev Server
         $socket = @fsockopen('localhost', 5173, $errno, $errstr, 0.1);
         if ($socket) {
             fclose($socket);
@@ -23,6 +24,33 @@ class Asset
         }
 
         return self::$isDev = false;
+    }
+
+    public static function distPath(): string
+    {
+        if (self::$distPath === null) {
+            $composerPath = self::resolveVendorPath() . '/y-framework/dist';
+            $srcDir = dirname((new \ReflectionClass(self::class))->getFileName(), 2);
+            $devPath = $srcDir . '/statics/dist';
+
+            self::$distPath = is_dir($composerPath) ? $composerPath : $devPath;
+        }
+
+        return self::$distPath;
+    }
+
+    public static function distUrl(): string
+    {
+        if (self::$distUrl === null) {
+            self::$distUrl = '/_framework';
+        }
+
+        return self::$distUrl;
+    }
+
+    public static function setDistUrl(string $url): void
+    {
+        self::$distUrl = rtrim($url, '/');
     }
 
     public static function vite(string $entry): string
@@ -51,7 +79,7 @@ class Asset
     public static function viteCss(string $entry): array
     {
         if (self::isDev()) {
-            return []; // 开发模式下，CSS 通过 JS 自动注入，无需手动加载
+            return [];
         }
 
         $manifestPath = base_path('public/build/.vite/manifest.json');
@@ -71,7 +99,6 @@ class Asset
             }
         }
 
-        // 处理引入的组件中的 CSS
         if (isset(self::$manifest[$entry]['imports'])) {
             foreach (self::$manifest[$entry]['imports'] as $import) {
                 if (isset(self::$manifest[$import]['css'])) {
@@ -83,5 +110,81 @@ class Asset
         }
 
         return array_unique($css);
+    }
+
+    public static function dist(string $entry): string
+    {
+        if (self::isDev()) {
+            return 'http://localhost:5173/' . ltrim($entry, '/');
+        }
+
+        $manifestPath = self::distPath() . '/.vite/manifest.json';
+
+        if (!is_file($manifestPath)) {
+            return self::distUrl() . '/' . ltrim($entry, '/');
+        }
+
+        if (self::$manifest === null) {
+            self::$manifest = json_decode((string) file_get_contents($manifestPath), true) ?: [];
+        }
+
+        $key = basename($entry);
+        if (isset(self::$manifest[$key]['file'])) {
+            return self::distUrl() . '/' . self::$manifest[$key]['file'];
+        }
+
+        return self::distUrl() . '/' . ltrim($entry, '/');
+    }
+
+    public static function distCss(string $entry): array
+    {
+        if (self::isDev()) {
+            return [];
+        }
+
+        $manifestPath = self::distPath() . '/.vite/manifest.json';
+
+        if (!is_file($manifestPath)) {
+            return [];
+        }
+
+        if (self::$manifest === null) {
+            self::$manifest = json_decode((string) file_get_contents($manifestPath), true) ?: [];
+        }
+
+        $key = basename($entry);
+        $css = [];
+        if (isset(self::$manifest[$key]['css'])) {
+            foreach (self::$manifest[$key]['css'] as $file) {
+                $css[] = self::distUrl() . '/' . $file;
+            }
+        }
+
+        if (isset(self::$manifest[$key]['imports'])) {
+            foreach (self::$manifest[$key]['imports'] as $import) {
+                if (isset(self::$manifest[$import]['css'])) {
+                    foreach (self::$manifest[$import]['css'] as $file) {
+                        $css[] = self::distUrl() . '/' . $file;
+                    }
+                }
+            }
+        }
+
+        return array_unique($css);
+    }
+
+    private static function resolveVendorPath(): string
+    {
+        $reflection = new \ReflectionClass(self::class);
+        $classFile = $reflection->getFileName();
+
+        if ($classFile === false) {
+            return '';
+        }
+
+        $srcDir = dirname($classFile, 2);
+        $vendorDir = dirname($srcDir);
+
+        return $vendorDir;
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Pages;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Routing\Attribute\Get;
 use Framework\Routing\Attribute\Route;
 use Framework\View\Base\Element;

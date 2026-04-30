@@ -4,22 +4,28 @@ declare(strict_types=1);
 
 namespace Framework\Admin\Live;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\Session;
 use Framework\Admin\AdminManager;
-use Framework\View\Base\Element;
-use Framework\UX\Menu\Menu;
+use Framework\UX\Dialog\Drawer;
 use Framework\UX\Menu\Dropdown;
+use Framework\UX\Menu\Menu;
 use Framework\UX\UI\Avatar;
 use Framework\UX\UI\Badge;
 use Framework\UX\UI\Button;
-use Framework\UX\Dialog\Drawer;
+use Framework\View\Base\Element;
 
 class AdminLayout extends LiveComponent
 {
     public string $activeMenu = '';
+
+    #[Session]
     public bool $sidebarCollapsed = false;
+
+    #[Session]
     public array $expandedGroups = [];
+
     protected mixed $content = null;
 
     public function setContent(mixed $content): self
@@ -30,17 +36,15 @@ class AdminLayout extends LiveComponent
 
     public function mount(): void
     {
-        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request = app()->make(\Framework\Http\Request::class);
+        $path = $request->path();
         $prefix = AdminManager::getPrefix();
 
-        if (str_contains($uri, $prefix . '/')) {
-            $path = substr($uri, strpos($uri, $prefix . '/') + strlen($prefix) + 1);
-            $path = explode('/', $path)[0] ?? '';
-            $path = explode('?', $path)[0] ?? '';
-
-            if ($path) {
-                $this->activeMenu = $path;
-            }
+        // 尝试从 URI 提取资源名称或页面名称
+        if (str_starts_with($path, $prefix)) {
+            $subPath = trim(substr($path, strlen($prefix)), '/');
+            $parts = explode('/', $subPath);
+            $this->activeMenu = $parts[0] ?: 'dashboard';
         }
     }
 
@@ -48,13 +52,22 @@ class AdminLayout extends LiveComponent
     {
         $el = Element::make('div')->class('admin-layout', 'flex', 'h-screen', 'bg-gray-50');
 
+        // 注入菜单激活样式
+        $style = Element::make('style')->text("
+            .ux-menu-item-active .ux-menu-link {
+                background-color: #f3f4f6 !important; /* bg-gray-100 */
+                color: #111827 !important;            /* text-gray-900 */
+                font-weight: 500 !important;          /* font-medium */
+            }
+            .ux-menu-item-active .ux-menu-icon {
+                color: #4b5563 !important;            /* text-gray-600 */
+            }
+        ");
+        $el->child($style);
+
         $el->child($this->renderSidebar());
         $el->child($this->renderMain());
         $el->child($this->renderNotificationDrawer());
-
-        $initScript = Element::make('script')
-            ->text("if (localStorage.getItem('admin_sidebar_collapsed') === '1') { document.body.classList.add('admin-sidebar-collapsed'); }");
-        $el->child($initScript);
 
         return $el;
     }
@@ -67,8 +80,10 @@ class AdminLayout extends LiveComponent
     }
 
     #[LiveAction]
-    public function toggleGroup(string $id, bool $open): void
+    public function toggleGroup(?string $id = null, bool $open = false): void
     {
+        if ($id === null) return;
+
         if ($open) {
             if (!in_array($id, $this->expandedGroups, true)) {
                 $this->expandedGroups[] = $id;
@@ -116,10 +131,9 @@ class AdminLayout extends LiveComponent
 
         $groups = $this->getMenuGroups();
 
-        $menu = Menu::make()->vertical();
+        $menu = Menu::make()->vertical()->class('admin-sidebar-menu');
 
         if (!$this->sidebarCollapsed) {
-            $menu->liveAction('toggleGroup');
         }
 
         foreach ($groups as $groupName => $items) {
@@ -159,6 +173,13 @@ class AdminLayout extends LiveComponent
         $groups = [];
         $prefix = AdminManager::getPrefix();
 
+        // 默认总是添加仪表盘
+        $groups[''][] = [
+            'name' => 'dashboard',
+            'title' => '控制台',
+            'prefix' => $prefix,
+        ];
+
         $resources = AdminManager::getResources();
         foreach ($resources as $resourceClass) {
             $group = '';
@@ -166,7 +187,7 @@ class AdminLayout extends LiveComponent
             $attrs = $ref->getAttributes(\Framework\Admin\Attribute\AdminResource::class);
             if (!empty($attrs)) {
                 $attr = $attrs[0]->newInstance();
-                $group = $attr->group;
+                $group = (string)$attr->group;
             }
 
             $groups[$group][] = [
@@ -178,6 +199,8 @@ class AdminLayout extends LiveComponent
 
         $pages = AdminManager::getPages();
         foreach ($pages as $pageClass) {
+            if ($pageClass::getName() === 'dashboard') continue;
+
             $groups[''][] = [
                 'name' => $pageClass::getName(),
                 'title' => $pageClass::getTitle(),
@@ -202,7 +225,7 @@ class AdminLayout extends LiveComponent
         $content->liveFragment('admin-content');
 
         if ($this->content) {
-            if ($this->content instanceof \Framework\Component\LiveComponent) {
+            if ($this->content instanceof \Framework\Component\Live\LiveComponent) {
                 $content->child($this->content->toHtml());
             } else {
                 $content->child($this->content);

@@ -7,6 +7,7 @@ namespace Framework\Routing;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\StreamedResponse;
+use Framework\Http\StaticFile;
 use Framework\Routing\Attribute\Route;
 use Framework\View\Document\AssetRegistry;
 
@@ -73,12 +74,10 @@ class SystemRoute
         $js = "/* Y-Framework Dynamic JS Resource */\n\n";
 
         foreach ($ids as $id) {
-            // 首先从 Registry 内存尝试获取
             $content = $registry->getScriptContent($id);
-            
-            // 如果内存没有，从缓存读取
-            if ($content === null && function_exists('cache')) {
-                $content = cache()->get('js_resource:' . $id);
+
+            if ($content === null && function_exists('\\cache')) {
+                $content = \cache()->get('js_resource:' . $id);
             }
 
             if ($content) {
@@ -91,5 +90,19 @@ class SystemRoute
             'Content-Type' => 'application/javascript',
             'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
+    }
+
+    #[Route('/_framework/{path...}', methods: ['GET'], name: 'dist')]
+    public function dist(Request $request, ?string $path = ''): Response|StreamedResponse
+    {
+        $path = $path ?? '';
+        if (empty($path) || $path === '/') {
+            return new Response('Not Found', 404);
+        }
+
+        $distPath = \Framework\Support\Asset::distPath();
+        $static = new StaticFile($distPath);
+        $static->disableHotlinkProtection();
+        return $static->serve('/' . $path, $request->host());
     }
 }

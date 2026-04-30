@@ -58,6 +58,36 @@ class AdminManager
         return static::$prefix;
     }
 
+    public static function registerRoutes(\Framework\Routing\Router $router): void
+    {
+        $prefix = static::getPrefix();
+
+        // 注册后台仪表盘路由
+        $router->addRoute('GET', $prefix, [AdminResourceController::class, 'dashboard'], 'admin.dashboard');
+
+        foreach (static::$resources as $resourceClass) {
+            $routes = $resourceClass::getRoutes();
+            foreach ($routes as $name => $config) {
+                $method = $config['method'] ?? 'GET';
+                $path = $prefix . $config['path'];
+                $handler = $config['handler'];
+                
+                $router->addRoute($method, $path, $handler, $name);
+            }
+        }
+
+        foreach (static::$pages as $pageClass) {
+            $routes = $pageClass::getRoutes();
+            foreach ($routes as $name => $config) {
+                $method = $config['method'] ?? 'GET';
+                $path = $prefix . $config['path'];
+                $handler = $config['handler'];
+
+                $router->addRoute($method, $path, $handler, $name);
+            }
+        }
+    }
+
     public static function brand(string $title): void
     {
         static::$brandTitle = $title;

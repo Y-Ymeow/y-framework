@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
-use Framework\Component\LiveComponent;
+use Framework\Component\Live\LiveComponent;
 use Framework\Foundation\Application;
 use Framework\Http\Request;
 use Framework\Http\Response;
@@ -23,7 +23,7 @@ class Router
         $this->app = $app;
     }
 
-    public function addRoute(string $method, string $path, callable $handler, string $name = ''): void
+    public function addRoute(string $method, string $path, mixed $handler, string $name = ''): void
     {
         $this->routes[] = [
             'method' => $method,
@@ -34,27 +34,27 @@ class Router
         ];
     }
 
-    public function get(string $path, callable $handler, string $name = ''): void
+    public function get(string $path, mixed $handler, string $name = ''): void
     {
         $this->addRoute('GET', $path, $handler, $name);
     }
 
-    public function post(string $path, callable $handler, string $name = ''): void
+    public function post(string $path, mixed $handler, string $name = ''): void
     {
         $this->addRoute('POST', $path, $handler, $name);
     }
 
-    public function put(string $path, callable $handler, string $name = ''): void
+    public function put(string $path, mixed $handler, string $name = ''): void
     {
         $this->addRoute('PUT', $path, $handler, $name);
     }
 
-    public function delete(string $path, callable $handler, string $name = ''): void
+    public function delete(string $path, mixed $handler, string $name = ''): void
     {
         $this->addRoute('DELETE', $path, $handler, $name);
     }
 
-    public function any(string $path, callable $handler, string $name = ''): void
+    public function any(string $path, mixed $handler, string $name = ''): void
     {
         foreach (['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'] as $method) {
             $this->addRoute($method, $path, $handler, $name);
@@ -122,7 +122,7 @@ class Router
             $middleware = array_merge($classMiddleware, $routeAttr->middleware);
 
             $handlerMethod = '__invoke';
-            if ($reflection->isSubclassOf(\Framework\Component\LiveComponent::class)) {
+            if ($reflection->isSubclassOf(\Framework\Component\Live\LiveComponent::class)) {
                 $handlerMethod = 'render';
             }
 
@@ -198,6 +198,7 @@ class Router
         $params = [];
         $wildcardIndex = null;
         $wildcardName = null;
+        $consumedMultipleParts = false;
 
         for ($i = 0; $i < count($routeParts); $i++) {
             $routePart = $routeParts[$i];
@@ -209,12 +210,36 @@ class Router
                     break;
                 }
 
-                if (!isset($requestParts[$i])) {
+                $inner = trim($routePart, '{}');
+                $paramName = $inner;
+                $pattern = null;
+
+                if (str_contains($inner, ':')) {
+                    [$paramName, $pattern] = explode(':', $inner, 2);
+                }
+
+                $isLastRoutePart = $i === count($routeParts) - 1;
+                $hasMoreRequestParts = isset($requestParts[$i]);
+
+                if (!$hasMoreRequestParts) {
                     return false;
                 }
 
-                $paramName = trim($routePart, '{}');
-                $params[$paramName] = $requestParts[$i];
+                if ($isLastRoutePart && count($requestParts) > count($routeParts)) {
+                    $remainingParts = array_slice($requestParts, $i);
+                    $value = implode('/', $remainingParts);
+                    $consumedMultipleParts = true;
+                } else {
+                    $value = $requestParts[$i];
+                }
+
+                if ($pattern !== null) {
+                    if (!preg_match('/^' . $pattern . '$/', $value)) {
+                        return false;
+                    }
+                }
+
+                $params[$paramName] = $value;
             } else {
                 if (!isset($requestParts[$i]) || $requestParts[$i] !== $routePart) {
                     return false;
@@ -228,7 +253,7 @@ class Router
             return $params;
         }
 
-        if (count($routeParts) !== count($requestParts)) {
+        if (!$consumedMultipleParts && count($routeParts) !== count($requestParts)) {
             return false;
         }
 
@@ -246,8 +271,6 @@ class Router
         );
 
         $handler = $route['handler'];
-
-        logger('Handler: ', $handler);
 
         if ($handler instanceof \Closure) {
             return $this->invokeCallable($handler, $request, $params);
@@ -305,6 +328,8 @@ class Router
                 $args[] = $params[$name];
             } elseif ($param->isDefaultValueAvailable()) {
                 $args[] = $param->getDefaultValue();
+            } elseif ($type && $type->allowsNull()) {
+                $args[] = null;
             } else {
                 $args[] = null;
             }

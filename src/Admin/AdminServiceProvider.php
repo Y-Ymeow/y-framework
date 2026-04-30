@@ -24,5 +24,13 @@ class AdminServiceProvider extends ServiceProvider
         if (is_dir($resourceDir)) {
             $manager->scanAttributes($resourceDir);
         }
+
+        $pageDir = $basePath . '/admin/Pages';
+        if (is_dir($pageDir)) {
+            $manager->scanAttributes($pageDir);
+        }
+
+        // 注册资源路由
+        AdminManager::registerRoutes($this->app->make(\Framework\Routing\Router::class));
     }
 }

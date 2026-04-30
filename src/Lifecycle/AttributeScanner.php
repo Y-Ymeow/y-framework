@@ -46,7 +46,15 @@ class AttributeScanner
         $this->scanRouteAttributes($reflection);
         $this->scanComponentAttributes($reflection);
         $this->scanAdminResourceAttributes($reflection);
+        $this->scanAdminPageAttributes($reflection);
         $this->scanScheduleAttributes($reflection);
+    }
+
+    private function scanAdminPageAttributes(ReflectionClass $reflection): void
+    {
+        if ($reflection->isSubclassOf(\Framework\Admin\Page\PageInterface::class) && !$reflection->isAbstract()) {
+            \Framework\Admin\AdminManager::registerPage($reflection->getName());
+        }
     }
 
     private function scanScheduleAttributes(ReflectionClass $reflection): void
@@ -75,8 +83,8 @@ class AttributeScanner
 
         $adminAttr = $classAttrs[0]->newInstance();
         
-        // 只注册到 AdminManager，不注册路由
-        // 路由由 AdminResourceController 统一处理
+        // 注册到 AdminManager
+        // 路由由 AdminManager::registerRoutes 统一注册
         \Framework\Admin\AdminManager::registerResource($reflection->getName());
     }
 
@@ -155,7 +163,7 @@ class AttributeScanner
             $middleware = array_merge($classMiddleware, $routeAttr->middleware);
 
             $handlerMethod = '__invoke';
-            if ($reflection->isSubclassOf(\Framework\Component\LiveComponent::class)) {
+            if ($reflection->isSubclassOf(\Framework\Component\Live\LiveComponent::class)) {
                 $handlerMethod = 'render';
             }
 
@@ -204,7 +212,7 @@ class AttributeScanner
     private function scanComponentAttributes(ReflectionClass $reflection): void
     {
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
-            foreach ($method->getAttributes(\Framework\Component\Attribute\LiveListener::class) as $attr) {
+            foreach ($method->getAttributes(\Framework\Component\Live\Attribute\LiveListener::class) as $attr) {
                 $listener = $attr->newInstance();
                 
                 $this->manager->registerComponent([

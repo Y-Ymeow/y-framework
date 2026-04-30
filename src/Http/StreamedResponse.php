@@ -6,7 +6,7 @@ namespace Framework\Http;
 
 use Symfony\Component\HttpFoundation\StreamedResponse as SymfonyStreamedResponse;
 
-class StreamedResponse
+class StreamedResponse extends Response
 {
     private SymfonyStreamedResponse $sfResponse;
 

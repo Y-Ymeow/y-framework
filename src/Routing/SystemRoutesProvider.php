@@ -20,5 +20,6 @@ class SystemRoutesProvider
         $router->get('/stream/{path...}', [$route, 'stream']);
         $router->get('/_css', [$route, 'css']);
         $router->get('/_js', [$route, 'js']);
+        $router->get('/_framework/{path:.*}', [$route, 'dist']);
     }
 }

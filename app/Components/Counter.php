@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Components;
 
-use Framework\Component\LiveComponent;
-use Framework\Component\Attribute\LiveAction;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
 use Framework\View\Base\Element;
 use function Framework\View\div;
 use function Framework\View\button;

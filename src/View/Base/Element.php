@@ -165,9 +165,9 @@ class Element
         return $this;
     }
 
-    public function bindAttr(string $attr, string $expr): static
+    public function bindAttr(string $attr, string|array $expr): static
     {
-        $this->attrs["data-bind:{$attr}"] = $expr;
+        $this->attrs["data-bind:{$attr}"] = is_array($expr) ? json_encode($expr) : $expr;
         return $this;
     }
 
@@ -404,12 +404,18 @@ class Element
             foreach ($this->children as $child) {
                 if ($child instanceof self) {
                     $inner .= $child->render();
-                } elseif ($child instanceof \Framework\Component\LiveComponent) {
+                } elseif ($child instanceof \Framework\Component\Live\LiveComponent) {
                     $inner .= $this->sanitizeHtml($child->toHtml());
                 } elseif (is_object($child) && method_exists($child, 'toHtml')) {
-                    $inner .= $this->sanitizeHtml($child->toHtml());
+                    $html = $child->toHtml();
+                    $inner .= $this->sanitizeHtml(is_string($html) ? $html : (string)$html);
                 } elseif (is_object($child) && method_exists($child, 'render')) {
-                    $inner .= $this->sanitizeHtml($child->render());
+                    $rendered = $child->render();
+                    if ($rendered instanceof self) {
+                        $inner .= $rendered->render();
+                    } else {
+                        $inner .= $this->sanitizeHtml((string)$rendered);
+                    }
                 } elseif (is_string($child)) {
                     $inner .= $this->sanitizeHtml($child);
                 } else {
