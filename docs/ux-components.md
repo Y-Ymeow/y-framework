@@ -198,7 +198,16 @@ src/UX/
 │   ├── RadioGroup.php      # 单选组
 │   ├── SwitchField.php     # 开关
 │   ├── SearchInput.php     # 搜索框
-│   └── FileUpload.php      # 文件上传
+│   ├── FileUpload.php      # 文件上传
+│   ├── RichEditor.php      # 富文本编辑器
+│   ├── DatePicker.php      # 日期选择器（支持 showTime）
+│   ├── DateRangePicker.php # 日期范围选择器（支持 showTime）
+│   ├── TagInput.php        # 标签输入框
+│   ├── Transfer.php        # 穿梭框
+│   ├── TreeSelect.php      # 树选择
+│   ├── Rate.php            # 评分
+│   ├── Slider.php          # 滑块
+│   └── ColorPicker.php     # 颜色选择器
 ├── Layout/                 # 布局组件
 │   ├── Row.php             # Flex 行布局
 │   ├── Grid.php            # 网格布局
@@ -209,14 +218,28 @@ src/UX/
 │   ├── DataGrid.php        # 数据网格
 │   ├── DataCard.php        # 数据卡片
 │   ├── DataTree.php        # 树形控件
-│   └── DescriptionList.php # 描述列表
+│   ├── DescriptionList.php # 描述列表
+│   └── Calendar.php        # 日历
+├── Display/                # 展示组件
+│   ├── Badge.php           # 徽章
+│   ├── ListView.php        # 列表视图
+│   ├── Divider.php         # 分割线
+│   └── Tag.php             # 标签
+├── Feedback/               # 反馈组件
+│   ├── EmptyState.php      # 空状态
+│   ├── Tooltip.php         # 文字提示
+│   ├── Popover.php         # 气泡卡片
+│   ├── Collapse.php        # 折叠面板
+│   └── Rate.php            # 评分
+├── Media/                  # 媒体组件
+│   ├── Carousel.php        # 轮播图
+│   └── QRCode.php          # 二维码
 ├── Menu/                   # 菜单组件
 │   └── Dropdown.php        # 下拉菜单
 └── UI/                     # UI 组件
     ├── Accordion.php       # 手风琴
     ├── Alert.php           # 警告框
     ├── Avatar.php          # 头像
-    ├── Badge.php           # 徽章
     ├── Button.php          # 按钮
     ├── Card.php            # 卡片
     ├── Breadcrumb.php      # 面包屑
@@ -1407,3 +1430,613 @@ $desc->extra(Button::make()->label('编辑')->sm());
 // Live 集成
 $desc->fragment('user-detail');   // 标记为 live-fragment，支持局部刷新
 ```
+
+## DatePicker 日期选择器
+
+支持日期选择和日期时间选择，内置日历面板、月份导航、范围限制。
+
+```php
+use Framework\UX\Form\DatePicker;
+
+// 基本用法
+$picker = DatePicker::make()
+    ->placeholder('选择日期');
+
+// 设置默认值
+$picker = DatePicker::make()
+    ->value('2026-05-02');
+
+// 日期时间模式
+$picker = DatePicker::make()
+    ->showTime();
+// 输出格式：2026-05-02 14:30:00
+
+// 日期时间 + 默认时间
+$picker = DatePicker::make()
+    ->showTime()
+    ->timeHour(9)
+    ->timeMinute(0)
+    ->timeSecond(0);
+// 默认时间：09:00:00
+
+// 日期范围限制
+$picker = DatePicker::make()
+    ->minDate('2026-01-01')
+    ->maxDate('2026-12-31');
+
+// 显示今天按钮
+$picker = DatePicker::make()
+    ->showToday();
+
+// 自定义格式
+$picker = DatePicker::make()
+    ->format('Y/m/d');
+
+// Live 双向绑定
+$picker = DatePicker::make()
+    ->liveModel('eventDate');
+// 自动与 LiveComponent 的 $eventDate 属性同步
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `value(string $date)` | 设置默认值，格式 Y-m-d |
+| `placeholder(string $text)` | 占位文本 |
+| `format(string $format)` | 日期格式，默认 `Y-m-d` |
+| `showTime(bool $show)` | 启用时间选择，格式自动切换为 `Y-m-d H:i:s` |
+| `timeHour(int $h)` | 默认小时 (0-23) |
+| `timeMinute(int $m)` | 默认分钟 (0-59) |
+| `timeSecond(int $s)` | 默认秒数 (0-59) |
+| `minDate(string $date)` | 最小可选日期 |
+| `maxDate(string $date)` | 最大可选日期 |
+| `showToday(bool $show)` | 显示"今天"快捷按钮 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+**交互说明：**
+- 普通模式：选日期后自动关闭面板，派发 `ux:change` 事件
+- showTime 模式：选日期后面板保持打开，调整时/分/秒后点"确定"关闭
+
+## DateRangePicker 日期范围选择器
+
+双日历面板，支持范围选择和快捷预设。
+
+```php
+use Framework\UX\Form\DateRangePicker;
+
+// 基本用法
+$picker = DateRangePicker::make()
+    ->placeholder('选择日期范围');
+
+// 日期时间范围
+$picker = DateRangePicker::make()
+    ->showTime();
+// 输出格式：2026-05-01 00:00:00 ~ 2026-05-02 23:59:59
+
+// 自定义分隔符
+$picker = DateRangePicker::make()
+    ->separator('至');
+
+// 日期范围限制
+$picker = DateRangePicker::make()
+    ->minDate('2026-01-01')
+    ->maxDate('2026-12-31');
+
+// Live 双向绑定
+$picker = DateRangePicker::make()
+    ->liveModel('dateRange');
+// 自动与 LiveComponent 的 $dateRange 属性同步
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `startValue(string $date)` | 设置默认开始日期 |
+| `endValue(string $date)` | 设置默认结束日期 |
+| `placeholder(string $text)` | 占位文本 |
+| `separator(string $sep)` | 分隔符，默认 `~` |
+| `format(string $format)` | 日期格式 |
+| `showTime(bool $show)` | 启用时间选择 |
+| `minDate(string $date)` | 最小可选日期 |
+| `maxDate(string $date)` | 最大可选日期 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+**内置快捷选项：** 最近一周、最近一月、最近三月
+
+## Calendar 日历
+
+独立日历组件，支持月视图和年视图切换。
+
+```php
+use Framework\UX\Data\Calendar;
+
+// 基本用法
+$calendar = Calendar::make();
+
+// 设置选中日期
+$calendar = Calendar::make()
+    ->value('2026-05-02');
+
+// 日期范围限制
+$calendar = Calendar::make()
+    ->validRange(['start' => '2026-01-01', 'end' => '2026-12-31']);
+
+// Live 双向绑定
+$calendar = Calendar::make()
+    ->liveModel('selectedDate');
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `value(string $date)` | 选中日期 |
+| `validRange(array $range)` | 可选范围，`['start' => '...', 'end' => '...']` |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## TagInput 标签输入框
+
+支持输入、删除、搜索标签。
+
+```php
+use Framework\UX\Form\TagInput;
+
+// 基本用法
+$tagInput = TagInput::make()
+    ->placeholder('输入标签后回车');
+
+// 设置默认值
+$tagInput = TagInput::make()
+    ->value(['PHP', 'JavaScript', 'CSS']);
+
+// 最大标签数
+$tagInput = TagInput::make()
+    ->maxTags(5);
+
+// Live 双向绑定
+$tagInput = TagInput::make()
+    ->liveModel('tags');
+// 值格式：逗号分隔字符串 "PHP,JavaScript,CSS"
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `value(array $tags)` | 默认标签数组 |
+| `placeholder(string $text)` | 占位文本 |
+| `maxTags(int $max)` | 最大标签数量 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## Transfer 穿梭框
+
+双栏列表选择，支持搜索和批量移动。
+
+```php
+use Framework\UX\Form\Transfer;
+
+// 基本用法
+$transfer = Transfer::make()
+    ->dataSource([
+        ['key' => '1', 'title' => '选项1'],
+        ['key' => '2', 'title' => '选项2'],
+        ['key' => '3', 'title' => '选项3'],
+    ])
+    ->targetKeys(['2']);
+
+// 自定义标题
+$transfer = Transfer::make()
+    ->titles(['可选列表', '已选列表'])
+    ->dataSource($data)
+    ->targetKeys($selected);
+
+// 启用搜索
+$transfer = Transfer::make()
+    ->showSearch()
+    ->searchPlaceholder('搜索...')
+    ->dataSource($data);
+
+// 禁用某些选项
+$transfer = Transfer::make()
+    ->dataSource([
+        ['key' => '1', 'title' => '选项1', 'disabled' => true],
+        ['key' => '2', 'title' => '选项2'],
+    ]);
+
+// Live 双向绑定
+$transfer = Transfer::make()
+    ->dataSource($data)
+    ->liveModel('selectedKeys');
+// 值格式：JSON 数组字符串 '["1","3"]'
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `dataSource(array $data)` | 数据源，每项需含 `key` 和 `title` |
+| `targetKeys(array $keys)` | 右侧（已选）的 key 列表 |
+| `titles(array $titles)` | 左右面板标题 |
+| `showSearch(bool $show)` | 启用搜索 |
+| `searchPlaceholder(string $text)` | 搜索框占位文本 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## TreeSelect 树选择
+
+下拉树形选择器，支持展开折叠和搜索。
+
+```php
+use Framework\UX\Form\TreeSelect;
+
+// 基本用法
+$treeSelect = TreeSelect::make()
+    ->placeholder('选择部门')
+    ->treeData([
+        [
+            'key' => '1',
+            'title' => '技术部',
+            'children' => [
+                ['key' => '1-1', 'title' => '前端组'],
+                ['key' => '1-2', 'title' => '后端组'],
+            ],
+        ],
+        ['key' => '2', 'title' => '产品部'],
+    ]);
+
+// 默认值
+$treeSelect = TreeSelect::make()
+    ->value('1-1')
+    ->treeData($treeData);
+
+// 启用搜索
+$treeSelect = TreeSelect::make()
+    ->showSearch()
+    ->treeData($treeData);
+
+// Live 双向绑定
+$treeSelect = TreeSelect::make()
+    ->treeData($treeData)
+    ->liveModel('department');
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `treeData(array $data)` | 树形数据，每项含 `key`、`title`，可选 `children` |
+| `value(string $key)` | 默认选中节点的 key |
+| `placeholder(string $text)` | 占位文本 |
+| `showSearch(bool $show)` | 启用搜索 |
+| `emptyText(string $text)` | 空数据提示 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## Rate 评分
+
+星级评分组件，支持半星和自定义图标。
+
+```php
+use Framework\UX\Form\Rate;
+
+// 基本用法
+$rate = Rate::make()
+    ->count(5)
+    ->value(3);
+
+// 允许半星
+$rate = Rate::make()
+    ->allowHalf()
+    ->value(3.5);
+
+// 只读
+$rate = Rate::make()
+    ->value(4)
+    ->readonly();
+
+// 自定义图标
+$rate = Rate::make()
+    ->icon('bi-star-fill')
+    ->emptyIcon('bi-star');
+
+// Live 双向绑定
+$rate = Rate::make()
+    ->liveModel('rating');
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `count(int $count)` | 星星数量，默认 5 |
+| `value(float $value)` | 默认评分值 |
+| `allowHalf(bool $allow)` | 允许半星 |
+| `readonly(bool $readonly)` | 只读模式 |
+| `icon(string $icon)` | 选中图标类名 |
+| `emptyIcon(string $icon)` | 未选中图标类名 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## Slider 滑块
+
+滑动输入组件，支持范围选择。
+
+```php
+use Framework\UX\Form\Slider;
+
+// 基本用法
+$slider = Slider::make()
+    ->min(0)
+    ->max(100)
+    ->value(30);
+
+// 带步长
+$slider = Slider::make()
+    ->min(0)
+    ->max(100)
+    ->step(10)
+    ->value(50);
+
+// 范围选择
+$slider = Slider::make()
+    ->range()
+    ->rangeValue([20, 80]);
+
+// 显示标记
+$slider = Slider::make()
+    ->marks(['0' => '0°C', '25' => '25°C', '100' => '100°C']);
+
+// Live 双向绑定
+$slider = Slider::make()
+    ->liveModel('volume');
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `min(int|float $min)` | 最小值，默认 0 |
+| `max(int|float $max)` | 最大值，默认 100 |
+| `step(int|float $step)` | 步长，默认 1 |
+| `value(int|float $value)` | 默认值 |
+| `range(bool $range)` | 范围选择模式 |
+| `rangeValue(array $values)` | 范围模式的默认值 `[start, end]` |
+| `marks(array $marks)` | 刻度标记 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## ColorPicker 颜色选择器
+
+颜色选择组件，支持预设色板和自定义颜色。
+
+```php
+use Framework\UX\Form\ColorPicker;
+
+// 基本用法
+$picker = ColorPicker::make()
+    ->value('#3b82f6');
+
+// 预设颜色
+$picker = ColorPicker::make()
+    ->presets(['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6']);
+
+// 显示透明度
+$picker = ColorPicker::make()
+    ->showAlpha();
+
+// Live 双向绑定
+$picker = ColorPicker::make()
+    ->liveModel('themeColor');
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `value(string $color)` | 默认颜色值 |
+| `presets(array $colors)` | 预设颜色列表 |
+| `showAlpha(bool $show)` | 显示透明度选项 |
+| `liveModel(string $property)` | 与 Live 属性双向绑定 |
+
+## Carousel 轮播图
+
+图片轮播组件，支持自动播放和手动切换。
+
+```php
+use Framework\UX\Media\Carousel;
+
+// 基本用法
+$carousel = Carousel::make()
+    ->items([
+        ['image' => '/img/slide1.jpg', 'title' => '标题1'],
+        ['image' => '/img/slide2.jpg', 'title' => '标题2'],
+        ['image' => '/img/slide3.jpg', 'title' => '标题3'],
+    ]);
+
+// 自动播放
+$carousel = Carousel::make()
+    ->autoplay()
+    ->interval(3000)
+    ->items($slides);
+
+// 选项
+$carousel->dots();          // 显示指示点（默认开启）
+$carousel->arrows();        // 显示箭头
+$carousel->loop();          // 循环播放
+$carousel->fade();          // 淡入淡出效果
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `items(array $items)` | 轮播项数据 |
+| `autoplay(bool $autoplay)` | 自动播放 |
+| `interval(int $ms)` | 自动播放间隔，默认 3000ms |
+| `dots(bool $show)` | 显示指示点 |
+| `arrows(bool $show)` | 显示前后箭头 |
+| `loop(bool $loop)` | 循环播放 |
+| `fade(bool $fade)` | 淡入淡出切换效果 |
+
+## QRCode 二维码
+
+基于 qrcode.js 库的二维码生成组件。
+
+```php
+use Framework\UX\Media\QRCode;
+
+// 基本用法
+$qrcode = QRCode::make()
+    ->value('https://example.com');
+
+// 自定义尺寸和颜色
+$qrcode = QRCode::make()
+    ->value('https://example.com')
+    ->size(200)
+    ->color('#000000')
+    ->bgColor('#ffffff');
+
+// 纠错级别
+$qrcode = QRCode::make()
+    ->value('https://example.com')
+    ->level('H');  // L, M, Q, H
+```
+
+**API 参考：**
+
+| 方法 | 说明 |
+|---|---|
+| `value(string $text)` | 二维码内容 |
+| `size(int $px)` | 尺寸，默认 128 |
+| `color(string $color)` | 前景色 |
+| `bgColor(string $color)` | 背景色 |
+| `level(string $level)` | 纠错级别：L/M/Q/H，默认 M |
+
+## 其他展示组件
+
+### Divider 分割线
+
+```php
+use Framework\UX\Display\Divider;
+
+$divider = Divider::make();
+$divider = Divider::make()->vertical();
+$divider = Divider::make()->text('或者');
+$divider = Divider::make()->dashed();
+```
+
+### EmptyState 空状态
+
+```php
+use Framework\UX\Feedback\EmptyState;
+
+$empty = EmptyState::make()
+    ->title('暂无数据')
+    ->description('点击下方按钮添加新内容')
+    ->icon('bi-inbox');
+```
+
+### Tag 标签
+
+```php
+use Framework\UX\Display\Tag;
+
+$tag = Tag::make()->text('标签')->primary();
+$tag = Tag::make()->text('成功')->success()->closable();
+$tag = Tag::make()->text('警告')->warning()->outline();
+```
+
+### Tooltip 文字提示
+
+```php
+use Framework\UX\Feedback\Tooltip;
+
+$tooltip = Tooltip::make()
+    ->content('提示内容')
+    ->child(Button::make()->label('悬停查看'));
+```
+
+### Popover 气泡卡片
+
+```php
+use Framework\UX\Feedback\Popover;
+
+$popover = Popover::make()
+    ->title('标题')
+    ->content('详细内容')
+    ->child(Button::make()->label('点击查看'));
+```
+
+### Collapse 折叠面板
+
+```php
+use Framework\UX\Feedback\Collapse;
+
+$collapse = Collapse::make()
+    ->item('面板1', '内容1')
+    ->item('面板2', '内容2', true);  // 默认展开
+```
+
+### ListView 列表视图
+
+```php
+use Framework\UX\Display\ListView;
+
+$list = ListView::make()
+    ->items(['项目1', '项目2', '项目3'])
+    ->bordered()
+    ->split();
+```
+
+## UX-Live 桥接系统
+
+UX 组件通过 `liveModel()` 方法与 LiveComponent 实现零配置双向绑定，无需为每个组件编写 LiveAction。
+
+### 工作原理
+
+```
+UX 组件值变化 → 派发 ux:change 事件 → 桥接层更新隐藏 input → 触发 data-live-model → Live __updateProperty → 属性更新
+Live 属性更新 → patches 返回 → 桥接层检测变化 → 调用组件 setValue() → UI 更新
+```
+
+### 使用方式
+
+```php
+// PHP 端：组件加 liveModel()
+DatePicker::make()->liveModel('eventDate');
+Rate::make()->liveModel('rating');
+Transfer::make()->liveModel('selectedKeys');
+
+// LiveComponent 端：声明公开属性即可
+class MyForm extends LiveComponent {
+    public string $eventDate = '';
+    public float $rating = 0;
+    public string $selectedKeys = '[]';
+    
+    // 不需要写任何 LiveAction！
+    // __updateProperty 自动处理
+    
+    public function updatedEventDate($newValue, $oldValue) {
+        // 属性变更后的业务逻辑
+    }
+}
+```
+
+### 支持的组件
+
+| 组件 | liveModel 值格式 | 示例 |
+|---|---|---|
+| DatePicker | `Y-m-d` 或 `Y-m-d H:i:s` | `"2026-05-02"` |
+| DateRangePicker | `start~end` | `"2026-05-01~2026-05-02"` |
+| Calendar | `Y-m-d` | `"2026-05-02"` |
+| TagInput | 逗号分隔 | `"PHP,JS,CSS"` |
+| Transfer | JSON 数组 | `'["1","3"]'` |
+| TreeSelect | 节点 key | `"1-2"` |
+| Rate | 数字 | `"3.5"` |
+| Slider | 数字或 JSON | `"30"` 或 `"[20,80]"` |
+| ColorPicker | 颜色值 | `"#3b82f6"` |
+
+### 命名空间约定
+
+- `data-action` — 传给 Live 的 action（如 Dropdown 菜单项、表单提交）
+- `data-ux-action` — UX 组件内部操作（如日历翻页、今天按钮），不会被 Live 拦截
+- `data-ux-model` — UX 组件的 Live 桥接标记
+- `data-live-model` — Live 的属性绑定（桥接层自动在隐藏 input 上设置）
