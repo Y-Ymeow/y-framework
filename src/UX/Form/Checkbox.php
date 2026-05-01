@@ -39,6 +39,10 @@ class Checkbox extends FormField
             }
         }
 
+        if ($this->liveModel) {
+            $inputEl->attr('data-live-model', $this->liveModel);
+        }
+
         $labelEl->child($inputEl);
         $labelEl->child(Element::make('span')->text($this->label));
 

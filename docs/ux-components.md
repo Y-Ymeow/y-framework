@@ -430,7 +430,7 @@ $dropdown->hover(true);
 ## Badge 徽章
 
 ```php
-use Framework\UX\UI\Badge;
+use Framework\UX\Display\Badge;
 
 // 基本徽章
 $badge = Badge::make()->text('Primary')->primary();
@@ -1080,7 +1080,7 @@ $this->ux(string $component, string $id, string $action, array $data = []);
 
 ```php
 use Framework\UX\Data\DataTable;
-use Framework\UX\UI\Badge;
+use Framework\UX\Display\Badge;
 use Framework\UX\UI\Button;
 
 // 基本用法

@@ -12,7 +12,7 @@ use Framework\UX\Dialog\Drawer;
 use Framework\UX\Menu\Dropdown;
 use Framework\UX\Menu\Menu;
 use Framework\UX\UI\Avatar;
-use Framework\UX\UI\Badge;
+use Framework\UX\Display\Badge;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
 

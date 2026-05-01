@@ -8,7 +8,7 @@ use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\DebugBar\DebugBar;
-use Framework\UX\UI\Badge;
+use Framework\UX\Display\Badge;
 use Framework\UX\UI\Accordion;
 use Framework\View\Base\Element;
 use Framework\View\Document\AssetRegistry;

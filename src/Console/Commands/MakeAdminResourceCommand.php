@@ -94,7 +94,7 @@ use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\UX\Data\DataTableColumn;
-use Framework\UX\UI\Badge;
+use Framework\UX\Display\Badge;
 use Framework\UX\UI\Button;
 use Framework\UX\UI\Navigate;
 use Framework\Database\Model;

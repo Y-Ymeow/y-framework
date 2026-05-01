@@ -1,0 +1,26 @@
+/* QRCode 二维码 */
+.ux-qrcode {
+    display: inline-block;
+    position: relative;
+}
+
+.ux-qrcode-canvas {
+    display: block;
+    border-radius: 4px;
+}
+
+/* 带图标的二维码 */
+.ux-qrcode-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.ux-qrcode-icon img {
+    display: block;
+    border-radius: 2px;
+}

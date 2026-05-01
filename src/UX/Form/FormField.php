@@ -19,6 +19,7 @@ abstract class FormField extends UXComponent
     protected bool $readonly = false;
     protected string $autocomplete = '';
     protected array $rules = [];
+    protected ?string $liveModel = null;
 
     public function name(string $name): static
     {
@@ -80,6 +81,12 @@ abstract class FormField extends UXComponent
         return $this;
     }
 
+    public function liveModel(string $property): static
+    {
+        $this->liveModel = $property;
+        return $this;
+    }
+
     protected function buildFieldAttrs(): array
     {
         $attrs = [];
@@ -104,6 +111,10 @@ abstract class FormField extends UXComponent
 
         if ($this->autocomplete) {
             $attrs['autocomplete'] = $this->autocomplete;
+        }
+
+        if ($this->liveModel) {
+            $attrs['data-live-model'] = $this->liveModel;
         }
 
         return $attrs;

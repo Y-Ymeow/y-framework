@@ -1,0 +1,112 @@
+/* List 列表 */
+.ux-list {
+    --list-border: #e5e7eb;
+    --list-bg: #fff;
+    --list-item-padding: 12px 16px;
+    --list-header-padding: 12px 16px;
+    --list-footer-padding: 12px 16px;
+
+    background-color: var(--list-bg);
+    border-radius: 6px;
+}
+
+/* 头部 */
+.ux-list-header {
+    padding: var(--list-header-padding);
+    border-bottom: 1px solid var(--list-border);
+    font-weight: 600;
+    font-size: 14px;
+    color: #111827;
+}
+
+/* 列表项容器 */
+.ux-list-items {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 列表项 */
+.ux-list-item {
+    padding: var(--list-item-padding);
+    font-size: 14px;
+    color: #374151;
+    transition: background-color 0.2s;
+}
+
+.ux-list-item:hover {
+    background-color: #f9fafb;
+}
+
+/* 分割线 */
+.ux-list:not(.ux-list-no-split) .ux-list-item + .ux-list-item {
+    border-top: 1px solid var(--list-border);
+}
+
+/* 底部 */
+.ux-list-footer {
+    padding: var(--list-footer-padding);
+    border-top: 1px solid var(--list-border);
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* 带边框 */
+.ux-list-bordered {
+    border: 1px solid var(--list-border);
+}
+
+.ux-list-bordered .ux-list-header {
+    border-radius: 6px 6px 0 0;
+    background-color: #f9fafb;
+}
+
+/* 尺寸变体 */
+.ux-list-sm {
+    --list-item-padding: 8px 12px;
+    --list-header-padding: 8px 12px;
+    --list-footer-padding: 8px 12px;
+}
+
+.ux-list-sm .ux-list-item,
+.ux-list-sm .ux-list-header,
+.ux-list-sm .ux-list-footer {
+    font-size: 13px;
+}
+
+.ux-list-lg {
+    --list-item-padding: 16px 20px;
+    --list-header-padding: 16px 20px;
+    --list-footer-padding: 16px 20px;
+}
+
+.ux-list-lg .ux-list-item,
+.ux-list-lg .ux-list-header,
+.ux-list-lg .ux-list-footer {
+    font-size: 15px;
+}
+
+/* 加载状态 */
+.ux-list-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ux-list-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid #e5e7eb;
+    border-top-color: var(--ux-primary, #3b82f6);
+    border-radius: 50%;
+    animation: ux-list-spin 0.8s linear infinite;
+}
+
+@keyframes ux-list-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

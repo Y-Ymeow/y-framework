@@ -1,0 +1,157 @@
+/* ColorPicker 颜色选择器 */
+.ux-color-picker {
+    --color-picker-size: 32px;
+    --color-picker-radius: 6px;
+    --color-picker-border: #d1d5db;
+    --color-picker-bg: #fff;
+
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+/* 预览区域 */
+.ux-color-picker-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border: 1px solid var(--color-picker-border);
+    border-radius: var(--color-picker-radius);
+    background-color: var(--color-picker-bg);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ux-color-picker-preview:hover {
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+/* 颜色块 */
+.ux-color-picker-block {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 颜色文本 */
+.ux-color-picker-text {
+    font-size: 13px;
+    color: #374151;
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
+/* 清除按钮 */
+.ux-color-picker-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+.ux-color-picker-clear:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+/* 隐藏的原生 input */
+.ux-color-picker-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* 禁用状态 */
+.ux-color-picker-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ux-color-picker-disabled .ux-color-picker-preview {
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+}
+
+/* 颜色预设面板 */
+.ux-color-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    padding: 12px;
+    background-color: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1050;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.2s;
+}
+
+.ux-color-picker-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 预设颜色网格 */
+.ux-color-picker-presets {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.ux-color-picker-preset {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.ux-color-picker-preset:hover {
+    transform: scale(1.1);
+}
+
+/* 自定义颜色区域 */
+.ux-color-picker-custom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ux-color-picker-custom input[type="color"] {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.ux-color-picker-custom input[type="text"] {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: monospace;
+    text-transform: uppercase;
+}

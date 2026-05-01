@@ -20,6 +20,10 @@ export const UX = {
         'data-editor',
         'data-input-id',
         'data-placeholder',
+        'data-ux-model',
+        'data-ux-action',
+        'data-live-model',
+        'data-live-debounce',
     ],
 
     registerSafeAttrs() {

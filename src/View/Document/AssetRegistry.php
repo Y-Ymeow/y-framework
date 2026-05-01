@@ -77,6 +77,12 @@ class AssetRegistry
         return $this;
     }
 
+    public function inlineStyle(string $style): self
+    {
+        $this->inlineStyles[] = $style;
+        return $this;
+    }
+
     /**
      * 核心资源注册
      */

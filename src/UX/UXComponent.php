@@ -15,6 +15,7 @@ abstract class UXComponent
     protected array $children = [];
     protected ?string $liveAction = null;
     protected ?string $liveEvent = null;
+    protected ?string $uxModel = null;
     protected ?string $style = null;
     protected array $dataAttrs = [];
     protected array $eventListeners = [];
@@ -64,6 +65,12 @@ abstract class UXComponent
     public function model(string $name): static
     {
         $this->attrs['data-model'] = $name;
+        return $this;
+    }
+
+    public function liveModel(string $property): static
+    {
+        $this->uxModel = $property;
         return $this;
     }
 
@@ -161,6 +168,10 @@ abstract class UXComponent
             $el->liveAction($this->liveAction, $this->liveEvent ?? 'click');
         }
 
+        if ($this->uxModel) {
+            $el->data('ux-model', $this->uxModel);
+        }
+
         return $el;
     }
 
@@ -202,6 +213,21 @@ abstract class UXComponent
             $el->child($this->resolveChild($child));
         }
         return $el;
+    }
+
+    protected function createLiveModelInput(string $value = ''): ?Element
+    {
+        if (!$this->uxModel) {
+            return null;
+        }
+
+        return Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('name', $this->uxModel)
+            ->attr('value', $value)
+            ->attr('data-live-model', $this->uxModel)
+            ->attr('data-live-debounce', '0')
+            ->class('ux-live-bridge-input');
     }
 
     /**

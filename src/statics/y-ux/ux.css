@@ -22,6 +22,29 @@
 @import 'css/data.css';
 @import 'css/chart.css';
 
+/* 新增组件 */
+@import 'css/divider.css';
+@import 'css/empty.css';
+@import 'css/tag.css';
+@import 'css/tooltip.css';
+@import 'css/popover.css';
+@import 'css/rate.css';
+@import 'css/slider.css';
+@import 'css/color-picker.css';
+@import 'css/date-picker.css';
+@import 'css/collapse.css';
+@import 'css/timeline.css';
+@import 'css/list.css';
+@import 'css/transfer.css';
+@import 'css/tree-select.css';
+@import 'css/qrcode.css';
+@import 'css/watermark.css';
+@import 'css/image.css';
+@import 'css/carousel.css';
+@import 'css/tag-input.css';
+@import 'css/calendar.css';
+@import 'css/date-range-picker.css';
+
 
 .ux-row {
     width: 100%;

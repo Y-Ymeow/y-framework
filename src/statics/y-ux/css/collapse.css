@@ -1,0 +1,109 @@
+/* Collapse 折叠面板 */
+.ux-collapse {
+    --collapse-border: #e5e7eb;
+    --collapse-bg: #fff;
+    --collapse-header-bg: #f9fafb;
+    --collapse-radius: 6px;
+
+    border: 1px solid var(--collapse-border);
+    border-radius: var(--collapse-radius);
+    background-color: var(--collapse-bg);
+    overflow: hidden;
+}
+
+/* 头部 */
+.ux-collapse-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: var(--collapse-header-bg);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.ux-collapse-header:hover {
+    background-color: #f3f4f6;
+}
+
+/* 图标 */
+.ux-collapse-icon {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* 标题 */
+.ux-collapse-title {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* 箭头 */
+.ux-collapse-arrow {
+    font-size: 12px;
+    color: #9ca3af;
+    transition: transform 0.2s;
+}
+
+.ux-collapse-open .ux-collapse-arrow {
+    transform: rotate(90deg);
+}
+
+/* 内容区域 */
+.ux-collapse-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s;
+    padding: 0 16px;
+}
+
+.ux-collapse-open .ux-collapse-content {
+    max-height: 1000px;
+    padding: 16px;
+    border-top: 1px solid var(--collapse-border);
+}
+
+/* 禁用状态 */
+.ux-collapse-disabled {
+    opacity: 0.6;
+}
+
+.ux-collapse-disabled .ux-collapse-header {
+    cursor: not-allowed;
+}
+
+/* 无边框样式 */
+.ux-collapse-borderless {
+    border: none;
+    border-radius: 0;
+}
+
+.ux-collapse-borderless .ux-collapse-header {
+    background-color: transparent;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.ux-collapse-borderless .ux-collapse-content {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.ux-collapse-borderless.ux-collapse-open .ux-collapse-content {
+    border-top: none;
+    padding-top: 8px;
+}
+
+/* 手风琴组 */
+.ux-collapse-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ux-collapse-group .ux-collapse {
+    margin-bottom: 0;
+}

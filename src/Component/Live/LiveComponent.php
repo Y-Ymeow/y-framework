@@ -137,7 +137,7 @@ abstract class LiveComponent
         }
     }
 
-    abstract public function render(): string|Element;
+    abstract public function render();
 
     /**
      * 内置属性同步方法，支持 data-live-model

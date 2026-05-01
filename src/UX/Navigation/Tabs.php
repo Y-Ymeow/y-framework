@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Framework\UX\UI;
+namespace Framework\UX\Navigation;
 
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
