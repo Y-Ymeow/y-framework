@@ -164,7 +164,7 @@ class DataList extends UXComponent
         }
 
         if (empty($this->dataSource)) {
-            $emptyText = $this->emptyText ?? '暂无数据';
+            $emptyText = $this->emptyText ?? t('ux.empty_data');
             $li = Element::make('li')->class('ux-data-list-item ux-data-list-empty');
             $li->child(
                 Element::make('div')->class('ux-data-list-empty-content')->text($emptyText)

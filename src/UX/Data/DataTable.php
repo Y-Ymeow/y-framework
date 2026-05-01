@@ -560,7 +560,7 @@ class DataTable extends UXComponent
             if ($this->selectable) {
                 $colspan++;
             }
-            $emptyText = $this->emptyText ?? '暂无数据';
+            $emptyText = $this->emptyText ?? t('ux.empty_data');
             $tr = Element::make('tr')->class('ux-data-table-row ux-data-table-empty');
             $td = Element::make('td')
                 ->class('ux-data-table-cell ux-data-table-empty-cell')
@@ -717,7 +717,7 @@ class DataTable extends UXComponent
             ->attr('type', 'text')
             ->attr('name', 'search')
             ->class('ux-data-table-search-input')
-            ->attr('placeholder', $this->searchPlaceholder ?? '搜索...');
+            ->attr('placeholder', $this->searchPlaceholder ?? t('ux.search') . '...');
 
         if ($this->searchValue) {
             $input->attr('value', $this->searchValue);
@@ -733,7 +733,7 @@ class DataTable extends UXComponent
         $btn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-data-table-search-btn')
-            ->text('搜索');
+            ->text(t('ux.search'));
 
         if ($action) {
             $btn->liveAction($action, 'click');

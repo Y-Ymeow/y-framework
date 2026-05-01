@@ -87,8 +87,8 @@ class ErrorHandler
     public static function handleException(\Throwable $exception): void
     {
         $code = $exception instanceof \Framework\Http\HttpException ? $exception->getStatusCode() : 500;
-        
-        if (!headers_sent()) {
+
+        if (!headers_sent() && http_response_code() === false) {
             http_response_code($code);
         }
 

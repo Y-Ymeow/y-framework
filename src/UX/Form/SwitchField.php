@@ -9,8 +9,8 @@ use Framework\View\Base\Element;
 class SwitchField extends FormField
 {
     protected bool $checked = false;
-    protected string $onText = '开';
-    protected string $offText = '关';
+    protected string $onText = '';
+    protected string $offText = '';
 
     public function checked(bool $checked = true): static
     {
@@ -59,8 +59,8 @@ class SwitchField extends FormField
 
         $switchLabelEl->child($inputEl);
         $switchLabelEl->child(Element::make('span')->class('ux-switch-slider'));
-        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-on')->text($this->onText));
-        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-off')->text($this->offText));
+        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-on')->text($this->onText ?: t('ux.on')));
+        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-off')->text($this->offText ?: t('ux.off')));
 
         $groupEl->child($switchLabelEl);
 

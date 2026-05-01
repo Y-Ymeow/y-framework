@@ -48,4 +48,36 @@ return [
     ],
     
     'items' => '项',
+
+    'ux' => [
+        'empty_data' => '暂无数据',
+        'search' => '搜索',
+        'please_select_records' => '请选择要操作的记录',
+        'selected_count' => ':count 项已选择',
+        'batch_actions' => '批量操作',
+        'cancel_selection' => '取消选择',
+        'select_file' => '选择文件',
+        'no_file_selected' => '未选择文件',
+        'on' => '开',
+        'off' => '关',
+    ],
+
+    'editor' => [
+        'bold' => '粗体',
+        'italic' => '斜体',
+        'underline' => '下划线',
+        'strike' => '删除线',
+        'heading' => '标题',
+        'quote' => '引用',
+        'code' => '代码',
+        'list' => '列表',
+        'link' => '链接',
+        'image' => '图片',
+        'undo' => '撤销',
+        'redo' => '重做',
+        'clear' => '清除格式',
+        'placeholder' => '变量',
+        'emoji' => '表情',
+        'mention' => '提及',
+    ],
 ];

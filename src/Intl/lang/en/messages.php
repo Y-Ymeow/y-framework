@@ -48,4 +48,36 @@ return [
     ],
     
     'items' => 'items|item|items',
+
+    'ux' => [
+        'empty_data' => 'No data available',
+        'search' => 'Search',
+        'please_select_records' => 'Please select records to operate',
+        'selected_count' => ':count items selected',
+        'batch_actions' => 'Batch Actions',
+        'cancel_selection' => 'Cancel Selection',
+        'select_file' => 'Select File',
+        'no_file_selected' => 'No file selected',
+        'on' => 'On',
+        'off' => 'Off',
+    ],
+
+    'editor' => [
+        'bold' => 'Bold',
+        'italic' => 'Italic',
+        'underline' => 'Underline',
+        'strike' => 'Strikethrough',
+        'heading' => 'Heading',
+        'quote' => 'Quote',
+        'code' => 'Code',
+        'list' => 'List',
+        'link' => 'Link',
+        'image' => 'Image',
+        'undo' => 'Undo',
+        'redo' => 'Redo',
+        'clear' => 'Clear Formatting',
+        'placeholder' => 'Placeholder',
+        'emoji' => 'Emoji',
+        'mention' => 'Mention',
+    ],
 ];

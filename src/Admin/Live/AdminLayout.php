@@ -176,7 +176,7 @@ class AdminLayout extends LiveComponent
         // 默认总是添加仪表盘
         $groups[''][] = [
             'name' => 'dashboard',
-            'title' => '控制台',
+            'title' => t('admin.dashboard'),
             'prefix' => $prefix,
         ];
 
@@ -264,7 +264,7 @@ class AdminLayout extends LiveComponent
         $searchInput = Element::make('input')
             ->attr('type', 'search')
             ->class('ux-form-input', 'ux-search-input')
-            ->attr('placeholder', '全局搜索...')
+            ->attr('placeholder', t('admin.global_search'))
             ->attr('autocomplete', 'off');
         $searchWrapper->child($searchInput);
 
@@ -306,22 +306,22 @@ class AdminLayout extends LiveComponent
             ->class('flex', 'items-center', 'gap-2', 'pl-2', 'border-l', 'border-gray-200')
             ->attr('type', 'button');
 
-        $trigger->child(Avatar::make()->name('管理员')->size('sm'));
-        $trigger->child(Element::make('span')->class('text-sm', 'text-gray-700', 'hidden', 'md:block')->text('管理员'));
+        $trigger->child(Avatar::make()->name(t('admin.administrator'))->size('sm'));
+        $trigger->child(Element::make('span')->class('text-sm', 'text-gray-700', 'hidden', 'md:block')->text(t('admin.administrator')));
         $trigger->child(Element::make('i')->class('bi', 'bi-chevron-down', 'text-xs', 'text-gray-400'));
 
         return Dropdown::make()
             ->noborder()
             ->position('bottom-end')
             ->customTrigger($trigger)
-            ->item('设置', '#', 'gear')
+            ->item(t('settings'), '#', 'gear')
             ->divider()
             ->element(
                 Element::make('a')
                     ->class('ux-dropdown-link', 'flex', 'items-center', 'gap-2', 'text-red-600', 'px-4', 'py-2')
                     ->attr('href', '#')
                     ->child(Element::make('i')->class('bi', 'bi-box-arrow-right'))
-                    ->child(Element::make('span')->text('登出')->class('text-sm'))
+                    ->child(Element::make('span')->text(t('logout'))->class('text-sm'))
             );
     }
 
@@ -329,10 +329,10 @@ class AdminLayout extends LiveComponent
     {
         return Drawer::make()
             ->id('notification-drawer')
-            ->title('通知')
+            ->title(t('admin.notifications'))
             ->right()
             ->md()
-            ->child(Element::make('div')->class('p-4', 'text-gray-500')->text('暂无通知'));
+            ->child(Element::make('div')->class('p-4', 'text-gray-500')->text(t('admin.no_notifications')));
     }
 
     protected function renderFooter(): Element

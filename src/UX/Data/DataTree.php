@@ -161,7 +161,7 @@ class DataTree extends UXComponent
         }
 
         if (empty($this->treeData)) {
-            $emptyText = $this->emptyText ?? '暂无数据';
+            $emptyText = $this->emptyText ?? t('ux.empty_data');
             $treeEl->child(
                 Element::make('div')->class('ux-data-tree-empty')->text($emptyText)
             );

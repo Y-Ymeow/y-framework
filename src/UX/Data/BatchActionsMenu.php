@@ -8,13 +8,13 @@ use Framework\View\Base\Element;
 
 class BatchActionsMenu
 {
-    protected string $emptyText = '请选择要操作的记录';
+    protected string $emptyText = '';
     protected array $actions = [];
     protected ?string $liveAction = null;
     protected ?string $liveEvent = null;
     protected array $selectedKeys = [];
     protected bool $visible = false;
-    protected string $selectCountText = '{count} 项已选择';
+    protected string $selectCountText = '';
 
     public function emptyText(string $text): static
     {
@@ -86,7 +86,7 @@ class BatchActionsMenu
         $left = Element::make('div')->class('ux-batch-actions-left');
 
         if ($this->visible && !empty($this->selectedKeys)) {
-            $countText = str_replace('{count}', (string)count($this->selectedKeys), $this->selectCountText);
+            $countText = str_replace('{count}', (string)count($this->selectedKeys), $this->selectCountText ?: t('ux.selected_count', ['count' => count($this->selectedKeys)]));
             $left->child(Element::make('span')->class('ux-batch-actions-count')->text($countText));
 
             $dropdown = Element::make('div')->class('ux-batch-actions-dropdown');
@@ -94,7 +94,7 @@ class BatchActionsMenu
             $triggerBtn = Element::make('button')
                 ->attr('type', 'button')
                 ->class('ux-batch-actions-trigger')
-                ->text('批量操作');
+                ->text(t('ux.batch_actions'));
 
             $triggerIcon = Element::make('i')->class('bi bi-chevron-down', 'ux-batch-actions-trigger-arrow');
             $triggerBtn->child($triggerIcon);
@@ -132,7 +132,7 @@ class BatchActionsMenu
             $dropdown->child($menu);
             $left->child($dropdown);
         } else {
-            $left->child(Element::make('span')->class('ux-batch-actions-empty')->text($this->emptyText));
+            $left->child(Element::make('span')->class('ux-batch-actions-empty')->text($this->emptyText ?: t('ux.please_select_records')));
         }
 
         $wrapper->child($left);
@@ -140,7 +140,7 @@ class BatchActionsMenu
         $cancelBtn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-batch-actions-cancel')
-            ->text('取消选择');
+            ->text(t('ux.cancel_selection'));
         $cancelBtn->data('action', 'cancelSelection');
         $wrapper->child($cancelBtn);
 

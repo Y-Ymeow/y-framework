@@ -483,10 +483,15 @@ abstract class LiveComponent
         $params = $this->normalizeActionParams($actionName, $params);
 
         $actions = $this->getLiveActions();
-        $methodName = $actions[$actionName] ?? $actionName;
+
+        if (!isset($actions[$actionName])) {
+            throw new \RuntimeException("LiveAction [{$actionName}] is not registered on " . static::class);
+        }
+
+        $methodName = $actions[$actionName];
 
         if (!method_exists($this, $methodName)) {
-            throw new \RuntimeException("LiveAction [{$actionName}] not found on " . static::class);
+            throw new \RuntimeException("LiveAction [{$actionName}] method [{$methodName}] not found on " . static::class);
         }
 
         $ref = new \ReflectionMethod($this, $methodName);

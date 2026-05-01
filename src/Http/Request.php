@@ -36,6 +36,11 @@ class Request
         return $this->sfRequest->getUri();
     }
 
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $this->input($key, $default);
+    }
+
     public function input(string $key, mixed $default = null): mixed
     {
         if ($this->isJson()) {
