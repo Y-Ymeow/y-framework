@@ -1,6 +1,6 @@
 # HTTP 核心 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:37:00
+> 由 DocGen 自动生成于 2026-05-02 05:56:00
 
 ## 目录
 
@@ -9,7 +9,7 @@
 - [`HttpClient`](#framework-http-httpclient)
 - [`HttpException`](#framework-http-httpexception)
 - [`Request`](#framework-http-request)
-- [`Response`](#framework-http-response)
+- [`Response`](#framework-http-response) — HTTP 响应封装
 - [`Session`](#framework-http-session)
 - [`SessionServiceProvider`](#framework-http-sessionserviceprovider)
 - [`StaticFile`](#framework-http-staticfile)
@@ -116,6 +116,8 @@
 <a name="framework-http-response"></a>
 #### `Framework\Http\Response`
 
+HTTP 响应封装
+
 **文件:** `php/src/Http/Response.php`
 
 **方法：**
@@ -123,10 +125,11 @@
 | 方法 | 说明 | 参数 |
 |---|---|---|
 | `fromSymfony` |  | `Symfony\Component\HttpFoundation\Response $response` |
-| `json` |  | `mixed $data`, `int $status` = 200, `array $headers` = [] |
-| `html` |  | `mixed $html`, `int $status` = 200, `array $headers` = [] |
-| `redirect` |  | `string $url`, `int $status` = 302 |
-| `send` |  | — |
+| `json` | JSON 响应 | `mixed $data`, `int $status` = 200, `array $headers` = [] |
+| `html` | HTML 响应 — 自动适配环境 | `mixed $html`, `int $status` = 200, `array $headers` = [] |
+| `wasm` | WASM 专用响应 — 返回结构化数据 | `mixed $html`, `string $title` = '', `int $status` = 200 |
+| `redirect` | 重定向响应 | `string $url`, `int $status` = 302 |
+| `send` | 发送响应 | — |
 | `getSfResponse` |  | — |
 | `setHeader` |  | `string $key`, `string $value` |
 | `setStatusCode` |  | `int $code` |

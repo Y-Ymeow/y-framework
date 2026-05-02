@@ -1,6 +1,6 @@
 # View 视图系统 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:37:00
+> 由 DocGen 自动生成于 2026-05-02 05:56:00
 
 ## 组件清单
 
@@ -28,7 +28,7 @@
 
 - **文件:** `php/src/View/Document/AssetRegistry.php`
 
-**公开方法 (13)：**
+**公开方法 (15)：**
 
 - `getInstance(): Framework\View\Document\AssetRegistry`
 - `reset(): void`
@@ -43,6 +43,8 @@
 - `ux(): Framework\View\Document\AssetRegistry`
 - `renderCss(): string`
 - `renderJs(): string`
+- `getCssList(): array` — 获取已注册的 CSS 文件列表（用于 WASM JSON 输出）
+- `getJsList(): array` — 获取已注册的 JS 文件列表（用于 WASM JSON 输出）
 
 ### `Framework\View\Container`
 
@@ -79,9 +81,10 @@
 
 - **文件:** `php/src/View/Document/Document.php`
 
-**公开方法 (19)：**
+**公开方法 (21)：**
 
 - `make(string $title = ''): static`
+- `mode(string $mode): static` — 设置渲染模式
 - `registerScript(string $id, string $js): void` — 全局注册 JS
 - `injectStatic(string $location, string $html): void`
 - `addMeta(string $name, string $content): void`
@@ -100,6 +103,7 @@
 - `main(mixed $content): static`
 - `footer(mixed $content): static`
 - `render(): string`
+- `toJson(): string` — 输出 JSON 格式（用于 Tauri JS Bridge 调用）
 
 ### `Framework\View\Base\Element`
 

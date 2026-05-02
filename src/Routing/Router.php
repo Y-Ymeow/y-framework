@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Framework\Routing;
 
 use Framework\Component\Live\LiveComponent;
+use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
 use Framework\Http\Request;
 use Framework\Http\Response;
@@ -194,7 +195,7 @@ class Router
             return $this->invoke($route, $request, $params);
         }
 
-        return Response::html(Element::make('h1')->text('404 Not Found'), 404);
+        return $this->sendContent(Element::make('h1')->text('404 Not Found'), 404);
     }
 
     private function matchPath(string $routePath, string $requestPath): array|false
@@ -310,7 +311,7 @@ class Router
             return $this->invokeCallable($handler, $request, $params);
         }
 
-        return Response::html('Invalid route handler', 500);
+        return $this->sendContent(Element::make('h1')->text('Invalid route handler'), 500);
     }
 
     private function invokeCallable(callable $handler, Request $request, array $params): Response
@@ -344,6 +345,14 @@ class Router
         return $args;
     }
 
+    private function sendContent(mixed $content, int $statusCode): Response {
+        if (AppEnvironment::isWasm()) {
+            return Response::wasm($content, status: $statusCode);
+        }
+
+        return Response::html($content, $statusCode);
+    }
+
     private function normalizeResponse(mixed $result): Response
     {
         if ($result instanceof Response) {
@@ -355,14 +364,14 @@ class Router
         }
 
         if (is_string($result)) {
-            return Response::html($result);
+            return $this->sendContent($result, 200);
         }
 
         if ($result instanceof LiveComponent || $result instanceof Element || $result instanceof UXComponent) {
-            return Response::html($result);
+            return $this->sendContent($result, 200);
         }
 
-        return Response::html(Element::make('div')->text('No content'), 204);
+        return $this->sendContent(Element::make('div')->text('No content'), 204);
     }
 
     public function getRoutes(): array

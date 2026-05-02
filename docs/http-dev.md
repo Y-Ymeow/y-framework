@@ -1,6 +1,6 @@
 # HTTP 核心 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:37:00
+> 由 DocGen 自动生成于 2026-05-02 05:56:00
 
 ## 组件清单
 
@@ -103,13 +103,14 @@
 
 - **文件:** `php/src/Http/Response.php`
 
-**公开方法 (11)：**
+**公开方法 (12)：**
 
 - `fromSymfony(Symfony\Component\HttpFoundation\Response $response): Framework\Http\Response`
-- `json(mixed $data, int $status = 200, array $headers = []): Framework\Http\Response`
-- `html(mixed $html, int $status = 200, array $headers = []): Framework\Http\Response`
-- `redirect(string $url, int $status = 302): Framework\Http\Response`
-- `send(): void`
+- `json(mixed $data, int $status = 200, array $headers = []): Framework\Http\Response` — JSON 响应
+- `html(mixed $html, int $status = 200, array $headers = []): Framework\Http\Response` — HTML 响应 — 自动适配环境
+- `wasm(mixed $html, string $title = '', int $status = 200): Framework\Http\Response` — WASM 专用响应 — 返回结构化数据
+- `redirect(string $url, int $status = 302): Framework\Http\Response` — 重定向响应
+- `send(): void` — 发送响应
 - `getSfResponse(): Symfony\Component\HttpFoundation\Response`
 - `setHeader(string $key, string $value): Framework\Http\Response`
 - `setStatusCode(int $code): Framework\Http\Response`

@@ -1,13 +1,13 @@
 # View 视图系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:37:00
+> 由 DocGen 自动生成于 2026-05-02 05:56:00
 
 ## 目录
 
 **其他**
 - [`AssetRegistry`](#framework-view-document-assetregistry)
 - [`Container`](#framework-view-container) — Container — 布局容器
-- [`Document`](#framework-view-document-document)
+- [`Document`](#framework-view-document-document) — HTML 文档构建器
 - [`Element`](#framework-view-base-element) — Element — HTML 元素基类
 - [`Form`](#framework-view-form) — Form — 表单及表单元素
 - [`Fragment`](#framework-view-fragment)
@@ -45,6 +45,8 @@
 | `ux` |  | — |
 | `renderCss` |  | — |
 | `renderJs` |  | — |
+| `getCssList` | 获取已注册的 CSS 文件列表（用于 WASM JSON 输出） | — |
+| `getJsList` | 获取已注册的 JS 文件列表（用于 WASM JSON 输出） | — |
 
 
 <a name="framework-view-container"></a>
@@ -86,13 +88,24 @@ Container — 布局容器
 <a name="framework-view-document-document"></a>
 #### `Framework\View\Document\Document`
 
+HTML 文档构建器
+
 **实现:** `Stringable`  | **文件:** `php/src/View/Document/Document.php`
+
+**常量：**
+
+| 常量 | 值 | 说明 |
+|---|---|---|
+| `MODE_FULL` | `'full'` | 渲染模式 |
+| `MODE_PARTIAL` | `'partial'` |  |
+| `MODE_FRAGMENT` | `'fragment'` |  |
 
 **方法：**
 
 | 方法 | 说明 | 参数 |
 |---|---|---|
 | `make` |  | `string $title` = '' |
+| `mode` | 设置渲染模式 | `string $mode` |
 | `registerScript` | 全局注册 JS | `string $id`, `string $js` |
 | `injectStatic` |  | `string $location`, `string $html` |
 | `addMeta` |  | `string $name`, `string $content` |
@@ -111,6 +124,7 @@ Container — 布局容器
 | `main` |  | `mixed $content` |
 | `footer` |  | `mixed $content` |
 | `render` |  | — |
+| `toJson` | 输出 JSON 格式（用于 Tauri JS Bridge 调用） | — |
 
 
 <a name="framework-view-base-element"></a>
