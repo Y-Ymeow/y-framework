@@ -11,13 +11,13 @@ class Session
     public function start(): void
     {
         if ($this->started || session_status() === PHP_SESSION_ACTIVE) return;
-        
+
         $sessionPath = getenv('SESSION_PATH') ?: $_ENV['SESSION_PATH'] ?? null;
         if (!$sessionPath) {
             $sessionPath = '/computer/Project/frameworks/php/storage/sessions';
         }
         ini_set('session.save_path', $sessionPath);
-        
+
         session_start();
         $this->started = true;
     }
@@ -37,7 +37,7 @@ class Session
     public function has(string $key): bool
     {
         $this->start();
-        return array_key_exists($key, $_SESSION);
+        return $_SESSION ? array_key_exists($key, $_SESSION) : false;
     }
 
     public function remove(string $key): void
@@ -84,9 +84,14 @@ class Session
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params['path'], $params['domain'],
-                $params['secure'], $params['httponly']
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'],
+                $params['domain'],
+                $params['secure'],
+                $params['httponly']
             );
         }
         session_destroy();
