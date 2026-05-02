@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
-use Framework\Foundation\AppEnvironment;
-
 /**
  * Request HTTP 请求
  *
@@ -75,10 +73,6 @@ class Request
      */
     public static function createFromGlobals(): self
     {
-        if (AppEnvironment::isWasm()) {
-            return self::fromWasm();
-        }
-
         return new self($_GET, $_POST, $_COOKIE, $_FILES, $_SERVER, null);
     }
 
@@ -144,60 +138,6 @@ class Request
         }
 
         return new self($query, $post, $cookies, $files, $server, $content);
-    }
-
-    /**
-     * 从 WASM 环境创建请求
-     * @return static
-     */
-    private static function fromWasm(): self
-    {
-        $body = '';
-        $method = 'GET';
-        $uri = '/';
-        $headers = [];
-
-        if (function_exists('wasm_get_request')) {
-            $req = wasm_get_request();
-            $method = $req['method'] ?? 'GET';
-            $uri = $req['uri'] ?? '/';
-            $body = $req['body'] ?? '';
-            $headers = $req['headers'] ?? [];
-        }
-
-        $server = [
-            'REQUEST_METHOD' => $method,
-            'REQUEST_URI' => $uri,
-            'SERVER_NAME' => 'localhost',
-            'SERVER_PORT' => 80,
-            'HTTP_HOST' => 'localhost',
-            'REMOTE_ADDR' => '127.0.0.1',
-            'SERVER_PROTOCOL' => 'HTTP/1.1',
-            'REQUEST_TIME' => time(),
-            'REQUEST_TIME_FLOAT' => microtime(true),
-        ];
-
-        foreach ($headers as $key => $value) {
-            $serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $key));
-            $server[$serverKey] = $value;
-        }
-
-        $post = [];
-        $query = [];
-        $parsed = parse_url($uri, PHP_URL_QUERY);
-        if ($parsed) {
-            parse_str($parsed, $query);
-        }
-
-        if (str_contains($server['HTTP_CONTENT_TYPE'] ?? '', 'application/json') && $body) {
-            return new self($query, $post, [], [], $server, $body);
-        }
-
-        if (in_array($method, ['POST', 'PUT', 'PATCH']) && $body) {
-            parse_str($body, $post);
-        }
-
-        return new self($query, $post, [], [], $server, $body);
     }
 
     /**
@@ -479,11 +419,16 @@ class Request
             return $this->content;
         }
 
-        if (AppEnvironment::isWasm()) {
-            return '';
+        $input = file_get_contents('php://input');
+        if ($input !== false && $input !== '') {
+            return $this->content = $input;
         }
 
-        return $this->content = file_get_contents('php://input') ?: '';
+        if (!empty($this->post)) {
+            return $this->content = http_build_query($this->post);
+        }
+
+        return $this->content = '';
     }
 
     /**
