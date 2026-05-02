@@ -56,3 +56,5 @@ config/
 database/
 resources/
 public/
+storage/sessions/
+storage/sse/
