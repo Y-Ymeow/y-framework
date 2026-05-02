@@ -128,6 +128,7 @@
 }
 
 /* 空状态 */
+.ux-transfer-panel-empty,
 .ux-transfer-empty {
     padding: 32px 16px;
     text-align: center;

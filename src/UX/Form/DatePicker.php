@@ -7,6 +7,46 @@ namespace Framework\UX\Form;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 日期选择器
+ *
+ * 支持日期选择和日期时间选择，内置日历面板、月份导航、范围限制。
+ * 启用 showTime() 后自动切换为日期时间模式，需点"确定"关闭面板。
+ *
+ * ## JS 交互能力（datePicker.js）
+ *
+ * PHP 定义配置 → JS 自动处理日历渲染、日期选择、面板开关：
+ *
+ * - **初始化**: 扫描 `.ux-datepicker` 元素，绑定点击事件
+ * - **面板控制**: 点击输入框 → 显示日历面板 → 选择日期 → 更新值
+ * - **导航**: 上月/下月按钮切换视图
+ * - **时间选择**: showTime 模式下显示时分秒选择器
+ * - **值同步**: 选择后触发 `ux:change` 事件 → liveModel 同步到 LiveComponent
+ *
+ * ### 数据格式
+ * - 日期模式: `Y-m-d`（如 "2026-05-02"）
+ * - 时间模式: `Y-m-d H:i:s`（如 "2026-05-02 14:30:00"）
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ *
+ * @ux-example
+ * // 基础日期选择
+ * DatePicker::make()->placeholder('选择日期')
+ *
+ * // 日期时间选择
+ * DatePicker::make()
+ *     ->showTime()
+ *     ->timeHour(9)
+ *     ->timeMinute(0)
+ *     ->liveModel('eventDate')
+ *
+ * // 范围限制
+ * DatePicker::make()
+ *     ->minDate('2026-01-01')
+ *     ->maxDate('2026-12-31')
+ * @ux-example-end
+ */
 class DatePicker extends UXComponent
 {
     protected ?string $value = null;
@@ -23,60 +63,126 @@ class DatePicker extends UXComponent
     protected int $timeMinute = 0;
     protected int $timeSecond = 0;
 
+    /**
+     * 设置默认日期值
+     * @param string $value 日期字符串，格式 Y-m-d
+     * @return static
+     * @ux-example DatePicker::make()->value('2026-05-02')
+     */
     public function value(string $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 设置占位文本
+     * @param string $placeholder 占位提示
+     * @return static
+     * @ux-example DatePicker::make()->placeholder('请选择日期')
+     */
     public function placeholder(string $placeholder): static
     {
         $this->placeholder = $placeholder;
         return $this;
     }
 
+    /**
+     * 设置日期格式
+     * @param string $format PHP 日期格式
+     * @return static
+     * @ux-example DatePicker::make()->format('Y/m/d')
+     * @ux-default 'Y-m-d'
+     */
     public function format(string $format): static
     {
         $this->format = $format;
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-example DatePicker::make()->disabled()
+     * @ux-default true
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 是否允许清除
+     * @param bool $allow 是否允许
+     * @return static
+     * @ux-example DatePicker::make()->allowClear(false)
+     * @ux-default true
+     */
     public function allowClear(bool $allow = true): static
     {
         $this->allowClear = $allow;
         return $this;
     }
 
+    /**
+     * 显示"今天"快捷按钮
+     * @param bool $show 是否显示
+     * @return static
+     * @ux-example DatePicker::make()->showToday()
+     * @ux-default true
+     */
     public function showToday(bool $show = true): static
     {
         $this->showToday = $show;
         return $this;
     }
 
+    /**
+     * 设置最小可选日期
+     * @param string $date 日期字符串 Y-m-d
+     * @return static
+     * @ux-example DatePicker::make()->minDate('2026-01-01')
+     */
     public function minDate(string $date): static
     {
         $this->minDate = $date;
         return $this;
     }
 
+    /**
+     * 设置最大可选日期
+     * @param string $date 日期字符串 Y-m-d
+     * @return static
+     * @ux-example DatePicker::make()->maxDate('2026-12-31')
+     */
     public function maxDate(string $date): static
     {
         $this->maxDate = $date;
         return $this;
     }
 
+    /**
+     * 设置 LiveAction（已废弃，请用 liveModel）
+     * @param string $action Action 名称
+     * @return static
+     * @ux-example DatePicker::make()->action('updateDate')
+     * @ux-internal
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 启用时间选择，格式自动切换为 Y-m-d H:i:s
+     * @param bool $show 是否启用
+     * @return static
+     * @ux-example DatePicker::make()->showTime()
+     * @ux-default true
+     */
     public function showTime(bool $show = true): static
     {
         $this->showTime = $show;
@@ -86,24 +192,45 @@ class DatePicker extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置默认小时
+     * @param int $hour 小时 0-23
+     * @return static
+     * @ux-example DatePicker::make()->showTime()->timeHour(9)
+     */
     public function timeHour(int $hour): static
     {
         $this->timeHour = max(0, min(23, $hour));
         return $this;
     }
 
+    /**
+     * 设置默认分钟
+     * @param int $minute 分钟 0-59
+     * @return static
+     * @ux-example DatePicker::make()->showTime()->timeMinute(30)
+     */
     public function timeMinute(int $minute): static
     {
         $this->timeMinute = max(0, min(59, $minute));
         return $this;
     }
 
+    /**
+     * 设置默认秒数
+     * @param int $second 秒 0-59
+     * @return static
+     * @ux-example DatePicker::make()->showTime()->timeSecond(0)
+     */
     public function timeSecond(int $second): static
     {
         $this->timeSecond = max(0, min(59, $second));
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $el = new Element('div');

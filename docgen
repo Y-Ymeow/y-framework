@@ -1,0 +1,1030 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * DocGen - 通用文档生成引擎 v2.1
+ *
+ * 从源码注释自动生成多类型文档：
+ *   - API 参考（使用者视角）
+ *   - 开发文档（开发者视角）
+ *   - 架构文档（模块关系）
+ *   - 文件索引（代码导航）
+ *
+ * 支持语言：
+ *   - PHP：通过 ReflectionClass 解析类、方法、属性
+ *   - JavaScript：通过 JSDoc 注释解析函数、类、常量
+ *
+ * 用法：
+ *   php docgen                    # 生成所有已配置模块的文档
+ *   php docgen ux                 # 只生成 UX 模块
+ *   php docgen --all              # 全量生成
+ *   php docgen --type api         # 只生成 API 文档
+ *   php docgen --init             # 初始化配置文件
+ */
+
+$baseDir = __DIR__;
+require_once $baseDir . '/vendor/autoload.php';
+
+// 解析命令行参数
+$args = array_slice($argv, 1);
+$targetModule = null;
+$type = 'all';
+$all = false;
+$init = false;
+
+foreach ($args as $arg) {
+    if ($arg === '--all') { $all = true; continue; }
+    if ($arg === '--init') { $init = true; continue; }
+    if (str_starts_with($arg, '--type=')) { $type = explode('=', $arg)[1]; continue; }
+    if (!str_starts_with($arg, '--')) { $targetModule = $arg; }
+}
+
+// 初始化模式：生成默认配置文件
+if ($init) {
+    generateDefaultConfig();
+    exit(0);
+}
+
+// 加载或创建配置
+$configFile = $baseDir . '/docgen.config.json';
+if (!file_exists($configFile)) {
+    echo "⚠️  未找到 {$configFile}\n";
+    echo "运行 `php docgen --init` 生成默认配置\n";
+    exit(1);
+}
+$config = json_decode(file_get_contents($configFile), true);
+
+// 确定要处理的模块
+if ($targetModule) {
+    if (!isset($config['modules'][$targetModule])) {
+        echo "❌ 未知的模块: {$targetModule}\n";
+        echo "可用模块: " . implode(', ', array_keys($config['modules'])) . "\n";
+        exit(1);
+    }
+    $modulesToProcess = [$targetModule => $config['modules'][$targetModule]];
+} elseif ($all) {
+    $modulesToProcess = $config['modules'];
+} else {
+    // 默认只处理有 scan 配置的模块
+    $modulesToProcess = array_filter($config['modules'], fn($m) => !empty($m['scan']));
+}
+
+$docsDir = rtrim($config['output_dir'] ?? ($baseDir . '/docs'), '/');
+if (!is_dir($docsDir)) mkdir($docsDir, 0755, true);
+
+echo "📝 DocGen v2.0\n";
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+
+foreach ($modulesToProcess as $name => $modConfig) {
+    processModule($name, $modConfig, $type, $docsDir, $baseDir);
+}
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+echo "✅ 完成！文档输出到: {$docsDir}/\n";
+
+// ============================================================
+// 模块处理器
+// ============================================================
+
+function processModule(string $name, array $config, string $type, string $docsDir, string $baseDir): void
+{
+    echo "\n📦 [{$name}] ";
+
+    $scanPath = $config['scan'] ?? null;
+    $namespacePrefix = $config['namespace'] ?? '';
+    $tags = $config['tags'] ?? [];
+    $templates = $config['templates'] ?? ['api', 'dev'];
+    $language = $config['language'] ?? 'php'; // 新增：支持 js 语言
+
+    if (!$scanPath || !is_dir($baseDir . '/' . $scanPath)) {
+        echo "⏭️  跳过（无扫描路径）\n";
+        return;
+    }
+
+    // 根据语言类型选择扫描器
+    if ($language === 'js') {
+        $items = scanJsFiles($baseDir . '/' . $scanPath, $tags);
+        $itemType = 'JS 文件';
+    } else {
+        $items = scanClasses($baseDir . '/' . $scanPath, $namespacePrefix, $tags);
+        $itemType = '类';
+    }
+
+    if (empty($items)) {
+        echo "⚠️  未发现可扫描的{$itemType}\n";
+        return;
+    }
+
+    echo "发现 " . count($items) . " 个{$itemType}\n";
+
+    foreach ($templates as $tplType) {
+        if ($type !== 'all' && $type !== $tplType) continue;
+
+        switch ($tplType) {
+            case 'api':
+                if ($language === 'js') {
+                    $content = generateJsApiDoc($name, $items, $config);
+                } else {
+                    $content = generateApiDoc($name, $items, $config);
+                }
+                file_put_contents("{$docsDir}/{$name}-api.md", $content);
+                echo "  ✅ {$name}-api.md\n";
+                break;
+
+            case 'dev':
+                if ($language === 'js') {
+                    $content = generateJsDevDoc($name, $items, $config);
+                } else {
+                    $content = generateDevDoc($name, $items, $config);
+                }
+                file_put_contents("{$docsDir}/{$name}-dev.md", $content);
+                echo "  ✅ {$name}-dev.md\n";
+                break;
+
+            case 'arch':
+                $content = generateArchDoc($name, $config);
+                file_put_contents("{$docsDir}/{$name}.md", $content);
+                echo "  ✅ {$name}.md\n";
+                break;
+
+            case 'index':
+                $content = generateIndexDoc($name, $scanPath, $baseDir);
+                file_put_contents("{$docsDir}/{$name}-index.md", $content);
+                echo "  ✅ {$name}-index.md\n";
+                break;
+        }
+    }
+}
+
+// ============================================================
+// 类扫描器
+// ============================================================
+
+function scanClasses(string $dir, string $namespacePrefix, array $tags): array
+{
+    $results = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+
+    foreach ($iterator as $file) {
+        if ($file->getExtension() !== 'php') continue;
+
+        $content = file_get_contents($file->getPathname());
+        
+        // 提取命名空间和类名
+        if (!preg_match('/namespace\s+([\w\\\\]+);/', $content, $nsMatch)) continue;
+        if (!preg_match('/class\s+(\w+)/', $content, $classMatch)) continue;
+
+        $className = $classMatch[1];
+        $fullNamespace = $nsMatch[1];
+        $fqcn = $fullNamespace . '\\' . $className;
+        $relativePath = str_replace(dirname(__DIR__) . '/', '', $file->getPathname());
+
+        try {
+            $ref = new ReflectionClass($fqcn);
+        } catch (\Throwable $e) {
+            continue;
+        }
+
+        // 跳过接口、trait、抽象基类（除非在白名单中）
+        if ($ref->isInterface() || $ref->isTrait()) continue;
+
+        $docComment = $ref->getDocComment() ?: '';
+        $meta = parseDocTags($docComment, $tags);
+
+        // category 过滤（暂不启用，保留所有类）
+        if (false && !empty($tags['category'])) {
+            $catVal = $meta[$tags['category']] ?? null;
+            $hasCategory = !empty($catVal) && is_array($catVal) ? !empty($catVal[0]) : (bool)$catVal;
+            if ($hasCategory) continue;
+        }
+
+        $methods = [];
+        foreach ($ref->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if ($method->getDeclaringClass()->getName() !== $fqcn) continue;
+            if (strpos($method->getName(), '__') === 0) continue;
+
+            $methodDoc = $method->getDocComment() ?: '';
+            $methodMeta = parseDocTags($methodDoc, $tags);
+
+            if (!empty($tags['internal']) && !empty($methodMeta[$tags['internal']])) continue;
+
+            $params = [];
+            foreach ($method->getParameters() as $param) {
+                $pType = $param->getType() ? $param->getType()->__toString() : 'mixed';
+                $params[] = [
+                    'name' => '$' . $param->getName(),
+                    'type' => $pType,
+                    'default' => $param->isDefaultValueAvailable() ? formatValue($param->getDefaultValue()) : null,
+                ];
+            }
+
+            $returnType = $method->getReturnType() ? $method->getReturnType()->__toString() : 'void';
+
+            $methods[] = [
+                'name' => $method->getName(),
+                'description' => $methodMeta['description'] ?? '',
+                'params' => $params,
+                'returnType' => $returnType,
+                'examples' => $methodMeta['example'] ?? [],
+                'defaults' => $methodMeta['default'] ?? [],
+                'deprecated' => !empty($methodMeta['deprecated']),
+            ];
+        }
+
+        $constants = [];
+        foreach ($ref->getReflectionConstants() as $const) {
+            if (!$const->isPublic()) continue;
+            $constDoc = $const->getDocComment() ?: '';
+            $constMeta = parseDocTags($constDoc, $tags);
+            $constants[] = [
+                'name' => $const->getName(),
+                'value' => formatValue($const->getValue()),
+                'description' => $constMeta['description'] ?? '',
+            ];
+        }
+
+        $properties = [];
+        foreach ($ref->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->getDeclaringClass()->getName() !== $fqcn) continue;
+            if (strpos($prop->getName(), '_') === 0) continue;
+            
+            $propDoc = $prop->getDocComment() ?: '';
+            $propMeta = parseDocTags($propDoc, $tags);
+            
+            $properties[] = [
+                'name' => '$' . $prop->getName(),
+                'type' => $prop->getType() ? $prop->getType()->__toString() : 'mixed',
+                'description' => $propMeta['description'] ?? '',
+                'default' => $prop->hasDefaultValue() ? formatValue($prop->getDefaultValue()) : null,
+            ];
+        }
+
+        $parentClass = $ref->getParentClass() ? $ref->getParentClass()->getName() : null;
+        $interfaces = $ref->getInterfaceNames();
+
+        $results[] = [
+            'name' => $className,
+            'namespace' => $fullNamespace,
+            'fqcn' => $fqcn,
+            'file' => $relativePath,
+            'description' => $meta['description'] ?? '',
+            'category' => $meta[$tags['category'] ?? 'category'] ?? '',
+            'since' => $meta[$tags['since'] ?? 'since'] ?? '',
+            'examples' => $meta['example'] ?? [],
+            'methods' => $methods,
+            'constants' => $constants,
+            'properties' => $properties,
+            'parent' => $parentClass,
+            'interfaces' => $interfaces,
+            'isAbstract' => $ref->isAbstract(),
+            'isFinal' => $ref->isFinal(),
+            'extraMeta' => array_diff_key($meta, array_flip(['description', 'category', 'since', 'example', 'default'])),
+        ];
+    }
+
+    usort($results, fn($a, $b) => strcmp(($a['category'] ?: '') . $a['name'], ($b['category'] ?: '') . $b['name']));
+    return $results;
+}
+
+// ============================================================
+// JS 文件扫描器
+// ============================================================
+
+function scanJsFiles(string $dir, array $tags): array
+{
+    $results = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+
+    foreach ($iterator as $file) {
+        if (!in_array($file->getExtension(), ['js', 'ts', 'jsx', 'tsx'])) continue;
+
+        $content = file_get_contents($file->getPathname());
+        $relativePath = str_replace(dirname(__DIR__) . '/', '', $file->getPathname());
+        $fileName = $file->getBasename('.' . $file->getExtension());
+
+        // 解析 JSDoc 注释和导出
+        $items = parseJsFile($content, $relativePath, $fileName, $tags);
+        $results = array_merge($results, $items);
+    }
+
+    usort($results, fn($a, $b) => strcmp(($a['category'] ?: '') . $a['name'], ($b['category'] ?: '') . $b['name']));
+    return $results;
+}
+
+function parseJsFile(string $content, string $filePath, string $fileName, array $tags): array
+{
+    $results = [];
+
+    // 匹配带 JSDoc 注释的函数/类/变量
+    // 模式：/** ... */ 后跟 export function/class/const/let/var
+
+    // 1. 导出的函数
+    preg_match_all('/\/\*\*([\s\S]*?)\*\/\s*(export\s+)?(async\s+)?function\s+(\w+)\s*\(([^)]*)\)/', $content, $funcMatches, PREG_SET_ORDER);
+    foreach ($funcMatches as $match) {
+        $docComment = '/**' . $match[1] . '*/';
+        $meta = parseDocTags($docComment, $tags);
+
+        $params = parseJsParams($match[5]);
+
+        $results[] = [
+            'type' => 'function',
+            'name' => $match[4],
+            'file' => $filePath,
+            'description' => $meta['description'] ?? '',
+            'category' => $meta[$tags['category'] ?? 'category'] ?? '',
+            'since' => $meta[$tags['since'] ?? 'since'] ?? '',
+            'examples' => $meta['example'] ?? [],
+            'params' => $params,
+            'async' => !empty($match[3]),
+            'exported' => !empty($match[2]),
+        ];
+    }
+
+    // 2. 导出的类
+    preg_match_all('/\/\*\*([\s\S]*?)\*\/\s*(export\s+)?(class|const|let|var)\s+(\w+)/', $content, $classMatches, PREG_SET_ORDER);
+    foreach ($classMatches as $match) {
+        $docComment = '/**' . $match[1] . '*/';
+        $meta = parseDocTags($docComment, $tags);
+
+        $kind = $match[3];
+        if ($kind === 'class') {
+            $type = 'class';
+        } elseif (in_array($kind, ['const', 'let', 'var'])) {
+            $type = 'constant';
+        } else {
+            $type = 'unknown';
+        }
+
+        $results[] = [
+            'type' => $type,
+            'name' => $match[4],
+            'file' => $filePath,
+            'description' => $meta['description'] ?? '',
+            'category' => $meta[$tags['category'] ?? 'category'] ?? '',
+            'since' => $meta[$tags['since'] ?? 'since'] ?? '',
+            'examples' => $meta['example'] ?? [],
+            'params' => [],
+            'exported' => !empty($match[2]),
+        ];
+    }
+
+    // 3. 箭头函数赋值
+    preg_match_all('/\/\*\*([\s\S]*?)\*\/\s*(export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/', $content, $arrowMatches, PREG_SET_ORDER);
+    foreach ($arrowMatches as $match) {
+        $docComment = '/**' . $match[1] . '*/';
+        $meta = parseDocTags($docComment, $tags);
+
+        $results[] = [
+            'type' => 'function',
+            'name' => $match[3],
+            'file' => $filePath,
+            'description' => $meta['description'] ?? '',
+            'category' => $meta[$tags['category'] ?? 'category'] ?? '',
+            'since' => $meta[$tags['since'] ?? 'since'] ?? '',
+            'examples' => $meta['example'] ?? [],
+            'params' => [],
+            'isArrow' => true,
+            'exported' => !empty($match[2]),
+        ];
+    }
+
+    // 4. 如果文件没有任何导出，将整个文件作为一个模块记录
+    if (empty($results)) {
+        // 尝试提取文件顶部的注释
+        if (preg_match('/^\/\*\*([\s\S]*?)\*\//', $content, $fileMatch)) {
+            $docComment = '/**' . $fileMatch[1] . '*/';
+            $meta = parseDocTags($docComment, $tags);
+        } else {
+            $meta = ['description' => ''];
+        }
+
+        $results[] = [
+            'type' => 'module',
+            'name' => $fileName,
+            'file' => $filePath,
+            'description' => $meta['description'] ?? '',
+            'category' => $meta[$tags['category'] ?? 'category'] ?? '',
+            'since' => $meta[$tags['since'] ?? 'since'] ?? '',
+            'examples' => $meta['example'] ?? [],
+            'params' => [],
+            'exported' => false,
+        ];
+    }
+
+    return $results;
+}
+
+function parseJsParams(string $paramStr): array
+{
+    $params = [];
+    if (trim($paramStr) === '') return $params;
+
+    // 简单解析参数（不处理解构等复杂情况）
+    $parts = explode(',', $paramStr);
+    foreach ($parts as $part) {
+        $part = trim($part);
+        if ($part === '' || $part === '...args') continue;
+
+        // 移除默认值
+        if (strpos($part, '=') !== false) {
+            $part = explode('=', $part)[0];
+        }
+        $part = trim($part);
+
+        // 提取参数名（处理 {obj}, [arr] 等）
+        if (preg_match('/^(\.{3})?(\w+|\{.*?\}|\[.*?\])$/', $part, $m)) {
+            $params[] = [
+                'name' => '$' . $m[2],
+                'type' => 'any',
+                'default' => null,
+            ];
+        }
+    }
+
+    return $params;
+}
+
+// ============================================================
+// 注释解析器
+// ============================================================
+
+function parseDocTags(string $doc, array $tagMap): array
+{
+    $result = ['description' => '', 'example' => [], 'default' => []];
+
+    $lines = explode("\n", $doc);
+    $descLines = [];
+    $inDesc = true;
+
+    foreach ($lines as $line) {
+        $line = preg_replace('/^\s*\*\s?/', '', $line);
+        $line = trim($line, " \t\n\r\0\x0B*/");
+
+        if ($line === '') {
+            if ($inDesc && !empty($descLines)) $inDesc = false;
+            continue;
+        }
+
+        // 匹配自定义标签
+        $matched = false;
+        foreach ($tagMap as $key => $tagName) {
+            $pattern = "/^@{$tagName}\s+(.+)/";
+            if (preg_match($pattern, $line, $m)) {
+                $result[$key][] = trim($m[1]);
+                $inDesc = false;
+                $matched = true;
+                break;
+            }
+        }
+
+        if ($matched) continue;
+
+        // 匹配 @param / @return / @var 等标准标签
+        if (preg_match('/^@(param|return|var|throws|see)\s+/', $line)) {
+            $inDesc = false;
+            continue;
+        }
+
+        // 匹配 deprecated
+        if (strpos($line, '@deprecated') === 0) {
+            $result['deprecated'] = true;
+            $inDesc = false;
+            continue;
+        }
+
+        // 匹配 default 值（用于 bool 参数）
+        if (preg_match('/^@default\s+(.+)/', $line, $m)) {
+            $result['default'][] = trim($m[1]);
+            $inDesc = false;
+            continue;
+        }
+
+        // 匹配 example
+        if (preg_match('/^@example\s+(.+)/', $line, $m)) {
+            $result['example'][] = trim($m[1]);
+            $inDesc = false;
+            continue;
+        }
+
+        // 匹配 internal
+        if (preg_match('/^@internal/', $line)) {
+            $result['internal'] = true;
+            $inDesc = false;
+            continue;
+        }
+
+        if ($inDesc) {
+            $descLines[] = $line;
+        }
+    }
+
+    $result['description'] = implode(' ', $descLines);
+    return $result;
+}
+
+function formatValue($value): string
+{
+    if (is_bool($value)) return $value ? 'true' : 'false';
+    if (is_null($value)) return 'null';
+    if (is_string($value)) return "'{$value}'";
+    if (is_array($value)) return '[' . implode(', ', array_map(__FUNCTION__, $value)) . ']';
+    return (string)$value;
+}
+
+// ============================================================
+// 文档生成器
+// ============================================================
+
+function generateApiDoc(string $moduleName, array $classes, array $config): string
+{
+    $title = $config['title'] ?? $moduleName;
+    $md = "# {$title} — API 参考\n\n";
+    $md .= "> 由 DocGen 自动生成于 " . date('Y-m-d H:i:s') . "\n\n";
+
+    // 目录
+    $grouped = [];
+    foreach ($classes as $cls) {
+        $cat = $cls['category'] ?: '其他';
+        $grouped[$cat][] = $cls;
+    }
+
+    $md .= "## 目录\n\n";
+    foreach ($grouped as $cat => $items) {
+        $md .= "**{$cat}**\n";
+        foreach ($items as $item) {
+            $anchor = strtolower(str_replace('\\', '-', $item['fqcn']));
+            $md .= "- [`{$item['name']}`](#{$anchor})";
+            if ($item['description']) $md .= " — {$item['description']}";
+            $md .= "\n";
+        }
+        $md .= "\n";
+    }
+
+    // 类详情
+    foreach ($grouped as $cat => $items) {
+        $md .= "---\n\n### {$cat}\n\n";
+
+        foreach ($items as $cls) {
+            $anchor = strtolower(str_replace('\\', '-', $cls['fqcn']));
+            $md .= "<a name=\"{$anchor}\"></a>\n";
+            $md .= "#### `{$cls['fqcn']}`\n\n";
+
+            if ($cls['description']) {
+                $md .= "{$cls['description']}\n\n";
+            }
+
+            // 元信息
+            $meta = [];
+            if ($cls['since']) $meta[] = "**Since:** {$cls['since']}";
+            if ($cls['parent']) $meta[] = "**继承:** `{$cls['parent']}`";
+            if ($cls['interfaces']) $meta[] = "**实现:** `" . implode(', ', $cls['interfaces']) . "`";
+            if ($cls['isFinal']) $meta[] = "**final**";
+            if ($cls['isAbstract']) $meta[] = "**abstract**";
+            $meta[] = "**文件:** `{$cls['file']}`";
+
+            $md .= implode('  | ', $meta) . "\n\n";
+
+            // 额外元数据（如 ux-*, live-* 等）
+            if (!empty($cls['extraMeta'])) {
+                $md .= "| 属性 | 值 |\n|---|---|\n";
+                foreach ($cls['extraMeta'] as $k => $v) {
+                    $vals = is_array($v) ? $v : [$v];
+                    $md .= "| `{$k}` | " . implode(', ', $vals) . " |\n";
+                }
+                $md .= "\n";
+            }
+
+            // 示例
+            if (!empty($cls['examples'])) {
+                $md .= "**示例：**\n\n";
+                foreach ($cls['examples'] as $ex) {
+                    $md .= "```php\n{$ex}\n```\n\n";
+                }
+            }
+
+            // 常量
+            if (!empty($cls['constants'])) {
+                $md .= "**常量：**\n\n";
+                $md .= "| 常量 | 值 | 说明 |\n|---|---|---|\n";
+                foreach ($cls['constants'] as $c) {
+                    $md .= "| `{$c['name']}` | `{$c['value']}` | {$c['description']} |\n";
+                }
+                $md .= "\n";
+            }
+
+            // 属性
+            if (!empty($cls['properties'])) {
+                $md .= "**属性：**\n\n";
+                $md .= "| 属性 | 类型 | 说明 |\n|---|---|---|\n";
+                foreach ($cls['properties'] as $p) {
+                    $dflt = $p['default'] !== null ? " = {$p['default']}" : "";
+                    $md .= "| `{$p['name']}` | `{$p['type']}`{$dflt} | {$p['description']} |\n";
+                }
+                $md .= "\n";
+            }
+
+            // 方法
+            if (!empty($cls['methods'])) {
+                $md .= "**方法：**\n\n";
+                $md .= "| 方法 | 说明 | 参数 |\n|---|---|---|\n";
+                foreach ($cls['methods'] as $m) {
+                    if ($m['deprecated']) {
+                        $md .= "| ~~`{$m['name']}`~~ | ~~{$m['description']}~~ | ~~—~~ |\n";
+                        continue;
+                    }
+
+                    // 构建参数显示
+                    if (!empty($m['params'])) {
+                        $paramList = implode(', ', array_map(function ($p) {
+                            $s = '`' . $p['type'] . ' ' . $p['name'] . '`';
+                            if ($p['default'] !== null) $s .= ' = ' . $p['default'];
+                            return $s;
+                        }, $m['params']));
+                        // 转义 | 防止破坏 Markdown 表格
+                        $paramList = str_replace('|', '\\|', $paramList);
+                    } else {
+                        $paramList = '—';
+                    }
+
+                    $md .= "| `{$m['name']}` | {$m['description']} | {$paramList} |\n";
+                }
+                $md .= "\n";
+            }
+
+            $md .= "\n";
+        }
+    }
+
+    return $md;
+}
+
+function generateJsApiDoc(string $moduleName, array $items, array $config): string
+{
+    $title = $config['title'] ?? $moduleName;
+    $md = "# {$title} — API 参考\n\n";
+    $md .= "> 由 DocGen 自动生成于 " . date('Y-m-d H:i:s') . "\n\n";
+
+    // 目录
+    $grouped = [];
+    foreach ($items as $item) {
+        $cat = $item['category'] ?: '其他';
+        $grouped[$cat][] = $item;
+    }
+
+    $md .= "## 目录\n\n";
+    foreach ($grouped as $cat => $list) {
+        $md .= "**{$cat}**\n";
+        foreach ($list as $item) {
+            $typeIcon = match($item['type']) {
+                'function' => '⚡',
+                'class' => '📦',
+                'constant' => '🔷',
+                'module' => '📄',
+                default => '📌'
+            };
+            $md .= "- [`{$item['name']}`](#" . strtolower($item['name']) . ")";
+            if ($item['description']) $md .= " — {$item['description']}";
+            $md .= "\n";
+        }
+        $md .= "\n";
+    }
+
+    // 详情
+    foreach ($grouped as $cat => $list) {
+        $md .= "---\n\n### {$cat}\n\n";
+
+        foreach ($list as $item) {
+            $typeIcon = match($item['type']) {
+                'function' => '⚡',
+                'class' => '📦',
+                'constant' => '🔷',
+                'module' => '📄',
+                default => '📌'
+            };
+
+            $md .= "<a name=\"" . strtolower($item['name']) . "\"></a>\n";
+            $md .= "#### {$typeIcon} `{$item['name']}`\n\n";
+
+            if ($item['description']) {
+                $md .= "{$item['description']}\n\n";
+            }
+
+            // 元信息
+            $meta = [];
+            $meta[] = "**类型:** " . strtoupper($item['type']);
+            if ($item['since']) $meta[] = "**Since:** {$item['since']}";
+            $meta[] = "**文件:** `{$item['file']}`";
+            if (!empty($item['exported'])) $meta[] = "**导出:** ✅";
+            if (!empty($item['async'])) $meta[] = "**异步:** ✅";
+
+            $md .= implode('  | ', $meta) . "\n\n";
+
+            // 示例
+            if (!empty($item['examples'])) {
+                $md .= "**示例：**\n\n";
+                foreach ($item['examples'] as $ex) {
+                    $md .= "```javascript\n{$ex}\n```\n\n";
+                }
+            }
+
+            // 参数（仅函数）
+            if ($item['type'] === 'function' && !empty($item['params'])) {
+                $md .= "**参数：**\n\n";
+                $md .= "| 参数 | 类型 | 说明 |\n|---|---|---|\n";
+                foreach ($item['params'] as $p) {
+                    $md .= "| `{$p['name']}` | `{$p['type']}` | — |\n";
+                }
+                $md .= "\n";
+            }
+
+            $md .= "\n";
+        }
+    }
+
+    return $md;
+}
+
+function generateJsDevDoc(string $moduleName, array $items, array $config): string
+{
+    $title = $config['title'] ?? $moduleName;
+    $md = "# {$title} — 开发文档\n\n";
+    $md .= "> 由 DocGen 自动生成于 " . date('Y-m-d H:i:s') . "\n\n";
+
+    // 统计信息
+    $typeCounts = array_count_values(array_column($items, 'type'));
+    $md .= "## 概览\n\n";
+    $md .= "| 类型 | 数量 |\n|---|---|\n";
+    foreach ($typeCounts as $type => $count) {
+        $icon = match($type) {
+            'function' => '⚡ 函数',
+            'class' => '📦 类',
+            'constant' => '🔷 常量',
+            'module' => '📄 模块',
+            default => $type
+        };
+        $md .= "| {$icon} | {$count} |\n";
+    }
+    $md .= "\n---\n\n## 详细列表\n\n";
+
+    // 详细列表
+    foreach ($items as $item) {
+        $typeIcon = match($item['type']) {
+            'function' => '⚡',
+            'class' => '📦',
+            'constant' => '🔷',
+            'module' => '📄',
+            default => '📌'
+        };
+
+        $md .= "### {$typeIcon} `{$item['name']}`\n\n";
+        $md .= "- **文件:** `{$item['file']}`\n";
+        $md .= "- **类型:** {$item['type']}\n";
+        if ($item['since']) $md .= "- **Since:** {$item['since']}\n";
+        if ($item['description']) $md .= "- **说明:** {$item['description']}\n";
+
+        if ($item['type'] === 'function' && !empty($item['params'])) {
+            $md .= "\n**参数 (" . count($item['params']) . ")：**\n";
+            foreach ($item['params'] as $p) {
+                $md .= "- `{$p['name']}: {$p['type']}`\n";
+            }
+        }
+
+        $md .= "\n";
+    }
+
+    return $md;
+}
+
+function generateDevDoc(string $moduleName, array $classes, array $config): string
+{
+    $title = $config['title'] ?? $moduleName;
+    $md = "# {$title} — 开发文档\n\n";
+    $md .= "> 由 DocGen 自动生成于 " . date('Y-m-d H:i:s') . "\n\n";
+
+    // 组件清单表
+    $md .= "## 组件清单\n\n";
+    $md .= "| 名称 | 命名空间 | 文件 | 类型 |\n";
+    $md .= "|---|---|---|---|\n";
+
+    foreach ($classes as $cls) {
+        $type = [];
+        if ($cls['isAbstract']) $type[] = 'abstract';
+        if ($cls['isFinal']) $type[] = 'final';
+        if ($cls['parent']) $type[] = 'extends ' . basename($cls['parent']);
+        $typeStr = implode(', ', $type) ?: 'class';
+
+        $md .= "| `{$cls['name']}` | `{$cls['namespace']}` | `{$cls['file']}` | {$typeStr} |\n";
+    }
+
+    $md .= "\n---\n\n## 详细实现\n\n";
+
+    foreach ($classes as $cls) {
+        $md .= "### `{$cls['fqcn']}`\n\n";
+        $md .= "- **文件:** `{$cls['file']}`\n";
+        if ($cls['parent']) $md .= "- **继承:** `{$cls['parent']}`\n";
+        if ($cls['since']) $md .= "- **Since:** {$cls['since']}\n";
+
+        if (!empty($cls['methods'])) {
+            $md .= "\n**公开方法 (" . count($cls['methods']) . ")：**\n\n";
+            foreach ($cls['methods'] as $m) {
+                $params = implode(', ', array_map(function ($p) {
+                    return $p['type'] . ' ' . $p['name'] . ($p['default'] !== null ? ' = ' . $p['default'] : '');
+                }, $m['params']));
+                $md .= "- `{$m['name']}({$params}): {$m['returnType']}`";
+                if ($m['description']) $md .= " — {$m['description']}";
+                $md .= "\n";
+            }
+        }
+
+        $md .= "\n";
+    }
+
+    return $md;
+}
+
+function generateArchDoc(string $moduleName, array $config): string
+{
+    $title = $config['title'] ?? $moduleName;
+    $scanPath = $config['scan'] ?? '';
+    $md = "# {$title}\n\n";
+    $md .= "> 由 DocGen 自动生成\n\n";
+
+    if ($config['description']) {
+        $md .= $config['description'] . "\n\n";
+    }
+
+    $md .= "## 目录结构\n\n";
+    $dir = __DIR__ . '/' . $scanPath;
+    if (is_dir($dir)) {
+        $tree = buildTree($dir, strlen(__DIR__) + 1);
+        $md .= "```\n{$tree}\n```\n\n";
+    }
+
+    return $md;
+}
+
+function generateIndexDoc(string $moduleName, string $scanPath, string $baseDir): string
+{
+    $dir = $baseDir . '/' . $scanPath;
+    $files = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+
+    foreach ($iterator as $file) {
+        $ext = $file->getExtension();
+        if (!in_array($ext, ['php', 'js', 'css', 'json', 'yaml', 'yml', 'env'])) continue;
+        $rel = str_replace($baseDir . '/', '', $file->getPathname());
+        $size = $file->getSize();
+        $files[] = ['path' => $rel, 'size' => $size, 'lines' => count(file($file->getPathname()))];
+    }
+
+    sort($files);
+
+    $totalFiles = count($files);
+    $totalSize = array_sum(array_column($files, 'size'));
+    $totalLines = array_sum(array_column($files, 'lines'));
+
+    $md = "# {$moduleName} — 文件索引\n\n";
+    $md .= "> 共 {$totalFiles} 个文件, " . round($totalSize/1024) . "KB, {$totalLines} 行\n\n";
+    $md .= "| 文件路径 | 大小 | 行数 |\n";
+    $md .= "|---|---|---|\n";
+
+    foreach ($files as $f) {
+        $md .= "| `{$f['path']}` | " . round($f['size']/1024, 1) . "KB | {$f['lines']} |\n";
+    }
+
+    return $md;
+}
+
+function buildTree(string $dir, int $stripLen): string
+{
+    $result = '';
+    $items = scandir($dir);
+    $items = array_filter($items, fn($i) => $i !== '.' && $i !== '..');
+    sort($items);
+
+    foreach ($items as $item) {
+        $path = $dir . '/' . $item;
+        $rel = substr($path, $stripLen);
+
+        if (is_dir($path)) {
+            $result .= "├── {$item}/\n";
+            $sub = buildTree($path, $stripLen);
+            $sub = preg_replace('/^/m', '│   ', $sub);
+            $result .= $sub;
+        } else {
+            $result .= "├── {$item}\n";
+        }
+    }
+
+    return $result;
+}
+
+// ============================================================
+// 初始化默认配置
+// ============================================================
+
+function generateDefaultConfig(): void
+{
+    $config = [
+        'version' => '2.0',
+        'output_dir' => 'docs',
+        'modules' => [
+            'ux' => [
+                'title' => 'UX 组件库',
+                'description' => '前端交互式组件库，基于 Element 对象驱动，支持 LiveComponent 双向绑定。',
+                'scan' => 'src/UX',
+                'namespace' => 'Framework\\UX',
+                'tags' => [
+                    'category' => 'ux-category',
+                    'since' => 'ux-since',
+                    'example' => 'ux-example',
+                    'internal' => 'ux-internal',
+                    'default' => 'ux-default',
+                ],
+                'templates' => ['api', 'dev'],
+            ],
+            'live' => [
+                'title' => 'Live 组件系统',
+                'description' => '实时组件引擎，支持状态同步、Action 调度、分片更新、跨组件事件。',
+                'scan' => 'src/Component/Live',
+                'namespace' => 'Framework\\Component\\Live',
+                'tags' => [
+                    'category' => 'live-category',
+                    'since' => 'live-since',
+                    'example' => 'live-example',
+                    'internal' => 'live-internal',
+                ],
+                'templates' => ['api', 'dev'],
+            ],
+            'view' => [
+                'title' => 'View 视图系统',
+                'description' => '底层 Element 渲染引擎，响应式指令系统，HTML 安全过滤。',
+                'scan' => 'src/View',
+                'namespace' => 'Framework\\View',
+                'tags' => [
+                    'category' => 'view-category',
+                    'since' => 'view-since',
+                    'example' => 'view-example',
+                    'internal' => 'view-internal',
+                ],
+                'templates' => ['api', 'dev', 'arch'],
+            ],
+            'routing' => [
+                'title' => '路由系统',
+                'description' => 'Route-First 路由优先架构，支持注解路由、分组路由、中间件。',
+                'scan' => 'src/Routing',
+                'namespace' => 'Framework\\Routing',
+                'tags' => [
+                    'category' => 'route-category',
+                    'since' => 'route-since',
+                    'example' => 'route-example',
+                    'internal' => 'route-internal',
+                ],
+                'templates' => ['api', 'dev'],
+            ],
+            'http' => [
+                'title' => 'HTTP 核心',
+                'description' => '请求与响应对象，中间件管道，Session/Cookie 管理。',
+                'scan' => 'src/Http',
+                'namespace' => 'Framework\\Http',
+                'tags' => [
+                    'category' => 'http-category',
+                    'since' => 'http-since',
+                    'example' => 'http-example',
+                    'internal' => 'http-internal',
+                ],
+                'templates' => ['api', 'dev'],
+            ],
+            'admin' => [
+                'title' => 'Admin 后台管理',
+                'description' => '自动生成的 CRUD 管理后台，Resource 定义即页面。',
+                'scan' => 'src/Admin',
+                'namespace' => 'Framework\\Admin',
+                'tags' => [
+                    'category' => 'admin-category',
+                    'since' => 'admin-since',
+                    'example' => 'admin-example',
+                    'internal' => 'admin-internal',
+                ],
+                'templates' => ['api', 'dev', 'index'],
+            ],
+        ],
+    ];
+
+    $file = __DIR__ . '/docgen.config.json';
+    file_put_contents($file, json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo "✅ 已生成默认配置: {$file}\n";
+    echo "   包含模块: " . implode(', ', array_keys($config['modules'])) . "\n";
+    echo "   可编辑配置后重新运行 `php docgen`\n";
+}

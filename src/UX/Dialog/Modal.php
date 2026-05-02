@@ -8,6 +8,46 @@ use Framework\UX\UXComponent;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
 
+/**
+ * Modal 弹窗组件
+ *
+ * 模态对话框，支持多种尺寸、自定义底部、遮罩层点击关闭。
+ *
+ * ## JS 交互能力（modal.js）
+ *
+ * PHP 定义结构 → JS 自动处理 open/close 动画和事件：
+ *
+ * - `Modal.open(id)` — 打开弹窗（添加 .ux-modal-open 类）
+ * - `Modal.close(id)` — 关闭弹窗
+ * - `Modal.init()` — 初始化事件监听（自动调用）
+ *
+ * ### 触发方式
+ * 1. **通过 data 属性**: 按钮 `data-ux-modal-open="modal-id"` 点击打开
+ * 2. **通过 PHP 方法**: `$modal->open(true)` 直接渲染为打开状态
+ * 3. **通过 trigger()**: 生成带触发器的按钮 HTML
+ *
+ * ### 事件
+ * - 打开时: JS 添加 `ux-modal-open` 类，设置 `data-visible="true"`
+ * - 关闭时: 移除类和属性，恢复 body overflow
+ * - 遮罩点击: 自动触发 close
+ *
+ * @ux-category Dialog
+ * @ux-since 1.0.0
+ *
+ * @ux-example
+ * // 基础用法
+ * Modal::make()
+ *     ->title('确认操作')
+ *     ->content('确定要执行此操作吗？')
+ *     ->footer(
+ *         Button::make()->label('取消')->variant('secondary'),
+ *         Button::make()->label('确定')->primary()->dispatch('confirm')
+ *     );
+ *
+ * // 通过按钮触发
+ * echo $modal->trigger('打开弹窗');
+ * @ux-example-end
+ */
 class Modal extends UXComponent
 {
     protected string $title = '';

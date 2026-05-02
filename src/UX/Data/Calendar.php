@@ -7,6 +7,44 @@ namespace Framework\UX\Data;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * Calendar 日历组件
+ *
+ * 纯展示或可交互的日历组件，支持月份/年份视图切换、日期选中、范围限制。
+ *
+ * ## JS 交互能力（calendar.js）
+ *
+ * PHP 定义配置 → JS 自动处理日历渲染和交互：
+ *
+ * - **初始化**: 扫描 `.ux-calendar` 元素，渲染当前月视图
+ * - **导航**: `data-ux-action="prev|next"` 按钮切换月份
+ * - **模式切换**: 月份视图 ↔ 年份视图（显示 12 个月选择）
+ * - **日期选中**: 点击日期单元格 → 更新值 → 触发 `ux:change` 事件
+ * - **范围限制**: 通过 `data-calendar-valid-range` 禁用超出范围的日期
+ *
+ * ### 数据属性（JS 读取）
+ * - `data-calendar-value`: 当前选中的日期（Y-m-d 格式）
+ * - `data-calendar-mode`: 视图模式（month | year）
+ * - `data-ux-view-year / data-ux-view-month`: 当前显示的年月
+ * - `data-calendar-valid-range`: JSON 格式的有效范围 {start, end}
+ *
+ * @ux-category Data
+ * @ux-since 1.0.0
+ *
+ * @ux-example
+ * // 基础日历
+ * Calendar::make()
+ *
+ * // 带默认值和范围限制
+ * Calendar::make()
+ *     ->value('2026-05-02')
+ *     ->validRange(['start' => '2026-01-01', 'end' => '2026-12-31'])
+ *     ->liveModel('selectedDate')
+ *
+ * // 年份模式
+ * Calendar::make()->mode('year')
+ * @ux-example-end
+ */
 class Calendar extends UXComponent
 {
     protected ?string $value = null;

@@ -7,6 +7,21 @@ namespace Framework\UX\Form;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 评分组件
+ *
+ * 星级评分，支持半星、只读、自定义图标。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example Rate::make()->value(3)
+ * @ux-example Rate::make()->allowHalf()->value(3.5)
+ * @ux-example Rate::make()->readOnly()->value(4)
+ * @ux-live-support liveModel
+ * @ux-js-component rate
+ * @ux-css rate.css
+ * @ux-value-type float 0-5
+ */
 class Rate extends UXComponent
 {
     protected int $count = 5;
@@ -18,42 +33,85 @@ class Rate extends UXComponent
     protected ?string $action = null;
     protected ?string $hoverAction = null;
 
+    /**
+     * 设置星星数量
+     * @param int $count 数量
+     * @return static
+     * @ux-example Rate::make()->count(10)
+     * @ux-default 5
+     */
     public function count(int $count): static
     {
         $this->count = $count;
         return $this;
     }
 
+    /**
+     * 设置默认评分值
+     * @param float $value 评分
+     * @return static
+     * @ux-example Rate::make()->value(3.5)
+     */
     public function value(float $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 允许半星选择
+     * @param bool $allow 是否允许
+     * @return static
+     * @ux-example Rate::make()->allowHalf()
+     * @ux-default true
+     */
     public function allowHalf(bool $allow = true): static
     {
         $this->allowHalf = $allow;
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-example Rate::make()->disabled()
+     * @ux-default true
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 设置只读模式（显示但不可交互）
+     * @param bool $readOnly 是否只读
+     * @return static
+     * @ux-example Rate::make()->readOnly()->value(4)
+     * @ux-default true
+     */
     public function readOnly(bool $readOnly = true): static
     {
         $this->readOnly = $readOnly;
         return $this;
     }
 
+    /**
+     * 设置自定义图标字符
+     * @param string $character 图标字符或 HTML
+     * @return static
+     * @ux-example Rate::make()->character('<i class="bi bi-heart-fill"></i>')
+     */
     public function character(string $character): static
     {
         $this->character = $character;
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     public function action(string $action): static
     {
         $this->action = $action;

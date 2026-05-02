@@ -3,13 +3,17 @@
     --calendar-border: #e5e7eb;
     --calendar-bg: #fff;
     --calendar-header-bg: #f9fafb;
-    --calendar-cell-height: 100px;
+    --calendar-cell-height: 80px;
     --calendar-primary: var(--ux-primary, #3b82f6);
 
     background-color: var(--calendar-bg);
     border: 1px solid var(--calendar-border);
     border-radius: 8px;
     overflow: hidden;
+    width: 100%;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* 头部 */
@@ -113,17 +117,31 @@
 }
 
 .ux-calendar-day {
-    aspect-ratio: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding: 8px;
+    padding: 4px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid transparent;
-    min-height: 80px;
+    min-height: 40px;
+}
+
+@media (width <= 768px) {
+    .ux-calendar-day {
+        padding: 8px;
+        min-height: 80px;
+    }
+
+    .ux-calendar-header {
+        width: 100%;
+    }
+
+    .ux-calendar-body {
+        width: 100%;
+    }
 }
 
 .ux-calendar-day:hover:not(.disabled):not(.other-month) {
