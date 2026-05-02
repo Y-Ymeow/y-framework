@@ -2,7 +2,7 @@
   "name": "ymeow/framework",
   "description": "Anti-MVC, route-first, component-driven PHP framework.",
   "type": "library",
-  "version": "0.1.1-dev",
+  "version": "0.1.2-dev",
   "license": "MIT",
   "require": {
     "php": "^8.4",
