@@ -519,4 +519,106 @@ class Request
     {
         return in_array($this->method(), ['GET', 'HEAD', 'OPTIONS'], true);
     }
+
+    /**
+     * 设置请求参数
+     * @param string $key 参数名
+     * @param mixed $value 参数值
+     * @return static
+     * @http-example $request->setInput('name', 'John')
+     */
+    public function setInput(string $key, mixed $value): self
+    {
+        $this->post[$key] = $value;
+        $this->jsonCache = null;
+        return $this;
+    }
+
+    /**
+     * 合并请求参数
+     * @param array $params 参数数组
+     * @return static
+     * @http-example $request->merge(['name' => 'John', 'age' => 30])
+     */
+    public function merge(array $params): self
+    {
+        $this->post = array_merge($this->post, $params);
+        $this->jsonCache = null;
+        return $this;
+    }
+
+    /**
+     * 设置请求头
+     * @param string $key 头名称
+     * @param string $value 头值
+     * @return static
+     */
+    public function setHeader(string $key, string $value): self
+    {
+        $normalizedKey = strtoupper(str_replace('-', '_', $key));
+        $this->headers[$normalizedKey] = $value;
+        $serverKey = 'HTTP_' . str_replace('-', '_', strtoupper($key));
+        $this->server[$serverKey] = $value;
+        return $this;
+    }
+
+    /**
+     * 设置 HTTP 方法
+     * @param string $method HTTP 方法
+     * @return static
+     */
+    public function setMethod(string $method): self
+    {
+        $this->server['REQUEST_METHOD'] = strtoupper($method);
+        return $this;
+    }
+
+    /**
+     * 设置请求 URI
+     * @param string $uri 请求 URI
+     * @return static
+     */
+    public function setRequestUri(string $uri): self
+    {
+        $this->server['REQUEST_URI'] = $uri;
+        return $this;
+    }
+
+    /**
+     * 设置请求体内容
+     * @param string $content 请求体
+     * @return static
+     */
+    public function setContent(string $content): self
+    {
+        $this->content = $content;
+        $this->jsonCache = null;
+        return $this;
+    }
+
+    /**
+     * 设置 Cookie
+     * @param string $key Cookie 名
+     * @param string $value Cookie 值
+     * @return static
+     */
+    public function setCookie(string $key, string $value): self
+    {
+        $this->cookies[$key] = $value;
+        return $this;
+    }
+
+    /**
+     * 移除请求参数
+     * @param string $key 参数名
+     * @return static
+     */
+    public function removeInput(string $key): self
+    {
+        unset($this->post[$key], $this->query[$key]);
+        if ($this->jsonCache !== null) {
+            unset($this->jsonCache[$key]);
+        }
+        return $this;
+    }
 }
