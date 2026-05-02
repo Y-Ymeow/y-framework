@@ -154,4 +154,24 @@ class AssetRegistry
 
         return $html;
     }
+
+    /**
+     * 获取已注册的 CSS 文件列表（用于 WASM JSON 输出）
+     *
+     * @return array<int, array{href: string, id: string|null}>
+     */
+    public function getCssList(): array
+    {
+        return $this->cssFiles;
+    }
+
+    /**
+     * 获取已注册的 JS 文件列表（用于 WASM JSON 输出）
+     *
+     * @return array<int, array{src: string, defer: bool, id: string|null, module: bool}>
+     */
+    public function getJsList(): array
+    {
+        return $this->jsFiles;
+    }
 }
