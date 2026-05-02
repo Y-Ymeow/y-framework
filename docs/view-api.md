@@ -1,6 +1,6 @@
 # View 视图系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 目录
 
@@ -112,6 +112,7 @@ HTML 文档构建器
 | `setTitle` |  | `string $title` |
 | `setLang` |  | `string $lang` |
 | `inject` |  | `string $location`, `string $html` |
+| `sseConfig` | 启用 SSE 实时推送功能 | `array $channels` = [] |
 | `requireScript` | 标记加载脚本 | `string $ids` |
 | `script` | 注册并加载脚本 | `string $id`, `string $js` |
 | `meta` | 实例级别添加 Meta | `string $name`, `string $content` |
@@ -144,6 +145,7 @@ Element — HTML 元素基类
 | `attr` | 设置单个 HTML 属性 | `string $name`, `string $value` |
 | `attrs` | 批量设置 HTML 属性（合并到已有属性） | `array $attrs` |
 | `data` | 设置 data-* 自定义属性 | `string $key`, `string $value` |
+| `dataLiveSse` | 订阅 SSE 频道（data-live-sse） | `string $channels` |
 | `style` | 设置内联样式 | `string $style` |
 | `text` | 设置纯文本内容（自动 HTML 转义，防 XSS） | `?string $text` = null |
 | `html` | 设置 HTML 内容（经过安全过滤） | `mixed $html` = null |

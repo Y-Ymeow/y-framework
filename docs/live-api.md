@@ -1,6 +1,6 @@
 # Live 组件系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 目录
 
@@ -12,9 +12,17 @@
 - [`LiveComponentResolver`](#framework-component-live-livecomponentresolver)
 - [`LiveEventBus`](#framework-component-live-liveeventbus)
 - [`LiveListener`](#framework-component-live-attribute-livelistener)
+- [`LivePoll`](#framework-component-live-attribute-livepoll) — LivePoll — 标记可轮询的 LiveAction
+- [`LiveSse`](#framework-component-live-attribute-livesse) — LiveSse — 标记返回 SSE 长连接响应的 LiveAction
+- [`LiveStream`](#framework-component-live-attribute-livestream) — LiveStream — 标记返回流式响应的 LiveAction
 - [`Prop`](#framework-component-live-attribute-prop)
 - [`Rule`](#framework-component-live-attribute-rule)
 - [`Session`](#framework-component-live-attribute-session)
+- [`SseEndpoint`](#framework-component-live-sse-sseendpoint) — SSE Endpoint — 统一 SSE 入口
+- [`SseHelper`](#framework-component-live-sse-ssehelper) — SSE 视图助手 — 在页面中注入 SSE 配置
+- [`SseHub`](#framework-component-live-sse-ssehub) — SSE Hub — 中心化推送服务
+- [`SseToken`](#framework-component-live-sse-ssetoken) — SSE 安全令牌
+- [`StreamBuilder`](#framework-component-live-stream-streambuilder) — StreamBuilder 流式响应构建器
 
 ---
 
@@ -81,6 +89,7 @@
 | `named` |  | `string $id` |
 | `toHtml` |  | `bool $onlyFragment` = false |
 | `getLiveListeners` | 获取组件定义的监听器 | — |
+| `getLivePolls` | 获取组件定义的轮询方法 | — |
 | `serializeState` | 序列化状态 优化：只序列化非公开属性，公开属性由前端 JSON 维护，减少数据冗余 | — |
 | `deserializeState` |  | `string $state` |
 | `fillPublicProperties` | 将前端传来的公开属性值填充到组件中 | `array $data` |
@@ -120,6 +129,7 @@
 | 方法 | 说明 | 参数 |
 |---|---|---|
 | `handle` |  | `Framework\Http\Request $request` |
+| `stream` |  | `Framework\Http\Request $request` |
 | `navigate` |  | `Framework\Http\Request $request` |
 | `intl` |  | `Framework\Http\Request $request` |
 
@@ -153,6 +163,51 @@
 |---|---|---|
 | `$event` | `string` |  |
 | `$priority` | `int` |  |
+
+
+<a name="framework-component-live-attribute-livepoll"></a>
+#### `Framework\Component\Live\Attribute\LivePoll`
+
+LivePoll — 标记可轮询的 LiveAction
+
+**文件:** `php/src/Component/Live/Attribute/LivePoll.php`
+
+**属性：**
+
+| 属性 | 类型 | 说明 |
+|---|---|---|
+| `$interval` | `int` |  |
+| `$immediate` | `bool` |  |
+| `$condition` | `string` |  |
+
+
+<a name="framework-component-live-attribute-livesse"></a>
+#### `Framework\Component\Live\Attribute\LiveSse`
+
+LiveSse — 标记返回 SSE 长连接响应的 LiveAction
+
+**文件:** `php/src/Component/Live/Attribute/LiveSse.php`
+
+**属性：**
+
+| 属性 | 类型 | 说明 |
+|---|---|---|
+| `$keepAlive` | `int` |  |
+| `$channels` | `array` |  |
+
+
+<a name="framework-component-live-attribute-livestream"></a>
+#### `Framework\Component\Live\Attribute\LiveStream`
+
+LiveStream — 标记返回流式响应的 LiveAction
+
+**文件:** `php/src/Component/Live/Attribute/LiveStream.php`
+
+**属性：**
+
+| 属性 | 类型 | 说明 |
+|---|---|---|
+| `$format` | `string` |  |
 
 
 <a name="framework-component-live-attribute-prop"></a>
@@ -189,5 +244,121 @@
 | 属性 | 类型 | 说明 |
 |---|---|---|
 | `$key` | `?string` |  |
+
+
+<a name="framework-component-live-sse-sseendpoint"></a>
+#### `Framework\Component\Live\Sse\SseEndpoint`
+
+SSE Endpoint — 统一 SSE 入口
+
+**文件:** `php/src/Component/Live/Sse/SseEndpoint.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `fromToken` | 从请求创建 Endpoint | `string $tokenString` |
+| `keepAlive` | 设置心跳间隔 | `int $seconds` |
+| `maxExecTime` | 设置最大执行时间 | `int $seconds` |
+| `handle` | 处理 SSE 请求 | — |
+| `generateClientConfig` | 生成前端初始化脚本 | — |
+| `registerRoute` | 注册路由（在应用启动时调用） | — |
+
+
+<a name="framework-component-live-sse-ssehelper"></a>
+#### `Framework\Component\Live\Sse\SseHelper`
+
+SSE 视图助手 — 在页面中注入 SSE 配置
+
+**文件:** `php/src/Component/Live/Sse/SseHelper.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `metaElement` | 生成 SSE 配置 meta Element | `array $channels` = [] |
+| `subscribe` | 在 Element 上添加 SSE 订阅 | `Framework\View\Base\Element $element`, `string $channels` |
+| `tokenConfig` | 获取 SSE Token（用于 API 响应） | `array $channels` = [] |
+
+
+<a name="framework-component-live-sse-ssehub"></a>
+#### `Framework\Component\Live\Sse\SseHub`
+
+SSE Hub — 中心化推送服务
+
+**文件:** `php/src/Component/Live/Sse/SseHub.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `getInstance` | 获取单例实例 | — |
+| `setCacheDir` | 设置缓存目录 | `string $dir` |
+| `setMessageTtl` | 设置消息过期时间 | `int $ttl` |
+| `push` | 推送消息到频道 | `string $channel`, `array $message`, `string $event` = 'message' |
+| `toUser` | 推送消息给指定用户 | `int $userId`, `string $channel`, `array $message` |
+| `liveAction` | 触发 LiveComponent 的 Action 更新 | `string $componentId`, `string $action`, `array $params` = [], `?string $channel` = null |
+| `liveBatch` | 批量更新多个组件 | `array $updates`, `?string $channel` = null |
+| `liveState` | 推送状态更新（直接更新组件属性） | `string $componentId`, `array $state`, `?string $channel` = null |
+| `getMessages` | 获取频道的消息 | `string $channel`, `float $since` = 0, `?int $userId` = null |
+| `getMessagesForChannels` | 获取多个频道的消息 | `array $channels`, `float $since` = 0, `?int $userId` = null |
+| `cleanup` | 清理过期消息 | — |
+
+
+<a name="framework-component-live-sse-ssetoken"></a>
+#### `Framework\Component\Live\Sse\SseToken`
+
+SSE 安全令牌
+
+**文件:** `php/src/Component/Live/Sse/SseToken.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `setSecret` | 设置签名密钥（应用启动时调用） | `string $secret` |
+| `setDefaultTtl` | 设置默认过期时间 | `int $ttl` |
+| `generate` | 为当前会话生成 Token | `array $channels` = [], `int $ttl` = 0 |
+| `parse` | 从字符串解析 Token | `string $tokenString` |
+| `isValid` | 验证 Token 是否有效 | `bool $checkSession` = true |
+| `canSubscribe` | 检查是否可以订阅指定频道 | `string $channel` |
+| `canReceiveUserMessage` | 检查是否可以接收指定用户的消息 | `?int $targetUserId` |
+| `toString` | 转换为字符串（用于传输） | — |
+| `getId` |  | — |
+| `getSessionId` |  | — |
+| `getUserId` |  | — |
+| `getChannels` |  | — |
+| `getExpiresAt` |  | — |
+
+
+<a name="framework-component-live-stream-streambuilder"></a>
+#### `Framework\Component\Live\Stream\StreamBuilder`
+
+StreamBuilder 流式响应构建器
+
+**文件:** `php/src/Component/Live/Stream/StreamBuilder.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `create` | 创建构建器实例 | — |
+| `format` | 设置输出格式 | `string $format` |
+| `text` | 添加文本块 | `string $content`, `array $extra` = [] |
+| `html` | 添加 HTML 块 | `string $html`, `array $extra` = [] |
+| `json` | 添加 JSON 数据块 | `array $data`, `array $extra` = [] |
+| `progress` | 添加进度更新 | `int $current`, `int $total`, `?string $message` = null |
+| `error` | 添加错误块 | `string $message`, `int $code` = 0 |
+| `done` | 添加完成标记 | `array $data` = [] |
+| `thinking` | 添加 AI 思考状态块 | `string $thought` |
+| `toolCall` | 添加工具调用块 | `string $tool`, `array $args` = [] |
+| `each` | 延迟遍历可迭代对象（Generator 在 send() 时才执行） | `Traversable\|Generator\|array $items`, `callable $callback` |
+| `raw` | 添加原始数据块 | `array $item` |
+| `when` | 条件添加 | `bool $condition`, `callable $callback` |
+| `build` | 构建 StreamResponse（延迟执行，Generator 在 send() 时才遍历） | — |
+| `textChunk` | 创建文本块数据 | `string $content` |
+| `progressChunk` | 创建进度块数据 | `int $current`, `int $total` |
+| `doneChunk` | 创建完成块数据 | `array $data` = [] |
+| `errorChunk` | 创建错误块数据 | `string $message`, `int $code` = 0 |
 
 

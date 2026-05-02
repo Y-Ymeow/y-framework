@@ -47,7 +47,7 @@ trait InteractsWithLiveComponents
         $resolver = $this->app->make(LiveComponentResolver::class);
         $response = $resolver->handle($request);
         
-        $decoded = json_decode($response->getSfResponse()->getContent(), true);
+        $decoded = json_decode($response->getContent(), true);
         if (!$decoded['success']) {
             echo "\nLive Action Error: " . ($decoded['error'] ?? 'Unknown') . "\n";
         }

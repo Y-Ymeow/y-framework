@@ -4,101 +4,109 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
-use Dom\Element;
-use Framework\Component\Live\LiveComponent;
 use Framework\Foundation\AppEnvironment;
-use Framework\UX\UXComponent;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * HTTP 响应封装
+ * Response HTTP 响应
  *
- * 封装 Symfony Response，提供便捷的静态工厂方法。
- * 自动适配运行环境（Web / CLI / WASM）。
+ * 框架核心 HTTP 响应类，支持 JSON、HTML、WASM、重定向等响应类型。
+ * 自动适配 Web/WASM 双模式运行环境。
  *
- * ## 环境适配
+ * @http-category Response
+ * @http-since 2.0
  *
- * ### Web 模式（默认）
- * - send() 调用 Symfony Response 发送完整 HTTP 响应
- * - 包含状态码、Headers、Body
- * - Content-Type: text/html 或 application/json
+ * @http-example
+ * // JSON 响应
+ * return Response::json(['success' => true, 'data' => $items]);
  *
- * ### WASM/Tauri 模式
- * - send() 通过 JS Bridge 返回数据给前端
- * - 不设置 HTTP Headers（WebView 不需要）
- * - json() 输出可直接被 Tauri invoke() 接收
- * - html() 自动使用 Document 的 partial 模式
+ * // HTML 响应
+ * return Response::html($element);
  *
- * @since 1.0.0
+ * // 重定向
+ * return Response::redirect('/dashboard');
+ * @http-example-end
  */
 class Response
 {
-    private SymfonyResponse $sfResponse;
+    protected string $content = '';
+    protected int $statusCode = 200;
+    protected array $headers = [];
+    protected string $statusText = '';
 
-    public function __construct(string|SymfonyResponse $content = '', int $status = 200, array $headers = [])
-    {
-        if ($content instanceof SymfonyResponse) {
-            $this->sfResponse = $content;
-        } else {
-            $this->sfResponse = new SymfonyResponse($content, $status, $headers);
-        }
-    }
+    private static array $statusTexts = [
+        200 => 'OK',
+        201 => 'Created',
+        204 => 'No Content',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        304 => 'Not Modified',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        405 => 'Method Not Allowed',
+        419 => 'Page Expired',
+        422 => 'Unprocessable Entity',
+        429 => 'Too Many Requests',
+        500 => 'Internal Server Error',
+        502 => 'Bad Gateway',
+        503 => 'Service Unavailable',
+    ];
 
-    public static function fromSymfony(SymfonyResponse $response): self
+    /**
+     * 创建 HTTP 响应
+     * @param string $content 响应内容
+     * @param int $status HTTP 状态码
+     * @param array $headers 响应头
+     */
+    public function __construct(string $content = '', int $status = 200, array $headers = [])
     {
-        return new self($response);
+        $this->content = $content;
+        $this->statusCode = $status;
+        $this->headers = $headers;
+        $this->statusText = self::$statusTexts[$status] ?? 'Unknown';
     }
 
     /**
-     * JSON 响应
-     *
-     * Web 和 WASM 通用，直接返回 JSON 字符串。
+     * 创建 JSON 响应
+     * @param mixed $data 数据
+     * @param int $status HTTP 状态码
+     * @param array $headers 响应头
+     * @return static
+     * @http-example Response::json(['success' => true], 201)
      */
     public static function json(mixed $data, int $status = 200, array $headers = []): self
     {
-        $response = new self('', $status, $headers);
-        $response->sfResponse->headers->set('Content-Type', 'application/json');
-        $response->sfResponse->setContent(json_encode($data, JSON_UNESCAPED_UNICODE));
-        return $response;
+        $headers['Content-Type'] = 'application/json';
+        return new self(json_encode($data, JSON_UNESCAPED_UNICODE), $status, $headers);
     }
 
     /**
-     * HTML 响应 — 自动适配环境
-     *
-     * **Web 模式**: 输出完整 HTML 文档
-     * **WASM 模式**: 自动切换为 partial 模式，只输出内容部分
-     *
-     * Tauri 前端接收后注入到 WebView：
-     * ```typescript
-     * const result = await invoke('handle_request', { path: '/dashboard' });
-     * document.getElementById('app-content').innerHTML = result.content;
-     * ```
+     * 创建 HTML 响应
+     * @param mixed $html HTML 内容或 Element 对象
+     * @param int $status HTTP 状态码
+     * @param array $headers 响应头
+     * @return static
+     * @http-example Response::html(Element::make('h1')->text('Hello'))
      */
     public static function html(mixed $html, int $status = 200, array $headers = []): self
     {
-        // 创建 Document（WASM 环境下自动切换为 partial 模式）
         $doc = \Framework\View\Document\Document::make();
         $content = $doc->main($html)->render();
 
-        $response = new self($content, $status, $headers);
-
         if (AppEnvironment::supportsHeaders()) {
-            $response->sfResponse->headers->set('Content-Type', 'text/html; charset=utf-8');
+            $headers['Content-Type'] = 'text/html; charset=utf-8';
         }
 
-        return $response;
+        return new self($content, $status, $headers);
     }
 
     /**
-     * WASM 专用响应 — 返回结构化数据
-     *
-     * 适用于 Tauri JS Bridge 直接调用，
-     * 返回 JSON 格式的 { content, title, assets } 结构。
-     *
-     * ```typescript
-     * const result = await invoke('render_page', { path: '/dashboard' });
-     * // result: { content: "<main>...</main>", title: "仪表盘", assets: [...] }
-     * ```
+     * 创建 WASM 模式响应
+     * @param mixed $html HTML 内容
+     * @param string $title 页面标题
+     * @param int $status HTTP 状态码
+     * @return static
      */
     public static function wasm(mixed $html, string $title = '', int $status = 200): self
     {
@@ -114,15 +122,15 @@ class Response
     }
 
     /**
-     * 重定向响应
-     *
-     * WASM 环境下重定向通过 JS Bridge 处理，
-     * 返回特殊标记让前端执行导航。
+     * 创建重定向响应
+     * @param string $url 目标 URL
+     * @param int $status HTTP 状态码
+     * @return static
+     * @http-example Response::redirect('/login', 302)
      */
     public static function redirect(string $url, int $status = 302): self
     {
         if (AppEnvironment::isWasm()) {
-            // WASM 环境：返回重定向指令，由前端 JS 执行
             return self::json([
                 '_redirect' => true,
                 'url' => $url,
@@ -130,60 +138,118 @@ class Response
             ]);
         }
 
-        // 正常 HTTP 重定向
-        $response = new self('', $status);
-        $response->sfResponse->headers->set('Location', $url);
-        return $response;
+        return new self('', $status, ['Location' => $url]);
     }
 
     /**
-     * 发送响应
-     *
-     * 根据环境选择发送方式：
-     * - Web: Symfony Response.send()
-     * - WASM: 输出到 stdout（JS Bridge 捕获）
+     * 发送响应到客户端
+     * @return void
      */
     public function send(): void
     {
         if (AppEnvironment::isWasm()) {
-            // WASM 环境：直接输出内容，由 Tauri JS Bridge 捕获
-            echo $this->getContent();
+            echo $this->content;
             return;
         }
 
-        // 正常 HTTP 响应
-        $this->sfResponse->send();
+        $this->sendHeaders();
+        echo $this->content;
     }
 
-    public function getSfResponse(): SymfonyResponse
+    /** @internal */
+    protected function sendHeaders(): void
     {
-        return $this->sfResponse;
+        if (headers_sent()) {
+            return;
+        }
+
+        $protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1';
+        header("{$protocol} {$this->statusCode} {$this->statusText}");
+
+        foreach ($this->headers as $name => $value) {
+            header("{$name}: {$value}", true);
+        }
     }
 
+    /**
+     * 设置响应头
+     * @param string $key 头名称
+     * @param string $value 头值
+     * @return static
+     */
     public function setHeader(string $key, string $value): self
     {
-        $this->sfResponse->headers->set($key, $value);
+        $this->headers[$key] = $value;
         return $this;
     }
 
+    /**
+     * 获取响应头
+     * @param string $key 头名称
+     * @param string|null $default 默认值
+     * @return string|null
+     */
+    public function getHeader(string $key, ?string $default = null): ?string
+    {
+        return $this->headers[$key] ?? $default;
+    }
+
+    /**
+     * 获取所有响应头
+     * @return array
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    /**
+     * 设置 HTTP 状态码
+     * @param int $code 状态码
+     * @return static
+     */
     public function setStatusCode(int $code): self
     {
-        $this->sfResponse->setStatusCode($code);
+        $this->statusCode = $code;
+        $this->statusText = self::$statusTexts[$code] ?? 'Unknown';
         return $this;
     }
 
+    /**
+     * 获取 HTTP 状态码
+     * @return int
+     */
     public function getStatus(): int
     {
-        return $this->sfResponse->getStatusCode();
+        return $this->statusCode;
     }
 
+    /**
+     * 获取 HTTP 状态码（别名）
+     * @return int
+     */
     public function getStatusCode(): int
     {
-        return $this->sfResponse->getStatusCode();
+        return $this->statusCode;
     }
 
+    /**
+     * 获取响应内容
+     * @return string
+     */
     public function getContent(): string
     {
-        return $this->sfResponse->getContent();
+        return $this->content;
+    }
+
+    /**
+     * 设置响应内容
+     * @param string $content 内容
+     * @return static
+     */
+    public function setContent(string $content): self
+    {
+        $this->content = $content;
+        return $this;
     }
 }

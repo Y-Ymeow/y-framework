@@ -9,6 +9,7 @@ use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
 use Framework\Http\Request;
 use Framework\Http\Response;
+use Framework\Http\StreamedResponse;
 use Framework\Routing\Attribute as Attr;
 use Framework\Support\File;
 use Framework\Support\Finder;
@@ -181,7 +182,7 @@ class Router
         }
     }
 
-    public function dispatch(Request $request): Response
+    public function dispatch(Request $request): Response|StreamedResponse
     {
         $method = $request->method();
         $path = $request->path();
@@ -268,7 +269,7 @@ class Router
         return $params;
     }
 
-    private function invoke(array $route, Request $request, array $params): Response
+    private function invoke(array $route, Request $request, array $params): Response|StreamedResponse
     {
         $request->setRoute(
             $route['name'] ?? '',
@@ -295,12 +296,11 @@ class Router
             $result = $ref->invoke($instance, ...$args);
 
             if ($instance instanceof LiveComponent) {
-                // 如果结果已经是 Response 或 Document，直接返回
+                
                 if ($result instanceof Response) {
                     return $result;
                 }
 
-                // 返回实例本身，这样 Document::main() 就能接收并正确处理它
                 return $this->normalizeResponse($instance);
             }
 

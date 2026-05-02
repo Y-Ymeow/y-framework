@@ -9,6 +9,8 @@ use Framework\Events\Hook;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\StreamedResponse;
+use Framework\Http\StreamResponse;
+use Framework\Http\SseResponse;
 use Framework\DebugBar\Components\DebugBarComponent;
 
 class DebugBarListener
@@ -42,13 +44,14 @@ class DebugBarListener
     {
         if (!config('app.debug', false)) return $response;
         if ($response instanceof StreamedResponse) return $response;
+        if ($response instanceof StreamResponse) return $response;
+        if ($response instanceof SseResponse) return $response;
 
         if ($request->ajax() || str_contains($request->getRequestUri(), '/live')) {
             return $response;
         }
 
-        $sfResponse = $response->getSfResponse();
-        $contentType = $sfResponse->headers->get('Content-Type', '');
+        $contentType = $response->getHeader('Content-Type', '');
 
         if (!str_contains($contentType, 'text/html')) {
             return $response;
@@ -58,7 +61,7 @@ class DebugBarListener
             return $response;
         }
 
-        $content = $sfResponse->getContent();
+        $content = $response->getContent();
 
         $component = new DebugBarComponent();
         $injectedHtml = (string)$component;
@@ -72,7 +75,7 @@ class DebugBarListener
             }
         }
 
-        $sfResponse->setContent($content);
+        $response->setContent($content);
 
         return $response;
     }

@@ -1,6 +1,6 @@
 # 路由系统 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 组件清单
 
@@ -72,7 +72,7 @@
 - `loadCache(string $cacheFile): bool`
 - `scan(array|string $directories, array $extendFiles = []): void`
 - `registerClass(ReflectionClass $reflection): void`
-- `dispatch(Framework\Http\Request $request): Framework\Http\Response`
+- `dispatch(Framework\Http\Request $request): Framework\Http\Response|Framework\Http\StreamedResponse`
 - `getRoutes(): array`
 
 ### `Framework\Routing\StaticAssetsRoute`

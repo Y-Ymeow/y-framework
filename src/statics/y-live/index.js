@@ -1,12 +1,14 @@
 // Y-Live - Live 框架入口
 import { initDirectives } from '../y-directive/directives.js';
 import { setupLiveComponent, applyLiveResponse } from './core/state.js';
-import { dispatchLive } from './core/connection.js';
+import { dispatchLive, dispatchStream, setLoading } from './core/connection.js';
 import { applyLiveFragment, createSafeFragment, replaceLiveHtml } from './core/dom.js';
 import { bindNavigateLinks, navigate } from './navigate.js';
 import { executeOperation, executeOperations } from './operations.js';
 import { initBadge } from './badge.js';
 import { initIntl, switchLocale, getLocale, getTranslation } from './intl.js';
+import Poll from './poll.js';
+import './sse-live.js';
 
 let config = {
     badge: false,
@@ -18,35 +20,42 @@ export function configure(options) {
 }
 
 function rebindActions(target, liveState = null) {
-    // 1. 初始化新 DOM 中的指令 (data-text, data-on, data-bind)
     initDirectives(target);
 
-    // 2. 初始化 Live Action (data-action)
-    // 检查 target 是否是 live 组件或其内部的一部分
     const liveEl = target.closest('[data-live]');
     if (liveEl) {
         setupLiveComponent(liveEl, dispatchAction, target);
     }
-    
-    // 处理嵌套的 live 组件
+
     target.querySelectorAll('[data-live]').forEach(el => {
         setupLiveComponent(el, dispatchAction);
     });
 }
 
-async function dispatchAction(el, componentClass, action, stateRef, state, event, params = {}) {
+async function dispatchAction(el, componentClass, action, stateRef, state, event, params = {}, isStream = false) {
+    if (isStream) {
+        dispatchStream(
+            el, componentClass, action, stateRef, state, event, params,
+            (chunk) => processStreamChunk(chunk, el, state, stateRef),
+            () => {
+                setLoading(el, false);
+                el.dispatchEvent(new CustomEvent('live:stream-done', { detail: { el } }));
+            }
+        );
+        return;
+    }
+
     const result = await dispatchLive(el, componentClass, action, stateRef, state, event, params);
-    
+
     if (!result.success) {
+        setLoading(el, false);
         console.error('Live error:', result.error);
         return;
     }
 
     const data = result.data;
-    // 更新状态代理，这会触发指令系统的 effect (data-bind, data-text)
     applyLiveResponse(el, data, state, stateRef);
 
-    // 处理 DOM 更新
     if (data.domPatches && data.domPatches.length > 0) {
         data.domPatches.forEach(patch => {
             const target = document.querySelector(patch.selector);
@@ -100,6 +109,61 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
     window.dispatchEvent(new CustomEvent('y:updated', { detail: { el, data } }));
 }
 
+function processStreamChunk(data, el, state, stateRef) {
+    if (data.type === 'live') {
+        applyLiveResponse(el, data, state, stateRef);
+
+        if (data.operations) {
+            data.operations.forEach(op => executeOperation(op));
+        }
+        return;
+    }
+
+    if (data.type === 'text') {
+        const target = findStreamTarget(el, data.target);
+        if (target) {
+            target.textContent += data.content || '';
+        }
+        el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
+        return;
+    }
+
+    if (data.type === 'thinking') {
+        const target = findStreamTarget(el, data.target);
+        if (target) {
+            target.setAttribute('data-stream-thinking', data.content || '');
+            target.textContent = data.content || '';
+        }
+        el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
+        return;
+    }
+
+    if (data.type === 'progress') {
+        el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
+        return;
+    }
+
+    if (data.type === 'done') {
+        if (data.state || data.patches) {
+            applyLiveResponse(el, data, state, stateRef);
+        }
+        if (data.operations) {
+            data.operations.forEach(op => executeOperation(op));
+        }
+        el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
+        return;
+    }
+
+    el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
+}
+
+function findStreamTarget(el, targetName) {
+    if (targetName) {
+        return el.querySelector(`[data-stream-target="${targetName}"]`);
+    }
+    return el.querySelector('[data-stream-target]') || null;
+}
+
 function findLiveElement(el, fragment) {
     if (el.hasAttribute('data-live')) return el;
     const parent = el.closest('[data-live]');
@@ -111,10 +175,8 @@ function findLiveElement(el, fragment) {
 }
 
 function boot(root = document) {
-    // 首先初始化指令
     initDirectives(root);
 
-    // 然后初始化 Live 组件
     root.querySelectorAll('[data-live]').forEach(el => {
         setupLiveComponent(el, dispatchAction);
     });
@@ -127,8 +189,9 @@ function boot(root = document) {
         initBadge();
     }
 
-    // 初始化 Intl
     initIntl();
+
+    Poll.autoInit(root);
 }
 
 const L = {
@@ -141,10 +204,10 @@ const L = {
     setupLiveComponent,
     applyLiveResponse,
     applyLiveFragment,
-    // Intl
     switchLocale,
     getLocale,
     getTranslation,
+    Poll,
 };
 
 window.L = L;

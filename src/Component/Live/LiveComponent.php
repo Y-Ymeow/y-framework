@@ -200,11 +200,24 @@ abstract class LiveComponent
 
     public function toHtml(bool $onlyFragment = false): string
     {
-        // 渲染前执行 dehydrate 钩子
         $this->dehydrate();
 
         $content = $this->render();
 
+        // 如果返回的是 Response，转换为字符串
+        if ($content instanceof \Framework\Http\Response) {
+            return $content->getContent();
+        }
+
+        // 如果返回的是字符串且包含 <!DOCTYPE，拒绝（安全限制）
+        if (is_string($content) && str_contains($content, '<!DOCTYPE')) {
+            throw new \LogicException(
+                'LiveComponent cannot return HTML document string. ' .
+                'Return Element or UXComponent instead.'
+            );
+        }
+
+        // 否则包装在 Element 中
         if (!($content instanceof Element)) {
             $content = Element::make('div')->child($content);
         }
@@ -214,13 +227,39 @@ abstract class LiveComponent
         $content->attr('data-live-state', $this->serializeState());
         $content->attr('data-state', json_encode($this->getDataForFrontend(), JSON_UNESCAPED_UNICODE));
 
-        // 记录监听器信息，供前端优化收集逻辑
         $listeners = $this->getLiveListeners();
         if (!empty($listeners)) {
             $content->attr('data-live-listeners', implode(',', array_keys($listeners)));
         }
 
+        $polls = $this->getLivePolls();
+        if (!empty($polls)) {
+            $content->attr('data-poll', json_encode($polls, JSON_UNESCAPED_UNICODE));
+        }
+
         return $content->render($onlyFragment);
+    }
+
+    /**
+     * 检测是否为嵌套调用
+     *
+     * 用于安全限制：只有顶层 Page 组件才能返回 Document
+     */
+    private function isNestedCall(): bool
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+
+        foreach ($trace as $frame) {
+            // 如果调用栈中有其他 LiveComponent::toHtml，说明是嵌套
+            if (isset($frame['class']) &&
+                $frame['class'] !== static::class &&
+                is_subclass_of($frame['class'], self::class) &&
+                $frame['function'] === 'toHtml') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -238,6 +277,29 @@ abstract class LiveComponent
             }
         }
         return $listeners;
+    }
+
+    /**
+     * 获取组件定义的轮询方法
+     *
+     * @return array<string, array{interval: int, immediate: bool, condition: string}>
+     */
+    public function getLivePolls(): array
+    {
+        $polls = [];
+        $ref = new \ReflectionClass($this);
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(\Framework\Component\Live\Attribute\LivePoll::class);
+            foreach ($attrs as $attr) {
+                $poll = $attr->newInstance();
+                $polls[$method->getName()] = [
+                    'interval' => $poll->interval,
+                    'immediate' => $poll->immediate,
+                    'condition' => $poll->condition,
+                ];
+            }
+        }
+        return $polls;
     }
 
     public function __toString(): string
@@ -434,6 +496,14 @@ abstract class LiveComponent
                 $attr = $attrs[0]->newInstance();
                 $name = $attr->name ?? $method->getName();
                 $this->actionCache[$name] = $method->getName();
+            }
+
+            $pollAttrs = $method->getAttributes(\Framework\Component\Live\Attribute\LivePoll::class);
+            if (!empty($pollAttrs)) {
+                $name = $method->getName();
+                if (!isset($this->actionCache[$name])) {
+                    $this->actionCache[$name] = $method->getName();
+                }
             }
         }
 

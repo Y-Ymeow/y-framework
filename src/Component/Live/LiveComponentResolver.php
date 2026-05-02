@@ -7,6 +7,8 @@ namespace Framework\Component\Live;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\Session;
+use Framework\Http\StreamResponse;
+use Framework\Http\SseResponse;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\FragmentRegistry;
@@ -81,13 +83,22 @@ class LiveComponentResolver
                 $component->deserializeState($state);
             }
 
-            // 使用 _data 字段恢复公开属性
             $component->fillPublicProperties($publicData);
 
             $before = $component->getDataForFrontend();
 
-            // 执行 Action，传入专门的业务参数 _params
             $result = $component->callAction($action, $params);
+
+            if ($result instanceof StreamResponse) {
+                return Response::json([
+                    'success' => false,
+                    'error' => 'Stream actions must use /live/stream endpoint',
+                ], 400);
+            }
+
+            if ($result instanceof SseResponse) {
+                return $result;
+            }
 
             $after = $component->getDataForFrontend();
 
@@ -112,7 +123,6 @@ class LiveComponentResolver
                 'componentUpdates' => [],
             ];
 
-            // 1. 处理事件触发的更新
             $emittedEvents = LiveEventBus::getEmittedEvents();
             foreach ($emittedEvents as $emittedEvent) {
                 $listeners = LiveEventBus::findListenersForEvent(
@@ -130,13 +140,10 @@ class LiveComponentResolver
                 }
             }
 
-            // 2. 处理手动指定的更新 (updateComponent)
             $manualUpdates = method_exists($component, 'getManualUpdates') ? $component->getManualUpdates() : [];
             foreach ($manualUpdates as $targetId => $patchData) {
                 $this->processComponentUpdate($targetId, $response, function ($comp) use ($patchData) {
-                    // 简单地应用补丁
                     if (method_exists($comp, 'deserializeState')) {
-                        // 这里我们实际上是想更新组件的属性
                         $ref = new \ReflectionClass($comp);
                         foreach ($patchData as $key => $val) {
                             if ($ref->hasProperty($key)) {
@@ -148,7 +155,6 @@ class LiveComponentResolver
                 });
             }
 
-            // 3. 处理当前组件的片段刷新
             $refreshTargets = method_exists($component, 'getRefreshFragments') ? $component->getRefreshFragments() : [];
             if (!empty($refreshTargets)) {
                 FragmentRegistry::reset();
@@ -164,7 +170,6 @@ class LiveComponentResolver
                 }
             }
 
-            // 4. 触发 live.action.completed 钩子，允许外部系统（如 DebugBar）响应
             $response = \Framework\Events\Hook::filter('live.action.completed', $response, $component, $request);
 
             if ($result instanceof \Framework\View\LiveResponse) {
@@ -193,6 +198,98 @@ class LiveComponentResolver
         }
     }
 
+    #[Route('/stream', ['POST'], name: 'live.stream')]
+    public function stream(Request $request): Response
+    {
+        $session = new Session();
+        $csrfToken = $request->header('x-csrf-token')
+            ?? $request->input('_token', '');
+
+        if (!$session->verifyToken((string) $csrfToken)) {
+            return Response::json(['success' => false, 'error' => 'Invalid CSRF token'], 419);
+        }
+
+        $componentClass = $request->header('x-live-component')
+            ?? $request->input('_component');
+
+        $action = $request->header('x-live-action')
+            ?? $request->input('_action');
+
+        $state = $request->input('_state', '');
+        $publicData = $request->input('_data', []);
+        $params = $request->input('_params', []);
+
+        if (!is_array($publicData)) $publicData = [];
+        if (!is_array($params)) $params = [];
+
+        if (empty($componentClass) || empty($action)) {
+            return Response::json(['success' => false, 'error' => 'Missing component or action'], 400);
+        }
+
+        if (!class_exists($componentClass)) {
+            return Response::json(['success' => false, 'error' => "Component [{$componentClass}] not found"], 404);
+        }
+
+        try {
+            LiveEventBus::reset();
+
+            $components = $request->input('_components');
+            if (!is_array($components)) {
+                $components = [];
+            }
+
+            foreach ($components as $compData) {
+                if (empty($compData['class']) || empty($compData['id']) || empty($compData['state'])) {
+                    continue;
+                }
+
+                LiveEventBus::storeComponentState(
+                    $compData['id'],
+                    $compData['class'],
+                    $compData['state']
+                );
+            }
+
+            $component = new $componentClass();
+
+            if (!($component instanceof LiveComponent)) {
+                return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
+            }
+
+            $requestedComponentId = $request->input('_component_id', '');
+            if (!empty($requestedComponentId)) {
+                $component->named($requestedComponentId);
+            }
+
+            if (!empty($state)) {
+                $component->deserializeState($state);
+            }
+
+            $component->fillPublicProperties($publicData);
+
+            $result = $component->callAction($action, $params);
+
+            if ($result instanceof StreamResponse) {
+                return $result;
+            }
+
+            if ($result instanceof SseResponse) {
+                return $result;
+            }
+
+            return Response::json([
+                'success' => false,
+                'error' => 'Action does not return a streamable response. Use /live/update for non-stream actions.',
+            ], 400);
+        } catch (\Throwable $e) {
+            return Response::json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
+        }
+    }
+
     #[Route('/navigate', ['POST'], name: 'live.navigate')]
     public function navigate(Request $request): Response
     {
@@ -202,29 +299,24 @@ class LiveComponentResolver
         }
 
         try {
-            // 使用 Application 容器获取 Router 并执行请求
             $app = \Framework\Foundation\Application::getInstance();
             if (!$app) {
                 throw new \RuntimeException('Application not initialized');
             }
             $router = $app->make(\Framework\Routing\Router::class);
 
-            // 创建一个模拟的 GET 请求
             $path = parse_url($url, PHP_URL_PATH) ?? $url;
             $subRequest = Request::create($path, 'GET');
 
-            // 临时将子请求绑定到容器，以便组件 mount 时能获取正确的路径
             $app->instance(Request::class, $subRequest);
 
-            // 使用 Router dispatch 获取响应
             $response = $router->dispatch($subRequest);
 
             if (!$response instanceof Response) {
                 return Response::json(['error' => 'Invalid response'], 500);
             }
 
-            // 解析 HTML 提取 fragments
-            $html = $response->getSfResponse()->getContent() ?? '';
+            $html = $response->getContent() ?? '';
             $fragments = $this->extractNavigateFragments($html);
             $title = $this->extractTitle($html);
 
@@ -234,7 +326,6 @@ class LiveComponentResolver
                 'fragments' => $fragments,
             ]);
         } catch (\Throwable $e) {
-            // 临时调试日志
             $logFile = __DIR__ . '/../../storage/logs/navigate-error.log';
             @mkdir(dirname($logFile), 0755, true);
             @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
@@ -291,7 +382,6 @@ class LiveComponentResolver
             }
         }
 
-        // 如果没有找到任何 fragment，返回整个 body 作为默认
         if (empty($fragments)) {
             $bodyContent = $dom->getBodyContent();
             if (!empty($bodyContent)) {
@@ -350,7 +440,6 @@ class LiveComponentResolver
             }
         }
 
-        // 查找是否已经存在该组件的更新，合并它
         foreach ($response['componentUpdates'] as &$existing) {
             if ($existing['componentId'] === $componentId) {
                 $existing['state'] = $comp->serializeState();

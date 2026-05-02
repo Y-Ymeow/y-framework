@@ -1,6 +1,6 @@
 # UX 组件库 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 组件清单
 
@@ -1342,7 +1342,7 @@
 
 - **文件:** `php/src/UX/UXComponent.php`
 
-**公开方法 (16)：**
+**公开方法 (18)：**
 
 - `make(): static` — 静态工厂方法，创建组件实例
 - `id(string $id): static` — 设置组件 ID
@@ -1352,9 +1352,11 @@
 - `model(string $name): static` — 设置 data-model 绑定
 - `liveModel(string $property): static` — 设置 Live 双向绑定，通过桥接层自动同步 UX 组件值到 LiveComponent 属性
 - `data(string $key, string $value): static` — 设置 data-* 属性
+- `dataLiveSse(string $channels): static` — 订阅 SSE 频道（data-live-sse）
 - `child(mixed $child): static` — 添加子元素
 - `children(mixed $children): static` — 批量添加子元素
 - `liveAction(string $action, string $event = 'click'): static` — 设置 Live Action，点击时触发后端方法
+- `stream(): static` — 标记此动作为流式响应
 - `on(string $event, string $handler): static` — 绑定事件监听器
 - `onOpen(string $handler): static` — 绑定 open 事件
 - `onClose(string $handler): static` — 绑定 close 事件

@@ -159,6 +159,27 @@ class Document
     }
 
     /**
+     * 启用 SSE 实时推送功能
+     *
+     * 在 head 中注入 SSE 配置，前端自动初始化连接。
+     * 配合 UX 组件的 dataLiveSse() 方法使用。
+     *
+     * @param array $channels 默认订阅的频道
+     * @return static
+     *
+     * @example
+     * Document::make('仪表盘')
+     *     ->sseConfig(['notifications', 'orders'])
+     *     ->main($dashboard);
+     */
+    public static function sseConfig(array $channels = [])
+    {
+        $metaElement = \Framework\Component\Live\Sse\SseHelper::metaElement($channels);
+        $rendered = $metaElement->render();
+        self::injectStatic('head', $rendered);
+    }
+
+    /**
      * 标记加载脚本
      */
     public function requireScript(string ...$ids): static
@@ -276,19 +297,27 @@ class Document
         $html .= '<meta name="csrf-token" content="' . htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') . '">';
         $html .= $this->assets->renderCss();
 
+        // 静态注入
         foreach (self::$staticInjections['head'] as $injected) $html .= $injected;
+
+        // 实例级别注入
+        foreach ($this->injections['head'] as $injected) {
+            $html .= $injected;
+        }
 
         $html .= '</head>';
 
         $html .= '<body>';
 
         foreach (self::$staticInjections['body_start'] as $injected) $html .= $injected;
+        foreach ($this->injections['body_start'] as $injected) $html .= $injected;
 
         if ($this->header) $html .= $this->header;
         if ($this->main) $html .= $this->main;
         if ($this->footer) $html .= $this->footer;
 
         foreach (self::$staticInjections['body_end'] as $injected) $html .= $injected;
+        foreach ($this->injections['body_end'] as $injected) $html .= $injected;
 
         $html .= $this->assets->renderJs();
         $html .= '</body></html>';

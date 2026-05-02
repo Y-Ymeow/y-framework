@@ -1,6 +1,6 @@
 # UX 组件库 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 目录
 
@@ -1642,9 +1642,11 @@ UX 组件基类
 | `model` | 设置 data-model 绑定 | `string $name` |
 | `liveModel` | 设置 Live 双向绑定，通过桥接层自动同步 UX 组件值到 LiveComponent 属性 | `string $property` |
 | `data` | 设置 data-* 属性 | `string $key`, `string $value` |
+| `dataLiveSse` | 订阅 SSE 频道（data-live-sse） | `string $channels` |
 | `child` | 添加子元素 | `mixed $child` |
 | `children` | 批量添加子元素 | `mixed $children` |
 | `liveAction` | 设置 Live Action，点击时触发后端方法 | `string $action`, `string $event` = 'click' |
+| `stream` | 标记此动作为流式响应 | — |
 | `on` | 绑定事件监听器 | `string $event`, `string $handler` |
 | `onOpen` | 绑定 open 事件 | `string $handler` |
 | `onClose` | 绑定 close 事件 | `string $handler` |

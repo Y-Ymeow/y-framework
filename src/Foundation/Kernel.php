@@ -45,6 +45,7 @@ class Kernel
 
             $files = [
                 $frameworkDir . '/Component/Live/LiveComponentResolver.php',
+                $frameworkDir . '/Component/Live/Sse/SseEndpoint.php',
                 $frameworkDir . '/Routing/SystemRoute.php',
             ];
 

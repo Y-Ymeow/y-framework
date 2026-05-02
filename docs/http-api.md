@@ -1,6 +1,6 @@
 # HTTP 核心 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 目录
 
@@ -9,11 +9,13 @@
 - [`HttpClient`](#framework-http-httpclient)
 - [`HttpException`](#framework-http-httpexception)
 - [`Request`](#framework-http-request)
-- [`Response`](#framework-http-response) — HTTP 响应封装
+- [`Response`](#framework-http-response) — Response HTTP 响应
 - [`Session`](#framework-http-session)
 - [`SessionServiceProvider`](#framework-http-sessionserviceprovider)
+- [`SseResponse`](#framework-http-sseresponse) — SseResponse 长连接 SSE 响应
 - [`StaticFile`](#framework-http-staticfile)
-- [`StreamedResponse`](#framework-http-streamedresponse)
+- [`StreamResponse`](#framework-http-streamresponse) — StreamResponse 流式响应
+- [`StreamedResponse`](#framework-http-streamedresponse) — StreamedResponse 回调式流式响应
 - [`Upload`](#framework-http-upload)
 
 ---
@@ -116,7 +118,7 @@
 <a name="framework-http-response"></a>
 #### `Framework\Http\Response`
 
-HTTP 响应封装
+Response HTTP 响应
 
 **文件:** `php/src/Http/Response.php`
 
@@ -124,18 +126,19 @@ HTTP 响应封装
 
 | 方法 | 说明 | 参数 |
 |---|---|---|
-| `fromSymfony` |  | `Symfony\Component\HttpFoundation\Response $response` |
-| `json` | JSON 响应 | `mixed $data`, `int $status` = 200, `array $headers` = [] |
-| `html` | HTML 响应 — 自动适配环境 | `mixed $html`, `int $status` = 200, `array $headers` = [] |
-| `wasm` | WASM 专用响应 — 返回结构化数据 | `mixed $html`, `string $title` = '', `int $status` = 200 |
-| `redirect` | 重定向响应 | `string $url`, `int $status` = 302 |
-| `send` | 发送响应 | — |
-| `getSfResponse` |  | — |
-| `setHeader` |  | `string $key`, `string $value` |
-| `setStatusCode` |  | `int $code` |
-| `getStatus` |  | — |
-| `getStatusCode` |  | — |
-| `getContent` |  | — |
+| `json` | 创建 JSON 响应 | `mixed $data`, `int $status` = 200, `array $headers` = [] |
+| `html` | 创建 HTML 响应 | `mixed $html`, `int $status` = 200, `array $headers` = [] |
+| `wasm` | 创建 WASM 模式响应 | `mixed $html`, `string $title` = '', `int $status` = 200 |
+| `redirect` | 创建重定向响应 | `string $url`, `int $status` = 302 |
+| `send` | 发送响应到客户端 | — |
+| `setHeader` | 设置响应头 | `string $key`, `string $value` |
+| `getHeader` | 获取响应头 | `string $key`, `?string $default` = null |
+| `getHeaders` | 获取所有响应头 | — |
+| `setStatusCode` | 设置 HTTP 状态码 | `int $code` |
+| `getStatus` | 获取 HTTP 状态码 | — |
+| `getStatusCode` | 获取 HTTP 状态码（别名） | — |
+| `getContent` | 获取响应内容 | — |
+| `setContent` | 设置响应内容 | `string $content` |
 
 
 <a name="framework-http-session"></a>
@@ -162,6 +165,8 @@ HTTP 响应封装
 | `getId` |  | — |
 | `token` |  | — |
 | `verifyToken` |  | `string $token` |
+| `close` | 关闭 Session（释放锁） | — |
+| `isActive` | 检查 Session 是否活跃 | — |
 
 
 <a name="framework-http-sessionserviceprovider"></a>
@@ -175,6 +180,28 @@ HTTP 响应封装
 |---|---|---|
 | `register` |  | — |
 | `boot` |  | — |
+
+
+<a name="framework-http-sseresponse"></a>
+#### `Framework\Http\SseResponse`
+
+SseResponse 长连接 SSE 响应
+
+**继承:** `Framework\Http\Response`  | **文件:** `php/src/Http/SseResponse.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `create` | 创建 SSE 响应实例 | — |
+| `event` | 添加初始事件（连接建立时立即发送） | `string $event`, `mixed $data`, `?string $id` = null |
+| `keepAlive` | 设置 keep-alive 心跳间隔 | `int $seconds` |
+| `onInterval` | 设置定时轮询回调 | `callable $callback`, `int $intervalMs` = 1000 |
+| `maxExecTime` | 设置最大执行时间 | `int $seconds` |
+| `subscribe` | 订阅 SSE 频道 | `string $channels` |
+| `send` | 发送 SSE 响应：发送初始事件 → 进入轮询循环 | — |
+| `getContent` | 收集初始事件为字符串 | — |
+| `simple` | 快速创建定时推送 SSE | `callable $callback`, `int $intervalMs` = 1000 |
 
 
 <a name="framework-http-staticfile"></a>
@@ -192,8 +219,38 @@ HTTP 响应封装
 | `serve` |  | `string $path`, `?string $host` = null |
 
 
+<a name="framework-http-streamresponse"></a>
+#### `Framework\Http\StreamResponse`
+
+StreamResponse 流式响应
+
+**继承:** `Framework\Http\Response`  | **文件:** `php/src/Http/StreamResponse.php`
+
+**常量：**
+
+| 常量 | 值 | 说明 |
+|---|---|---|
+| `FORMAT_NDJSON` | `'ndjson'` | NDJSON 格式：每行一个 JSON 对象 |
+| `FORMAT_SSE` | `'sse'` | SSE 格式：Server-Sent Events |
+| `FORMAT_TEXT` | `'text'` | 纯文本格式 |
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `generator` | 从回调创建流式响应（回调需返回 Generator） | `callable $callback`, `string $format` = 'ndjson' |
+| `fromArray` | 从静态数组创建流式响应 | `array $items`, `string $format` = 'ndjson' |
+| `textStream` | 创建纯文本流式响应 | `callable $callback`, `float $delay` = 0.01 |
+| `getGenerator` | 获取底层 Generator | — |
+| `getFormat` | 获取输出格式 | — |
+| `send` | 发送流式响应：发送 headers → 清除输出缓冲 → 逐块输出 | — |
+| `getContent` | 收集所有 Generator 数据为字符串（会消费整个 Generator） | — |
+
+
 <a name="framework-http-streamedresponse"></a>
 #### `Framework\Http\StreamedResponse`
+
+StreamedResponse 回调式流式响应
 
 **继承:** `Framework\Http\Response`  | **文件:** `php/src/Http/StreamedResponse.php`
 
@@ -201,10 +258,9 @@ HTTP 响应封装
 
 | 方法 | 说明 | 参数 |
 |---|---|---|
-| `send` |  | — |
-| `getSfResponse` |  | — |
-| `setHeader` |  | `string $key`, `string $value` |
-| `setStatusCode` |  | `int $code` |
+| `send` | 发送流式响应（仅执行一次） | — |
+| `getContent` | 获取响应内容（会执行回调） | — |
+| `setCallback` | 设置输出回调 | `callable $callback` |
 
 
 <a name="framework-http-upload"></a>

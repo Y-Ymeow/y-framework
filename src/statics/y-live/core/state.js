@@ -74,7 +74,8 @@ function bindLiveActions(el, componentClass, stateRef, state, onAction, scanTarg
 
             const dispatcher = onAction || el._liveDispatch;
             if (typeof dispatcher === 'function') {
-                dispatcher(el, componentClass, actionName, stateRef, state, e, params);
+                const isStream = actionEl.hasAttribute('data-stream');
+                dispatcher(el, componentClass, actionName, stateRef, state, e, params, isStream);
             }
         });
     });

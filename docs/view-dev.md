@@ -1,6 +1,6 @@
 # View 视图系统 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 组件清单
 
@@ -81,7 +81,7 @@
 
 - **文件:** `php/src/View/Document/Document.php`
 
-**公开方法 (21)：**
+**公开方法 (22)：**
 
 - `make(string $title = ''): static`
 - `mode(string $mode): static` — 设置渲染模式
@@ -91,6 +91,7 @@
 - `setTitle(string $title): void`
 - `setLang(string $lang): void`
 - `inject(string $location, string $html): static`
+- `sseConfig(array $channels = []): void` — 启用 SSE 实时推送功能
 - `requireScript(string $ids): static` — 标记加载脚本
 - `script(string $id, string $js): static` — 注册并加载脚本
 - `meta(string $name, string $content): static` — 实例级别添加 Meta
@@ -109,7 +110,7 @@
 
 - **文件:** `php/src/View/Base/Element.php`
 
-**公开方法 (34)：**
+**公开方法 (35)：**
 
 - `make(Framework\View\Base\Element|string|null $tagOrcontent = null, Framework\View\Base\Element|string|null $content = null): static` — 静态工厂方法 — 创建 Element 实例
 - `id(string $id): static` — 设置元素 ID
@@ -117,6 +118,7 @@
 - `attr(string $name, string $value): static` — 设置单个 HTML 属性
 - `attrs(array $attrs): static` — 批量设置 HTML 属性（合并到已有属性）
 - `data(string $key, string $value): static` — 设置 data-* 自定义属性
+- `dataLiveSse(string $channels): static` — 订阅 SSE 频道（data-live-sse）
 - `style(string $style): static` — 设置内联样式
 - `text(?string $text = null): static` — 设置纯文本内容（自动 HTML 转义，防 XSS）
 - `html(mixed $html = null): static` — 设置 HTML 内容（经过安全过滤）

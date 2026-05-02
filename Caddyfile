@@ -3,21 +3,12 @@
     frankenphp
 }
 
-localhost:8080 {
+:8081 {
     # 根目录指向 public
     root * public/
     
     # 启用压缩
     encode zstd br gzip
-    
-    # 静态资源优先
-    file_server
 
-    # 使用 Worker 模式运行框架
-    php_server {
-        # 入口文件
-        index frankenphp.php
-        # 启用 Worker 模式
-        worker public/frankenphp.php 4
-    }
+    php_server
 }

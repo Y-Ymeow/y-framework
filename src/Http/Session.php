@@ -11,6 +11,13 @@ class Session
     public function start(): void
     {
         if ($this->started || session_status() === PHP_SESSION_ACTIVE) return;
+        
+        $sessionPath = getenv('SESSION_PATH') ?: $_ENV['SESSION_PATH'] ?? null;
+        if (!$sessionPath) {
+            $sessionPath = '/computer/Project/frameworks/php/storage/sessions';
+        }
+        ini_set('session.save_path', $sessionPath);
+        
         session_start();
         $this->started = true;
     }
@@ -109,5 +116,26 @@ class Session
     public function verifyToken(string $token): bool
     {
         return hash_equals($this->get('_token', ''), $token);
+    }
+
+    /**
+     * 关闭 Session（释放锁）
+     *
+     * 用于长连接场景（如 SSE），避免阻塞其他请求
+     * 数据仍然保存在 $_SESSION 中可读，但不能再写入
+     */
+    public function close(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+    }
+
+    /**
+     * 检查 Session 是否活跃
+     */
+    public function isActive(): bool
+    {
+        return session_status() === PHP_SESSION_ACTIVE;
     }
 }

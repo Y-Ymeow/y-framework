@@ -246,6 +246,37 @@ class Element
     }
 
     /**
+     * 订阅 SSE 频道（data-live-sse）
+     *
+     * 元素将自动订阅指定的 SSE 频道，接收服务器推送的消息。
+     * 当收到 `live:action` 事件时，会自动调用对应的 LiveAction。
+     *
+     * @view-since 2.0
+     * @param string ...$channels 频道名称列表
+     * @return static
+     *
+     * @view-example
+     * // 订阅单个频道
+     * Element::make('div')
+     *     ->id('dashboard')
+     *     ->dataLiveSse('dashboard')
+     *
+     * // 订阅多个频道
+     * Element::make('div')
+     *     ->dataLiveSse('notifications', 'orders', 'system')
+     *
+     * // 后端推送更新
+     * SseHub::liveAction('dashboard', 'refreshData');
+     * // 前端自动调用 dashboard 组件的 refreshData() 方法
+     * @view-example-end
+     */
+    public function dataLiveSse(string ...$channels): static
+    {
+        $this->attrs['data-live-sse'] = implode(',', $channels);
+        return $this;
+    }
+
+    /**
      * 设置内联样式
      *
      * @view-since 1.0.0

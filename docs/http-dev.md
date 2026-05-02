@@ -1,6 +1,6 @@
 # HTTP 核心 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 05:56:00
+> 由 DocGen 自动生成于 2026-05-02 19:56:28
 
 ## 组件清单
 
@@ -13,7 +13,9 @@
 | `Response` | `Framework\Http` | `php/src/Http/Response.php` | class |
 | `Session` | `Framework\Http` | `php/src/Http/Session.php` | class |
 | `SessionServiceProvider` | `Framework\Http` | `php/src/Http/SessionServiceProvider.php` | extends Framework\Foundation\ServiceProvider |
+| `SseResponse` | `Framework\Http` | `php/src/Http/SseResponse.php` | extends Framework\Http\Response |
 | `StaticFile` | `Framework\Http` | `php/src/Http/StaticFile.php` | class |
+| `StreamResponse` | `Framework\Http` | `php/src/Http/StreamResponse.php` | extends Framework\Http\Response |
 | `StreamedResponse` | `Framework\Http` | `php/src/Http/StreamedResponse.php` | extends Framework\Http\Response |
 | `Upload` | `Framework\Http` | `php/src/Http/Upload.php` | class |
 
@@ -103,26 +105,27 @@
 
 - **文件:** `php/src/Http/Response.php`
 
-**公开方法 (12)：**
+**公开方法 (13)：**
 
-- `fromSymfony(Symfony\Component\HttpFoundation\Response $response): Framework\Http\Response`
-- `json(mixed $data, int $status = 200, array $headers = []): Framework\Http\Response` — JSON 响应
-- `html(mixed $html, int $status = 200, array $headers = []): Framework\Http\Response` — HTML 响应 — 自动适配环境
-- `wasm(mixed $html, string $title = '', int $status = 200): Framework\Http\Response` — WASM 专用响应 — 返回结构化数据
-- `redirect(string $url, int $status = 302): Framework\Http\Response` — 重定向响应
-- `send(): void` — 发送响应
-- `getSfResponse(): Symfony\Component\HttpFoundation\Response`
-- `setHeader(string $key, string $value): Framework\Http\Response`
-- `setStatusCode(int $code): Framework\Http\Response`
-- `getStatus(): int`
-- `getStatusCode(): int`
-- `getContent(): string`
+- `json(mixed $data, int $status = 200, array $headers = []): Framework\Http\Response` — 创建 JSON 响应
+- `html(mixed $html, int $status = 200, array $headers = []): Framework\Http\Response` — 创建 HTML 响应
+- `wasm(mixed $html, string $title = '', int $status = 200): Framework\Http\Response` — 创建 WASM 模式响应
+- `redirect(string $url, int $status = 302): Framework\Http\Response` — 创建重定向响应
+- `send(): void` — 发送响应到客户端
+- `setHeader(string $key, string $value): Framework\Http\Response` — 设置响应头
+- `getHeader(string $key, ?string $default = null): ?string` — 获取响应头
+- `getHeaders(): array` — 获取所有响应头
+- `setStatusCode(int $code): Framework\Http\Response` — 设置 HTTP 状态码
+- `getStatus(): int` — 获取 HTTP 状态码
+- `getStatusCode(): int` — 获取 HTTP 状态码（别名）
+- `getContent(): string` — 获取响应内容
+- `setContent(string $content): Framework\Http\Response` — 设置响应内容
 
 ### `Framework\Http\Session`
 
 - **文件:** `php/src/Http/Session.php`
 
-**公开方法 (15)：**
+**公开方法 (17)：**
 
 - `start(): void`
 - `get(string $key, mixed $default = null): mixed`
@@ -139,6 +142,8 @@
 - `getId(): string`
 - `token(): string`
 - `verifyToken(string $token): bool`
+- `close(): void` — 关闭 Session（释放锁）
+- `isActive(): bool` — 检查 Session 是否活跃
 
 ### `Framework\Http\SessionServiceProvider`
 
@@ -149,6 +154,23 @@
 
 - `register(): void`
 - `boot(): void`
+
+### `Framework\Http\SseResponse`
+
+- **文件:** `php/src/Http/SseResponse.php`
+- **继承:** `Framework\Http\Response`
+
+**公开方法 (9)：**
+
+- `create(): Framework\Http\SseResponse` — 创建 SSE 响应实例
+- `event(string $event, mixed $data, ?string $id = null): Framework\Http\SseResponse` — 添加初始事件（连接建立时立即发送）
+- `keepAlive(int $seconds): Framework\Http\SseResponse` — 设置 keep-alive 心跳间隔
+- `onInterval(callable $callback, int $intervalMs = 1000): Framework\Http\SseResponse` — 设置定时轮询回调
+- `maxExecTime(int $seconds): Framework\Http\SseResponse` — 设置最大执行时间
+- `subscribe(string $channels): Framework\Http\SseResponse` — 订阅 SSE 频道
+- `send(): void` — 发送 SSE 响应：发送初始事件 → 进入轮询循环
+- `getContent(): string` — 收集初始事件为字符串
+- `simple(callable $callback, int $intervalMs = 1000): Framework\Http\SseResponse` — 快速创建定时推送 SSE
 
 ### `Framework\Http\StaticFile`
 
@@ -161,17 +183,31 @@
 - `disableHotlinkProtection(): Framework\Http\StaticFile`
 - `serve(string $path, ?string $host = null): void`
 
+### `Framework\Http\StreamResponse`
+
+- **文件:** `php/src/Http/StreamResponse.php`
+- **继承:** `Framework\Http\Response`
+
+**公开方法 (7)：**
+
+- `generator(callable $callback, string $format = 'ndjson'): Framework\Http\StreamResponse` — 从回调创建流式响应（回调需返回 Generator）
+- `fromArray(array $items, string $format = 'ndjson'): Framework\Http\StreamResponse` — 从静态数组创建流式响应
+- `textStream(callable $callback, float $delay = 0.01): Framework\Http\StreamResponse` — 创建纯文本流式响应
+- `getGenerator(): Generator` — 获取底层 Generator
+- `getFormat(): string` — 获取输出格式
+- `send(): void` — 发送流式响应：发送 headers → 清除输出缓冲 → 逐块输出
+- `getContent(): string` — 收集所有 Generator 数据为字符串（会消费整个 Generator）
+
 ### `Framework\Http\StreamedResponse`
 
 - **文件:** `php/src/Http/StreamedResponse.php`
 - **继承:** `Framework\Http\Response`
 
-**公开方法 (4)：**
+**公开方法 (3)：**
 
-- `send(): void`
-- `getSfResponse(): Symfony\Component\HttpFoundation\StreamedResponse`
-- `setHeader(string $key, string $value): Framework\Http\StreamedResponse`
-- `setStatusCode(int $code): Framework\Http\StreamedResponse`
+- `send(): void` — 发送流式响应（仅执行一次）
+- `getContent(): string` — 获取响应内容（会执行回调）
+- `setCallback(callable $callback): Framework\Http\StreamedResponse` — 设置输出回调
 
 ### `Framework\Http\Upload`
 

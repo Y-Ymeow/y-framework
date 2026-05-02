@@ -62,6 +62,7 @@ abstract class UXComponent
     protected array $children = [];
     protected ?string $liveAction = null;
     protected ?string $liveEvent = null;
+    protected bool $isStream = false;
     protected ?string $uxModel = null;
     protected ?string $style = null;
     protected array $dataAttrs = [];
@@ -198,6 +199,35 @@ abstract class UXComponent
     }
 
     /**
+     * 订阅 SSE 频道（data-live-sse）
+     *
+     * 组件将自动订阅指定的 SSE 频道，接收服务器推送的消息。
+     * 当收到 `live:action` 事件时，会自动调用对应的 LiveAction。
+     *
+     * @param string ...$channels 频道名称列表
+     * @return static
+     *
+     * @ux-since 2.0
+     * @ux-example
+     * // 订阅单个频道
+     * Container::make()->id('dashboard')->dataLiveSse('dashboard')
+     *
+     * // 订阅多个频道
+     * Container::make()
+     *     ->id('notifications')
+     *     ->dataLiveSse('notifications', 'orders', 'system')
+     *
+     * // 后端推送更新
+     * SseHub::liveAction('dashboard', 'refreshData');
+     * // 前端自动调用 dashboard 组件的 refreshData() 方法
+     */
+    public function dataLiveSse(string ...$channels): static
+    {
+        $this->dataAttrs['live-sse'] = implode(',', $channels);
+        return $this;
+    }
+
+    /**
      * 添加子元素
      * @param mixed $child 支持 Element、UXComponent、字符串
      * @return static
@@ -233,6 +263,20 @@ abstract class UXComponent
     {
         $this->liveAction = $action;
         $this->liveEvent = $event;
+        return $this;
+    }
+
+    /**
+     * 标记此动作为流式响应
+     *
+     * 添加 data-stream 属性，前端会将请求发送到 /live/stream 端点
+     * 而非 /live/update，以支持 NDJSON 流式输出。
+     *
+     * @return static
+     */
+    public function stream(): static
+    {
+        $this->isStream = true;
         return $this;
     }
 
@@ -381,6 +425,10 @@ abstract class UXComponent
 
         if ($this->liveAction) {
             $el->liveAction($this->liveAction, $this->liveEvent ?? 'click');
+        }
+
+        if ($this->isStream) {
+            $el->attr('data-stream', '');
         }
 
         if ($this->uxModel) {

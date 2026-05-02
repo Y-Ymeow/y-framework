@@ -19,44 +19,65 @@ export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-navigate-state',
     'data-state',
     'data-component',
+    'data-poll',
+    'data-stream',
+    'data-stream-target',
+    'data-live-sse',
 ]);
 
 if (!window.Y_UI_SAFE_ATTRS) {
     window.Y_UI_SAFE_ATTRS = LIVE_SAFE_DATA_ATTRS;
 }
 
-export async function dispatchLive(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    // 1. 获取当前组件的完整公开属性快照
+export function setLoading(el, loading) {
+    const liveEl = el.closest('[data-live]') || el;
+    if (loading) liveEl.classList.add('y-loading-root');
+    else liveEl.classList.remove('y-loading-root');
+
+    liveEl.querySelectorAll('[data-action]').forEach(btn => {
+        btn.disabled = loading;
+        if (loading) btn.classList.add('y-loading');
+        else btn.classList.remove('y-loading');
+    });
+}
+
+function buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
     const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
-    
-    // 2. 收集 Action 触发时的增量参数 (来自 data-model, form, 或 data-action-params)
     const actionParams = collectParams(el, event, extraParams);
-    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const componentsSnapshot = collectAllLiveComponents(el);
     const componentId = el.dataset.liveId || '';
+
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Live-Component': componentClass,
+            'X-Live-Action': action,
+            'X-CSRF-Token': csrfToken,
+            'X-Component-Id': componentId,
+        },
+        body: JSON.stringify({
+            _component: componentClass,
+            _component_id: componentId,
+            _action: action,
+            _state: stateRef.value,
+            _data: publicData,
+            _params: actionParams,
+            _components: componentsSnapshot,
+        }),
+    };
+}
+
+export async function dispatchLive(el, componentClass, action, stateRef, state, event, extraParams = {}) {
+    const { headers, body } = buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams);
 
     setLoading(el, true);
 
     try {
         const response = await fetch('/live/update', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Live-Component': componentClass,
-                'X-Live-Action': action,
-                'X-CSRF-Token': csrfToken,
-                'X-Component-Id': componentId,
-            },
-            body: JSON.stringify({
-                _component: componentClass,
-                _component_id: componentId,
-                _action: action,
-                _state: stateRef.value,      // 加密状态 (Protected/Private)
-                _data: publicData,           // 公开状态 (Public)
-                _params: actionParams,       // 方法参数
-                _components: componentsSnapshot,
-            }),
+            headers,
+            body,
         });
 
         const data = await response.json();
@@ -69,27 +90,84 @@ export async function dispatchLive(el, componentClass, action, stateRef, state, 
     }
 }
 
+export function dispatchStream(el, componentClass, action, stateRef, state, event, extraParams = {}, onChunk = null, onDone = null) {
+    const { headers, body } = buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams);
+
+    setLoading(el, true);
+
+    fetch('/live/stream', { method: 'POST', headers, body })
+        .then(async (response) => {
+            console.log('Stream response:', response);
+            if (!response.ok) {
+                const text = await response.text();
+                try {
+                    const err = JSON.parse(text);
+                    console.error('Stream error:', err.error || text);
+                } catch (e) {
+                    console.error('Stream error:', text);
+                }
+                setLoading(el, false);
+                if (onDone) onDone();
+                return;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const data = JSON.parse(line);
+                        if (onChunk) onChunk(data);
+                    } catch (e) {}
+                }
+            }
+
+            if (buffer.trim()) {
+                try {
+                    const data = JSON.parse(buffer);
+                    if (onChunk) onChunk(data);
+                } catch (e) {}
+            }
+
+            setLoading(el, false);
+            if (onDone) onDone();
+        })
+        .catch((err) => {
+            console.error('Stream network error:', err);
+            setLoading(el, false);
+            if (onDone) onDone();
+        });
+}
+
 function collectParams(el, event, extraParams = {}) {
     const params = { ...extraParams };
 
-    // 1. 自动收集当前组件内所有 data-model 的值
     const liveEl = el.closest('[data-live]') || el;
     liveEl.querySelectorAll('[data-model]').forEach(modelEl => {
         const name = modelEl.dataset.model;
         if (!name) return;
-        
-        // 避免收集嵌套组件的模型
+
         if (modelEl.closest('[data-live]') !== liveEl) return;
 
         let value;
         if (modelEl.type === 'checkbox') value = modelEl.checked;
         else if (modelEl.type === 'radio') {
             if (modelEl.checked) value = modelEl.value;
-            else return; // 跳过未选中的 radio
+            else return;
         }
         else value = modelEl.value;
 
-        // 如果是数组名
         if (name.endsWith('[]')) {
             const baseName = name.slice(0, -2);
             if (!params[baseName]) params[baseName] = [];
@@ -99,7 +177,6 @@ function collectParams(el, event, extraParams = {}) {
         }
     });
 
-    // 2. 收集表单数据 (如果 Action 是由表单提交或表单内按钮触发)
     let form = null;
     if (event && event.target) {
         if (event.type === 'submit' && event.target.tagName === 'FORM') {
@@ -119,7 +196,6 @@ function collectParams(el, event, extraParams = {}) {
             if (key.endsWith('[]')) {
                 const arrKey = key.slice(0, -2);
                 if (!params[arrKey]) params[arrKey] = [];
-                // 避免重复添加 (如果 data-model 已经收集过)
                 if (!params[arrKey].includes(value)) params[arrKey].push(value);
             } else {
                 params[key] = value;
@@ -133,8 +209,7 @@ function collectParams(el, event, extraParams = {}) {
 function collectAllLiveComponents(currentEl = null) {
     const components = [];
     const seenIds = new Set();
-    
-    // 1. 收集当前组件的祖先链（这些组件最有可能需要同步状态）
+
     if (currentEl) {
         let parent = currentEl.parentElement;
         while (parent) {
@@ -153,7 +228,6 @@ function collectAllLiveComponents(currentEl = null) {
         }
     }
 
-    // 2. 收集带有监听器的组件（它们需要响应后端发出的 emit 事件）
     document.querySelectorAll('[data-live-listeners]').forEach(el => {
         const id = el.dataset.liveId;
         if (id && !seenIds.has(id)) {
@@ -166,7 +240,6 @@ function collectAllLiveComponents(currentEl = null) {
         }
     });
 
-    // 如果没有 currentEl (比如手动调用)，则退回到收集所有带状态的组件（但建议限制数量）
     if (!currentEl && components.length === 0) {
         document.querySelectorAll('[data-live]').forEach(el => {
             const id = el.dataset.liveId;
@@ -182,16 +255,4 @@ function collectAllLiveComponents(currentEl = null) {
     }
 
     return components;
-}
-
-function setLoading(el, loading) {
-    const liveEl = el.closest('[data-live]') || el;
-    if (loading) liveEl.classList.add('y-loading-root');
-    else liveEl.classList.remove('y-loading-root');
-
-    liveEl.querySelectorAll('[data-action]').forEach(btn => {
-        btn.disabled = loading;
-        if (loading) btn.classList.add('y-loading');
-        else btn.classList.remove('y-loading');
-    });
 }
