@@ -2,23 +2,21 @@
 
 return [
     'default' => env('CACHE_DRIVER', 'file'),
-
     'stores' => [
         'file' => [
             'driver' => 'file',
-            'path' => '__BASE_PATH__/storage/cache',
+            'path' => '__STORAGE_PATH__/cache',
+            'gc_probability' => 10,
+            'gc_divisor' => 100,
         ],
-
+        'array' => [
+            'driver' => 'array',
+            'serialize' => false,
+        ],
         'redis' => [
             'driver' => 'redis',
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => env('REDIS_PORT', 6379),
-            'password' => env('REDIS_PASSWORD', null),
-            'database' => env('REDIS_CACHE_DB', 1),
-        ],
-
-        'memory' => [
-            'driver' => 'memory',
+            'connection' => 'cache',
         ],
     ],
+    'prefix' => env('CACHE_PREFIX', ''),
 ];

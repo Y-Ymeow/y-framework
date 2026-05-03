@@ -12,9 +12,7 @@ class CacheServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CacheManager::class, function () {
-            $app = \Framework\Foundation\Application::getInstance();
-            $config = include $app->configPath('cache.php');
-            return new CacheManager($config);
+            return new CacheManager(config('cache'));
         });
 
         $this->app->alias(CacheManager::class, CacheInterface::class);

@@ -10,7 +10,11 @@ class DatabaseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $config = config('database');
+        $config = config('database') ?? [
+            'default' => 'sqlite',
+            'connections' => ['sqlite' => ['driver' => 'sqlite', 'database' => ':memory:']],
+        ];
+
         $default = $config['default'] ?? 'sqlite';
 
         Connection::setDefault($default);
@@ -21,8 +25,12 @@ class DatabaseServiceProvider extends ServiceProvider
 
         $conn = Connection::get($default);
 
-        $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
-        $conn->setLogger($logger);
+        try {
+            $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
+            $conn->setLogger($logger);
+        } catch (\Throwable $e) {
+            // Logger 可能未注册，忽略
+        }
 
         Model::setConnection($conn);
     }

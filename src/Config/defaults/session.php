@@ -15,5 +15,7 @@ return [
 
     'same_site' => 'lax',
 
-    'files' => '__BASE_PATH__/storage/sessions',
+    'files' => '__STORAGE_PATH__/sessions',
+
+    'cookie' => env('SESSION_COOKIE', 'y_session'),
 ];
