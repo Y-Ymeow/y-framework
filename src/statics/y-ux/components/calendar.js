@@ -115,6 +115,11 @@ const Calendar = {
         const daysContainer = calendar.querySelector('.ux-calendar-days');
         if (!daysContainer) return;
 
+        daysContainer.className = 'ux-calendar-days';
+
+        const weekdaysEl = calendar.querySelector('.ux-calendar-weekdays');
+        if (weekdaysEl) weekdaysEl.style.display = '';
+
         const today = this.formatDate(new Date());
         const selectedDate = calendar.dataset.calendarValue;
         const validRange = this.getValidRange(calendar);
