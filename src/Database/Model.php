@@ -10,7 +10,7 @@ use Framework\Database\Relations\HasOne;
 use Framework\Database\Relations\BelongsToMany;
 use Framework\Foundation\Application;
 
-abstract class Model
+abstract class Model implements \ArrayAccess
 {
     protected string $table;
     protected string $primaryKey = 'id';
@@ -102,6 +102,25 @@ abstract class Model
         return $this;
     }
 
+    protected function getAttributesToSave(): array
+    {
+        $attributes = $this->attributes;
+
+        foreach ($this->casts as $key => $cast) {
+            if (isset($attributes[$key])) {
+                if (($cast === 'json' || $cast === 'array') && (is_array($attributes[$key]) || is_object($attributes[$key]))) {
+                    $attributes[$key] = json_encode($attributes[$key], JSON_UNESCAPED_UNICODE);
+                } elseif ($cast === 'datetime' && $attributes[$key] instanceof \DateTimeInterface) {
+                    $attributes[$key] = $attributes[$key]->format('Y-m-d H:i:s');
+                } elseif ($cast === 'bool' || $cast === 'boolean') {
+                    $attributes[$key] = $attributes[$key] ? 1 : 0;
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
     public function getAttribute(string $key): mixed
     {
         if (array_key_exists($key, $this->attributes)) {
@@ -149,6 +168,26 @@ abstract class Model
     public function __isset(string $key): bool
     {
         return isset($this->attributes[$key]);
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return isset($this->$offset);
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->$offset;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        $this->$offset = $value;
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->attributes[$offset]);
     }
 
     public function toArray(): array
@@ -214,6 +253,12 @@ abstract class Model
         return static::query()->where($column, $operator, $value);
     }
 
+    public static function destroy(mixed $id): int
+    {
+        $instance = new static();
+        return $instance->newQuery()->where($instance->getKeyName(), $id)->delete();
+    }
+
     public static function create(array $attributes): static
     {
         $instance = new static($attributes);
@@ -237,7 +282,7 @@ abstract class Model
             $this->attributes['updated_at'] = $now;
         }
 
-        $id = $this->newQuery()->insert($this->attributes);
+        $id = $this->newQuery()->insert($this->getAttributesToSave());
         $this->attributes[$this->primaryKey] = $id;
         $this->exists = true;
         $this->original = $this->attributes;
@@ -257,9 +302,16 @@ abstract class Model
             $dirty['updated_at'] = date('Y-m-d H:i:s');
         }
 
+        // Apply casts to dirty attributes
+        $attributesToSave = $this->getAttributesToSave();
+        $dirtyToSave = [];
+        foreach ($dirty as $key => $value) {
+            $dirtyToSave[$key] = $attributesToSave[$key];
+        }
+
         $this->newQuery()
             ->where($this->primaryKey, $this->getKey())
-            ->update($dirty);
+            ->update($dirtyToSave);
 
         $this->original = $this->attributes;
 
