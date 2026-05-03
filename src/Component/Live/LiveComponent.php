@@ -845,7 +845,7 @@ abstract class LiveComponent
 
     public function toast(string $message, string $type = 'success', int $duration = 3000, ?string $title = null): void
     {
-        $this->dispatchEvent('toast:show', [
+        $this->operation('ux:toast', [
             'message' => $message,
             'type' => $type,
             'duration' => $duration,

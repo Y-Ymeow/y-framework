@@ -25,6 +25,12 @@ export const Toast = {
         toast.querySelector('[data-ux-toast-close]').onclick = close;
         if (detail.duration !== 0) setTimeout(close, detail.duration || 3000);
     },
+
+    init() {
+        window.addEventListener('toast:show', (e) => {
+            this.show(e.detail || {});
+        });
+    },
     
     createContainer() {
         const el = document.createElement('div');

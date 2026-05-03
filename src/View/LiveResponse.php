@@ -63,15 +63,15 @@ class LiveResponse
         return $this;
     }
 
-    public function toast(string $message, string $type = 'success', int $duration = 3000): self
+    public function toast(string $message, string $type = 'success', int $duration = 3000, ?string $title = null): self
     {
-        $this->operations[] = ['op' => 'dispatch', 'event' => 'toast:show', 'detail' => ['message' => $message, 'type' => $type, 'duration' => $duration]];
+        $this->operations[] = ['op' => 'ux:toast', 'message' => $message, 'type' => $type, 'duration' => $duration, 'title' => $title];
         return $this;
     }
 
     public function notify(string $title, string $message, string $type = 'info', int $duration = 5000): self
     {
-        $this->operations[] = ['op' => 'dispatch', 'event' => 'notify:show', 'detail' => ['title' => $title, 'message' => $message, 'type' => $type, 'duration' => $duration]];
+        $this->operations[] = ['op' => 'ux:toast', 'message' => $message, 'type' => $type, 'duration' => $duration, 'title' => $title];
         return $this;
     }
 

@@ -59,6 +59,7 @@ const UXFramework = {
         Tabs.init();
         Dropdown.init();
         Accordion.init();
+        Toast.init();
         RichEditor.init();
         dataTable.init();
         Chart.init();

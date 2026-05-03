@@ -103,7 +103,7 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
     }
 
     if (data.operations) {
-        data.operations.forEach(op => executeOperation(op));
+        data.operations.forEach(op => L.executeOperation(op));
     }
 
     window.dispatchEvent(new CustomEvent('y:updated', { detail: { el, data } }));
@@ -114,7 +114,7 @@ function processStreamChunk(data, el, state, stateRef) {
         applyLiveResponse(el, data, state, stateRef);
 
         if (data.operations) {
-            data.operations.forEach(op => executeOperation(op));
+            data.operations.forEach(op => L.executeOperation(op));
         }
         return;
     }
@@ -148,7 +148,7 @@ function processStreamChunk(data, el, state, stateRef) {
             applyLiveResponse(el, data, state, stateRef);
         }
         if (data.operations) {
-            data.operations.forEach(op => executeOperation(op));
+            data.operations.forEach(op => L.executeOperation(op));
         }
         el.dispatchEvent(new CustomEvent('live:stream', { detail: data }));
         return;
