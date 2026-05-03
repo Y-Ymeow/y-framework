@@ -88,11 +88,6 @@ class LiveComponentResolver
 
             $component->fillPublicProperties($publicData);
 
-            // 只有首次请求执行 mount（无 _state 表示首次请求）
-            if (empty($state) && method_exists($component, 'mount')) {
-                $component->mount($params);
-            }
-
             $before = $component->getDataForFrontend();
 
             $result = $component->callAction($action, $params);
@@ -276,11 +271,6 @@ class LiveComponentResolver
             }
 
             $component->fillPublicProperties($publicData);
-
-            // 只有首次请求执行 mount（无 _state 表示首次请求）
-            if (empty($state) && method_exists($component, 'mount')) {
-                $component->mount($params);
-            }
 
             $result = $component->callAction($action, $params);
 

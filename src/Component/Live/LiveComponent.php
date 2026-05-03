@@ -23,6 +23,9 @@ abstract class LiveComponent
     private array $manualUpdates = []; // [componentId => patches]
     private array $validationErrors = [];
     private ?string $stateChecksum = null;
+    /**
+     * 路由参数（由 LiveComponentResolver 通过容器注入）
+     */
     protected array $routeParams = [];
 
     /**
@@ -30,6 +33,12 @@ abstract class LiveComponent
      * 格式: ['actionName' => 'methodName'] 或 ['actionName' => ['method' => 'methodName', 'event' => 'click']]
      */
     protected array $liveActions = [];
+
+    /**
+     * 标记 mount() 是否已被调用
+     * 用于防止重复初始化
+     */
+    private bool $mountCalled = false;
 
     public static function setGlobalActionCache(array $cache): void
     {
@@ -57,6 +66,12 @@ abstract class LiveComponent
 
         // 处理 Session/Cookie 属性恢复
         $this->syncPersistentAttributes();
+
+        // 调用 mount() 生命周期钩子（仅在首次实例化时）
+        if (!$this->mountCalled) {
+            $this->mountCalled = true;
+            $this->mount();
+        }
     }
 
     /**
@@ -96,6 +111,12 @@ abstract class LiveComponent
      * 生命周期：组件实例创建时触发
      */
     public function boot(): void {}
+
+    /**
+     * 生命周期：组件初始化时触发（数据加载、默认值设置等）
+     * 在构造函数末尾自动调用，仅调用一次
+     */
+    public function mount(): void {}
 
     /**
      * 生命周期：在状态从请求恢复（Hydration）完成后触发

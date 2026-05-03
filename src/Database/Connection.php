@@ -11,7 +11,7 @@ use PDOStatement;
 class Connection
 {
     private static array $connections = [];
-    private static string $defaultConnection = 'default';
+    private static ?string $defaultConnection = null;
 
     private ?PDO $pdo = null;
     private string $dsn;
@@ -42,7 +42,15 @@ class Connection
      */
     public static function get(?string $name = null): self
     {
-        $name = $name ?: self::$defaultConnection;
+        if ($name === null) {
+            $name = self::$defaultConnection;
+            if ($name === null) {
+                $name = config('database.default', 'sqlite');
+                if ($name !== null) {
+                    self::$defaultConnection = $name;
+                }
+            }
+        }
 
         if (!isset(self::$connections[$name])) {
             $config = config("database.connections.{$name}");
@@ -67,7 +75,7 @@ class Connection
     /**
      * 设置默认连接
      */
-    public static function setDefault(string $name): void
+    public static function setDefault(?string $name): void
     {
         self::$defaultConnection = $name;
     }

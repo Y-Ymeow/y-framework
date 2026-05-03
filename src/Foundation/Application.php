@@ -33,6 +33,9 @@ class Application
             \Framework\Http\Request::class,
             fn() => \Framework\Http\Request::createFromGlobals()
         );
+
+        // 立即加载配置，确保 Provider 注册前 config() 可用
+        \Framework\Config\ConfigManager::load();
     }
 
     public static function getInstance(): ?self

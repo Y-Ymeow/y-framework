@@ -8,6 +8,9 @@ use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\DebugBar\DebugBar;
+use Framework\DebugBar\SqlCollector;
+use Framework\DebugBar\RouteCollector;
+use Framework\DebugBar\RequestCollector;
 use Framework\UX\Display\Badge;
 use Framework\UX\UI\Accordion;
 use Framework\View\Base\Element;
@@ -21,15 +24,41 @@ class DebugBarComponent extends LiveComponent
 
     public function mount(): void
     {
-        $this->refreshData();
+        $dbar = DebugBar::getInstance();
+        $this->snapshot = $dbar->getSnapshot();
+
+        // 如果 snapshot 为空（首次加载），尝试收集当前数据
+        if (empty($this->snapshot)) {
+            $this->collectDebugData();
+        }
+
+        $this->refresh('db-container');
     }
 
     #[LiveAction]
     #[LiveListener('debugbar:update')]
     public function refreshData(): void
     {
-        $this->snapshot = DebugBar::getInstance()->getSnapshot();
+        $this->collectDebugData();
         $this->refresh('db-container');
+    }
+
+    private function collectDebugData(): void
+    {
+        // 尝试收集数据，但容忍数据库未初始化的情况
+        try {
+            $conn = \Framework\Database\Connection::get();
+            SqlCollector::register();
+        } catch (\Throwable $e) {
+            // 数据库未初始化，跳过 SQL 收集
+        }
+
+        RouteCollector::register();
+        RequestCollector::register();
+
+        $dbar = DebugBar::getInstance();
+        $dbar->collect();
+        $this->snapshot = $dbar->getSnapshot();
     }
 
     #[LiveAction]
