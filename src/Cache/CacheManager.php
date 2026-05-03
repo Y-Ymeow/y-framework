@@ -98,17 +98,22 @@ class CacheManager implements \Psr\SimpleCache\CacheInterface
 class FileCache implements \Psr\SimpleCache\CacheInterface
 {
     private string $path;
+    private int $gcProbability = 10;
+    private int $gcDivisor = 100;
 
-    public function __construct(string $path)
+    public function __construct(string $path, int $gcProbability = 10, int $gcDivisor = 100)
     {
         $this->path = rtrim($path, '/');
         if (!is_dir($this->path)) {
             mkdir($this->path, 0755, true);
         }
+        $this->gcProbability = $gcProbability;
+        $this->gcDivisor = $gcDivisor;
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
+        $this->gc();
         $file = $this->path . '/' . md5($key);
         if (!is_file($file)) {
             return $default;
@@ -127,6 +132,84 @@ class FileCache implements \Psr\SimpleCache\CacheInterface
         }
 
         return $data['value'];
+    }
+
+    /**
+     * 垃圾回收：按概率清理过期文件
+     */
+    public function gc(): int
+    {
+        if (mt_rand(1, $this->gcDivisor) > $this->gcProbability) {
+            return 0;
+        }
+
+        $now = time();
+        $count = 0;
+        $files = glob($this->path . '/*');
+
+        foreach ($files as $file) {
+            if (!is_file($file)) {
+                continue;
+            }
+
+            $content = @file_get_contents($file);
+            if ($content === false) {
+                @unlink($file);
+                $count++;
+                continue;
+            }
+
+            $data = @unserialize($content);
+            if ($data === false) {
+                @unlink($file);
+                $count++;
+                continue;
+            }
+
+            if (isset($data['expires']) && $data['expires'] < $now) {
+                @unlink($file);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * 强制清理所有过期文件（不受概率限制）
+     */
+    public function gcForce(): int
+    {
+        $now = time();
+        $count = 0;
+        $files = glob($this->path . '/*');
+
+        foreach ($files as $file) {
+            if (!is_file($file)) {
+                continue;
+            }
+
+            $content = @file_get_contents($file);
+            if ($content === false) {
+                @unlink($file);
+                $count++;
+                continue;
+            }
+
+            $data = @unserialize($content);
+            if ($data === false) {
+                @unlink($file);
+                $count++;
+                continue;
+            }
+
+            if (isset($data['expires']) && $data['expires'] < $now) {
+                @unlink($file);
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool

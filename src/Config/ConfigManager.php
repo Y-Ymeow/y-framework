@@ -35,22 +35,30 @@ class ConfigManager
         $base = self::resolveBasePath();
         self::$cachePath = $base . '/storage/cache/config.php';
 
+        // 加载运行时动态配置（在检查缓存之前）
+        self::loadRuntimeConfig($base);
+
         // 尝试从缓存加载
         if (self::$cacheEnabled && file_exists(self::$cachePath)) {
             $cacheData = require self::$cachePath;
             $cacheTime = filemtime(self::$cachePath);
-            $configDir = $base . '/config';
 
-            // 如果配置目录没有更新，使用缓存
+            // 检查配置文件是否更新
+            $configDir = $base . '/config';
             $configModified = is_dir($configDir) ? filemtime($configDir) : 0;
-            if ($cacheTime > $configModified) {
+            $runtimeModified = 0;
+            $runtimeFile = $base . '/storage/config/runtime.php';
+            if (file_exists($runtimeFile)) {
+                $runtimeModified = filemtime($runtimeFile);
+            }
+            $lastModified = max($configModified, $runtimeModified);
+
+            // 如果缓存比所有配置都新，使用缓存
+            if ($cacheTime > $lastModified) {
                 self::$cachedConfig = $cacheData;
                 return self::$cachedConfig;
             }
         }
-
-        // 加载运行时动态配置
-        self::loadRuntimeConfig($base);
 
         if (self::$defaults === null) {
             $defaultsDir = dirname(__DIR__) . '/Config/defaults';

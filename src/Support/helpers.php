@@ -209,9 +209,33 @@ function app(): \Framework\Foundation\Application
     return $GLOBALS['app'] ?? throw new \RuntimeException('Application not initialized');
 }
 
-function db(): \Framework\Database\Connection
+/**
+ * 获取数据库连接实例
+ *
+ * @param string|null $connection 连接名称
+ * @return \Framework\Database\Connection
+ *
+ * @example db() 默认连接
+ * @example db('tenant') 指定连接
+ */
+function db(?string $connection = null): \Framework\Database\Connection
 {
-    return app()->make(\Framework\Database\Connection::class);
+    return \Framework\Database\Connection::get($connection);
+}
+
+/**
+ * 获取缓存实例
+ *
+ * @param string|null $store 缓存存储名（默认使用配置中的默认存储）
+ * @return \Psr\SimpleCache\CacheInterface
+ *
+ * @example cache()->set('key', 'value', 3600)
+ * @example cache()->get('key', 'default')
+ * @example cache()->remember('key', fn() => expensiveOperation(), 3600)
+ */
+function cache(?string $store = null): \Psr\SimpleCache\CacheInterface
+{
+    return app()->make(\Framework\Cache\CacheManager::class)->store($store);
 }
 
 function user(): ?\Framework\Auth\User

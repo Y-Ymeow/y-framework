@@ -10,21 +10,20 @@ class DatabaseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(Connection::class, function () {
-            $app = \Framework\Foundation\Application::getInstance();
-            $config = config('database');
-            $default = $config['default'] ?? 'sqlite';
-            $dbConfig = $config['connections'][$default] ?? [];
-            $conn = Connection::make($dbConfig);
+        $config = config('database');
+        $default = $config['default'] ?? 'sqlite';
 
-            $logger = $app->make(\Psr\Log\LoggerInterface::class);
-            $conn->setLogger($logger);
+        Connection::setDefault($default);
 
-            Model::setConnection($conn);
+        foreach ($config['connections'] as $name => $connConfig) {
+            Connection::register($name, $connConfig);
+        }
 
-            return $conn;
-        });
+        $conn = Connection::get($default);
 
-        $this->app->alias(Connection::class, 'db');
+        $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
+        $conn->setLogger($logger);
+
+        Model::setConnection($conn);
     }
 }

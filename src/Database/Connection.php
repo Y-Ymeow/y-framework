@@ -10,6 +10,9 @@ use PDOStatement;
 
 class Connection
 {
+    private static array $connections = [];
+    private static string $defaultConnection = 'default';
+
     private ?PDO $pdo = null;
     private string $dsn;
     private string $username;
@@ -19,6 +22,109 @@ class Connection
     private int $queryCount = 0;
     private array $queries = [];
     private ?\Psr\Log\LoggerInterface $logger = null;
+    private ?string $name = null;
+
+    /**
+     * 注册连接配置
+     *
+     * @param string $name 连接名称
+     * @param array $config 连接配置
+     */
+    public static function register(string $name, array $config): void
+    {
+        self::$connections[$name] = $config;
+    }
+
+    /**
+     * 获取连接（自动创建单例）
+     *
+     * @param string|null $name 连接名称，null 使用默认
+     */
+    public static function get(?string $name = null): self
+    {
+        $name = $name ?: self::$defaultConnection;
+
+        if (!isset(self::$connections[$name])) {
+            $config = config("database.connections.{$name}");
+            if (!$config) {
+                throw new \RuntimeException("Database connection [{$name}] is not configured.");
+            }
+            self::$connections[$name] = $config;
+        }
+
+        $key = "__instance__{$name}";
+        static $instances = [];
+
+        if (!isset($instances[$key])) {
+            $conn = self::make(self::$connections[$name]);
+            $conn->name = $name;
+            $instances[$key] = $conn;
+        }
+
+        return $instances[$key];
+    }
+
+    /**
+     * 设置默认连接
+     */
+    public static function setDefault(string $name): void
+    {
+        self::$defaultConnection = $name;
+    }
+
+    /**
+     * 动态切换到新连接（用于多租户场景）
+     *
+     * @param string $name 连接名称
+     * @param array $config 连接配置
+     * @return self
+     */
+    public static function switchTo(string $name, array $config): self
+    {
+        self::$connections[$name] = $config;
+        $key = "__instance__{$name}";
+        static $instances = [];
+        unset($instances[$key]);
+
+        $conn = self::make($config);
+        $conn->name = $name;
+        $instances[$key] = $conn;
+        self::$defaultConnection = $name;
+
+        return $instances[$key];
+    }
+
+    /**
+     * 切换数据库（同一连接参数，仅改 database 名）
+     *
+     * @param string $database 新数据库名
+     * @param string|null $connection 连接名
+     */
+    public static function switchDatabase(string $database, ?string $connection = null): self
+    {
+        $connName = $connection ?: self::$defaultConnection;
+        $config = self::$connections[$connName] ?? config("database.connections.{$connName}");
+
+        if (!$config) {
+            throw new \RuntimeException("Database connection [{$connName}] is not configured.");
+        }
+
+        $config['database'] = $database;
+        return self::switchTo($connName, $config);
+    }
+
+    /**
+     * 清除指定连接实例（强制重新连接）
+     */
+    public static function purge(?string $name = null): void
+    {
+        static $instances = [];
+        if ($name === null) {
+            $instances = [];
+        } else {
+            unset($instances["__instance__{$name}"]);
+        }
+    }
 
     public function setLogger(\Psr\Log\LoggerInterface $logger): void
     {

@@ -143,4 +143,32 @@ class Session
     {
         return session_status() === PHP_SESSION_ACTIVE;
     }
+
+    /**
+     * 清理过期 Session 文件
+     *
+     * 建议通过定时任务调用，或在应用启动时调用
+     * 配合 cron: 0 * * * * php artisan session:gc
+     */
+    public static function gc(?int $maxLifetime = null): int
+    {
+        $savePath = ini_get('session.save_path');
+        if (empty($savePath) || !is_dir($savePath)) {
+            return 0;
+        }
+
+        $maxLifetime = $maxLifetime ?? (int)ini_get('session.gc_maxlifetime') ?? 1440;
+        $now = time();
+        $count = 0;
+
+        $files = glob($savePath . '/sess_*') ?: glob($savePath . '/*');
+        foreach ($files as $file) {
+            if (is_file($file) && ($now - filemtime($file) > $maxLifetime)) {
+                @unlink($file);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
 }

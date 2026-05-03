@@ -8,7 +8,6 @@ use Framework\Database\Relations\BelongsTo;
 use Framework\Database\Relations\HasMany;
 use Framework\Database\Relations\HasOne;
 use Framework\Database\Relations\BelongsToMany;
-use Framework\Foundation\Application;
 
 abstract class Model implements \ArrayAccess
 {
@@ -22,6 +21,7 @@ abstract class Model implements \ArrayAccess
     protected array $original = [];
     protected bool $exists = false;
     protected static ?Connection $connection = null;
+    protected ?string $connectionName = null;
 
     public function __construct(array $attributes = [])
     {
@@ -33,13 +33,33 @@ abstract class Model implements \ArrayAccess
         self::$connection = $connection;
     }
 
+    /**
+     * 设置模型使用的连接名称
+     */
+    public function setConnectionName(string $name): void
+    {
+        $this->connectionName = $name;
+    }
+
+    /**
+     * 获取模型连接
+     * 支持：全局默认连接 → 模型级别连接 → 实例级别连接
+     */
     public static function getConnection(): Connection
     {
+        $instance = new static();
+
+        // 实例级别连接名
+        if ($instance->connectionName !== null) {
+            return Connection::get($instance->connectionName);
+        }
+
+        // 静态连接
         if (self::$connection) {
             return self::$connection;
         }
 
-        self::$connection = Application::getInstance()->make(Connection::class);
+        self::$connection = Connection::get();
         return self::$connection;
     }
 

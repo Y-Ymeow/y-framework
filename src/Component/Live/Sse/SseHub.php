@@ -52,6 +52,9 @@ class SseHub
     private static ?SseHub $instance = null;
     private static string $cacheDir = '';
     private static int $messageTtl = 3600;
+    private static int $gcProbability = 5;
+    private static int $gcDivisor = 100;
+    private static int $lastCleanup = 0;
 
     private function __construct()
     {
@@ -194,6 +197,7 @@ class SseHub
      */
     public function getMessages(string $channel, float $since = 0, ?int $userId = null): array
     {
+        $this->maybeCleanup();
         $messages = [];
         $file = $this->getChannelFile($channel);
 
@@ -272,11 +276,51 @@ class SseHub
             }
 
             if (empty($validLines)) {
-                unlink($file);
+                @unlink($file);
             } else {
                 file_put_contents($file, implode("\n", $validLines) . "\n");
             }
         }
+
+        self::$lastCleanup = time();
+    }
+
+    /**
+     * 按概率自动清理
+     * 同时确保同一进程内不会频繁清理
+     */
+    private function maybeCleanup(): void
+    {
+        $now = time();
+        if ($now - self::$lastCleanup < 60) {
+            return;
+        }
+
+        if (mt_rand(1, self::$gcDivisor) > self::$gcProbability) {
+            return;
+        }
+
+        $this->cleanup();
+    }
+
+    /**
+     * 静态清理方法（可供外部调用）
+     */
+    public static function gc(): void
+    {
+        self::getInstance()->cleanup();
+    }
+
+    /**
+     * 设置清理概率
+     *
+     * @param int $probability 概率分子（默认 5）
+     * @param int $divisor 概率分母（默认 100）
+     */
+    public static function setGcProbability(int $probability, int $divisor = 100): void
+    {
+        self::$gcProbability = $probability;
+        self::$gcDivisor = $divisor;
     }
 
     /**

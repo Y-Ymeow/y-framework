@@ -48,4 +48,36 @@ class LogManager implements LoggerInterface
     {
         return $this->logger;
     }
+
+    /**
+     * 清理过期日志文件
+     *
+     * @param string $logDir 日志目录
+     * @param int $maxAge 保留天数
+     * @return int 清理的文件数
+     */
+    public static function gc(string $logDir, int $maxAge = 14): int
+    {
+        if (!is_dir($logDir)) {
+            return 0;
+        }
+
+        $now = time();
+        $maxAgeSeconds = $maxAge * 86400;
+        $count = 0;
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($logDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && ($now - $file->getMTime() > $maxAgeSeconds)) {
+                @unlink($file->getPathname());
+                $count++;
+            }
+        }
+
+        return $count;
+    }
 }
