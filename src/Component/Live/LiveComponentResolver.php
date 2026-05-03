@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live;
 
+use Framework\Foundation\AppEnvironment;
 use Framework\Http\Request;
 use Framework\Http\Response;
 use Framework\Http\Session;
@@ -19,12 +20,14 @@ class LiveComponentResolver
     #[Route('/update', ['POST'], name: 'live.update')]
     public function handle(Request $request): Response
     {
-        $session = new Session();
-        $csrfToken = $request->header('x-csrf-token')
-            ?? $request->input('_token', '');
+        if (!AppEnvironment::isWasm()) {
+            $session = new Session();
+            $csrfToken = $request->header('x-csrf-token')
+                ?? $request->input('_token', '');
 
-        if (!$session->verifyToken((string) $csrfToken)) {
-            return Response::json(['success' => false, 'error' => 'Invalid CSRF token'], 419);
+            if (!$session->verifyToken((string) $csrfToken)) {
+                return Response::json(['success' => false, 'error' => 'Invalid CSRF token'], 419);
+            }
         }
 
         $componentClass = $request->header('x-live-component')
@@ -201,12 +204,14 @@ class LiveComponentResolver
     #[Route('/stream', ['POST'], name: 'live.stream')]
     public function stream(Request $request): Response
     {
-        $session = new Session();
-        $csrfToken = $request->header('x-csrf-token')
-            ?? $request->input('_token', '');
+        if (!AppEnvironment::isWasm()) {
+            $session = new Session();
+            $csrfToken = $request->header('x-csrf-token')
+                ?? $request->input('_token', '');
 
-        if (!$session->verifyToken((string) $csrfToken)) {
-            return Response::json(['success' => false, 'error' => 'Invalid CSRF token'], 419);
+            if (!$session->verifyToken((string) $csrfToken)) {
+                return Response::json(['success' => false, 'error' => 'Invalid CSRF token'], 419);
+            }
         }
 
         $componentClass = $request->header('x-live-component')

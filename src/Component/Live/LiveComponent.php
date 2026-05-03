@@ -813,8 +813,10 @@ abstract class LiveComponent
     {
         $appKey = (string) config('app.key', 'secret-fallback');
 
-        // 核心安全增强：将 Session Token 混入签名密钥
-        // 这样每个用户的签名密钥都是唯一的，state 字符串无法跨用户/跨会话使用
+        if (\Framework\Foundation\AppEnvironment::isWasm()) {
+            return hash('sha256', $appKey);
+        }
+
         $session = new \Framework\Http\Session();
         $sessionToken = $session->token();
 
