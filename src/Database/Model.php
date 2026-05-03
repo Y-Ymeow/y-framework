@@ -43,24 +43,24 @@ abstract class Model implements \ArrayAccess
 
     /**
      * 获取模型连接
-     * 支持：全局默认连接 → 模型级别连接 → 实例级别连接
+     * 支持：全局默认连接 → 实例级别连接
      */
     public static function getConnection(): Connection
     {
-        $instance = new static();
-
-        // 实例级别连接名
-        if ($instance->connectionName !== null) {
-            return Connection::get($instance->connectionName);
-        }
-
-        // 静态连接
         if (self::$connection) {
             return self::$connection;
         }
 
         self::$connection = Connection::get();
         return self::$connection;
+    }
+
+    /**
+     * 获取当前实例的连接名称（非静态，避免 new static()）
+     */
+    public function getConnectionName(): ?string
+    {
+        return $this->connectionName;
     }
 
     public function getTable(): string

@@ -41,28 +41,29 @@ class SqlCollector implements CollectorInterface
     {
         $connection = null;
         try {
-            $app = Application::getInstance();
-            if ($app) {
-                $connection = $app->make(Connection::class);
-            }
+            $connection = Connection::get();
         } catch (\Throwable $e) {}
 
         if (!$connection) {
-            $connection = Model::getConnection();
+            try {
+                $connection = Model::getConnection();
+            } catch (\Throwable $e) {}
         }
 
-        if ($connection) {
-            $rawQueries = $connection->getQueries();
-            $this->totalTime = $connection->getTotalQueryTime();
-            
-            $this->queries = array_map(function($q) {
-                return [
-                    'sql' => $q['sql'],
-                    'bindings' => $q['bindings'],
-                    'time' => $q['time'],
-                ];
-            }, $rawQueries);
+        if (!$connection) {
+            return;
         }
+
+        $rawQueries = $connection->getQueries();
+        $this->totalTime = $connection->getTotalQueryTime();
+        
+        $this->queries = array_map(function($q) {
+            return [
+                'sql' => $q['sql'],
+                'bindings' => $q['bindings'],
+                'time' => $q['time'],
+            ];
+        }, $rawQueries);
     }
 
     /**
