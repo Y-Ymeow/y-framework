@@ -71,7 +71,7 @@ class LiveComponentResolver
                 );
             }
 
-            $component = new $componentClass();
+            $component = new $componentClass($params);
 
             if (!($component instanceof LiveComponent)) {
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
@@ -255,7 +255,7 @@ class LiveComponentResolver
                 );
             }
 
-            $component = new $componentClass();
+            $component = new $componentClass($params);
 
             if (!($component instanceof LiveComponent)) {
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);

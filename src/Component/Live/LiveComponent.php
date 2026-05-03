@@ -22,6 +22,7 @@ abstract class LiveComponent
     private array $refreshFragments = []; // [name => mode]
     private array $manualUpdates = []; // [componentId => patches]
     private ?string $stateChecksum = null;
+    protected array $routeParams = [];
 
     /**
      * 手动注册的 LiveActions
@@ -34,14 +35,18 @@ abstract class LiveComponent
         self::$globalActionCache = $cache;
     }
 
-    public function __construct()
+    public function __construct(array $params = [])
     {
+        if (!empty($params)) {
+            $this->routeParams = $params;
+        }
+
         $shortClass = (new \ReflectionClass($this))->getShortName();
         $key = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $shortClass));
         if (!isset(self::$idCounter[$key])) self::$idCounter[$key] = 0;
         self::$idCounter[$key]++;
         $this->componentId = $key . '-' . self::$idCounter[$key];
-        
+
         // 执行 boot 周期
         $this->boot();
 
@@ -50,7 +55,7 @@ abstract class LiveComponent
 
         // 只有首次请求执行 mount
         if (!isset($_POST['_state'])) {
-            $this->mount();
+            $this->mount($this->routeParams);
         }
     }
 
@@ -94,8 +99,10 @@ abstract class LiveComponent
 
     /**
      * 生命周期：仅在组件首次挂载时触发
+     *
+     * @param array $params 路由参数（如 URL 中的 {id}）
      */
-    public function mount(): void {}
+    public function mount(array $params = []): void {}
 
     /**
      * 生命周期：在状态从请求恢复（Hydration）完成后触发
@@ -106,6 +113,51 @@ abstract class LiveComponent
      * 生命周期：在状态序列化发往前端（Dehydration）开始前触发
      */
     public function dehydrate(): void {}
+
+    /**
+     * 获取路由参数值
+     *
+     * @param string $key 参数名
+     * @param mixed $default 默认值
+     * @return mixed
+     *
+     * @live-example $this->param('id', 0)
+     */
+    public function param(string $key, mixed $default = null): mixed
+    {
+        return $this->routeParams[$key] ?? $default;
+    }
+
+    /**
+     * 获取所有路由参数
+     * @return array
+     * @live-example $this->params()  // → ['id' => '123', 'slug' => 'my-post']
+     */
+    public function params(): array
+    {
+        return $this->routeParams;
+    }
+
+    /**
+     * 判断是否存在指定路由参数
+     * @param string $key 参数名
+     * @return bool
+     */
+    public function hasParam(string $key): bool
+    {
+        return array_key_exists($key, $this->routeParams);
+    }
+
+    /**
+     * 设置路由参数（用于子请求或测试）
+     * @param array $params 参数数组
+     * @return static
+     */
+    public function setRouteParams(array $params): static
+    {
+        $this->routeParams = array_merge($this->routeParams, $params);
+        return $this;
+    }
 
     /**
      * 生命周期钩子：当任何公开属性更新后触发
@@ -760,11 +812,6 @@ abstract class LiveComponent
     public function openModal(string $id): void
     {
         $this->ux('modal', $id, 'open');
-    }
-
-    public function closeModal(?string $id = null): void
-    {
-        $this->ux('modal', (string)$id, 'close');
     }
 
     public function toggleAccordion(string $itemId, ?bool $open = null): void
