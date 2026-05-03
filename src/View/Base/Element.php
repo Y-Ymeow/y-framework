@@ -382,6 +382,35 @@ class Element
     }
 
     /**
+     * 快捷设置元素可见性
+     *
+     * @param bool $visible 是否可见
+     * @return static
+     */
+    public function visible(bool $visible = true): static
+    {
+        if ($visible) {
+            unset($this->attrs['style']);
+            $this->attrs['data-visible'] = 'true';
+        } else {
+            $this->hidden();
+        }
+        return $this;
+    }
+
+    /**
+     * 快捷设置元素隐藏
+     *
+     * @return static
+     */
+    public function hidden(): static
+    {
+        $this->attrs['hidden'] = '';
+        $this->attrs['data-visible'] = 'false';
+        return $this;
+    }
+
+    /**
      * 声明式模型绑定（data-model）
      *
      * 将表单元素与 LiveComponent 的属性双向绑定

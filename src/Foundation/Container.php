@@ -32,6 +32,28 @@ class Container
         return $resolved;
     }
 
+    /**
+     * 创建实例并传递额外参数
+     * 
+     * @param string $id 类名
+     * @param array $extraParams 额外参数（会被注入到构造函数中）
+     * @return mixed
+     */
+    public function makeWith(string $id, array $extraParams = []): mixed
+    {
+        if (isset($this->instances[$id])) {
+            return $this->instances[$id];
+        }
+
+        $resolved = $this->resolveWith($id, $extraParams);
+
+        if (isset($this->bindings[$id]) && $this->isSingletonBinding($id)) {
+            $this->instances[$id] = $resolved;
+        }
+
+        return $resolved;
+    }
+
     public function has(string $id): bool
     {
         return isset($this->bindings[$id]) || isset($this->instances[$id]) || class_exists($id);
@@ -120,6 +142,20 @@ class Container
         return $binding;
     }
 
+    /**
+     * 解析带额外参数的实例
+     */
+    protected function resolveWith(string $id, array $extraParams = []): mixed
+    {
+        $id = $this->aliases[$id] ?? $id;
+
+        if (isset($this->instances[$id])) {
+            return $this->instances[$id];
+        }
+
+        return $this->autowireWith($id, $extraParams);
+    }
+
     protected function autowire(string $id): mixed
     {
         if (!class_exists($id)) {
@@ -146,6 +182,41 @@ class Container
             }
 
             $params = $this->resolveParameters($constructor->getParameters());
+            return $ref->newInstanceArgs($params);
+        } finally {
+            unset($this->resolving[$id]);
+        }
+    }
+
+    /**
+     * 自动装配并注入额外参数
+     */
+    protected function autowireWith(string $id, array $extraParams = []): mixed
+    {
+        if (!class_exists($id)) {
+            throw new \RuntimeException("Cannot resolve [{$id}]: class not found and not bound in container");
+        }
+
+        if (isset($this->resolving[$id])) {
+            throw new \RuntimeException("Circular dependency detected while resolving [{$id}]");
+        }
+
+        $this->resolving[$id] = true;
+
+        try {
+            $ref = new \ReflectionClass($id);
+
+            if (!$ref->isInstantiable()) {
+                throw new \RuntimeException("Cannot instantiate [{$id}]: not instantiable");
+            }
+
+            $constructor = $ref->getConstructor();
+
+            if ($constructor === null) {
+                return new $id();
+            }
+
+            $params = $this->resolveParametersWithExtras($constructor->getParameters(), $extraParams);
             return $ref->newInstanceArgs($params);
         } finally {
             unset($this->resolving[$id]);
@@ -179,6 +250,60 @@ class Container
         }
 
         return $args;
+    }
+
+    /**
+     * 解析构造函数参数，支持额外参数注入
+     */
+    protected function resolveParametersWithExtras(array $parameters, array $extraParams = []): array
+    {
+        $args = [];
+
+        foreach ($parameters as $param) {
+            $type = $param->getType();
+            $paramName = $param->getName();
+
+            // 1. 优先从额外参数中匹配（按参数名）
+            if (array_key_exists($paramName, $extraParams)) {
+                $args[] = $this->castParam($extraParams[$paramName], $type);
+                continue;
+            }
+
+            // 2. 尝试从容器解析类型化依赖
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                try {
+                    $args[] = $this->get($type->getName());
+                    continue;
+                } catch (\Throwable $e) {
+                    // 容器解析失败，继续尝试其他方式
+                }
+            }
+
+            // 3. 使用默认值
+            if ($param->isDefaultValueAvailable()) {
+                $args[] = $param->getDefaultValue();
+            } else {
+                $args[] = null;
+            }
+        }
+
+        return $args;
+    }
+
+    /**
+     * 参数类型转换
+     */
+    protected function castParam(mixed $value, ?\ReflectionType $type): mixed
+    {
+        if ($type === null || !($type instanceof \ReflectionNamedType)) return $value;
+
+        return match ($type->getName()) {
+            'int' => (int)$value,
+            'float' => (float)$value,
+            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+            'string' => (string)$value,
+            default => $value,
+        };
     }
 
     protected function isSingletonBinding(string $id): bool

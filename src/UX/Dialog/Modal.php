@@ -112,6 +112,63 @@ class Modal extends UXComponent
         return $this;
     }
 
+    public function close(): static
+    {
+        return $this->open(false);
+    }
+
+    /**
+     * 设置底部按钮（快捷方法）
+     *
+     * @param string $okText 确定按钮文字
+     * @param string $okAction 确定按钮触发的动作或事件
+     * @param string $cancelText 取消按钮文字
+     * @param string $okVariant 确定按钮样式
+     * @param string $cancelVariant 取消按钮样式
+     */
+    public function ok(
+        string $okText = '确定',
+        string $okAction = '',
+        string $okVariant = 'primary',
+        string $cancelText = '取消',
+        string $cancelVariant = 'secondary'
+    ): static {
+        $buttons = [
+            Button::make()
+                ->label($cancelText)
+                ->variant($cancelVariant)
+                ->attr('data-ux-modal-close', $this->id),
+        ];
+
+        if ($okAction) {
+            $buttons[] = Button::make()
+                ->label($okText)
+                ->variant($okVariant)
+                ->attr('data-ux-modal-close', $this->id)
+                ->attr('data-action', $okAction);
+        } else {
+            $buttons[] = Button::make()
+                ->label($okText)
+                ->variant($okVariant)
+                ->attr('data-ux-modal-close', $this->id);
+        }
+
+        return $this->footer($buttons);
+    }
+
+    /**
+     * 仅设置取消按钮（快捷方法）
+     */
+    public function cancel(string $cancelText = '取消', string $cancelVariant = 'secondary'): static
+    {
+        return $this->footer(
+            Button::make()
+                ->label($cancelText)
+                ->variant($cancelVariant)
+                ->attr('data-ux-modal-close', $this->id)
+        );
+    }
+
     protected function toElement(): Element
     {
         $el = new Element('div');

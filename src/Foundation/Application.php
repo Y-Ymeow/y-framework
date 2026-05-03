@@ -80,6 +80,11 @@ class Application
         return $this->container->get($class);
     }
 
+    public function makeWith(string $class, array $parameters = []): mixed
+    {
+        return $this->container->makeWith($class, $parameters);
+    }
+
     public function instance(string $abstract, mixed $instance): void
     {
         $this->container->instance($abstract, $instance);

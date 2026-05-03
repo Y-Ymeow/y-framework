@@ -18,6 +18,8 @@ class QueryBuilder
     private array $groupBy = [];
     private array $having = [];
     private array $havingBindings = [];
+    private bool $distinct = false;
+    private ?string $lock = null;
 
     public function __construct(Connection $connection, string $table)
     {
@@ -201,6 +203,186 @@ class QueryBuilder
         return $this;
     }
 
+    public function havingRaw(string $sql, array $bindings = []): self
+    {
+        $this->having[] = $sql;
+        $this->havingBindings = array_merge($this->havingBindings, $bindings);
+        return $this;
+    }
+
+    public function whereNotBetween(string $column, mixed $min, mixed $max): self
+    {
+        SqlValidator::validateColumn($column);
+        $this->wheres[] = [
+            'type' => 'not_between',
+            'column' => $column,
+            'min' => $min,
+            'max' => $max,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $min;
+        $this->whereBindings[] = $max;
+        return $this;
+    }
+
+    public function whereDate(string $column, string $operator, mixed $value): self
+    {
+        SqlValidator::validateColumn($column);
+        SqlValidator::validateOperator($operator);
+        $this->wheres[] = [
+            'type' => 'date',
+            'column' => $column,
+            'operator' => $operator,
+            'value' => $value,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $value;
+        return $this;
+    }
+
+    public function whereDay(string $column, string $operator, mixed $value): self
+    {
+        SqlValidator::validateColumn($column);
+        SqlValidator::validateOperator($operator);
+        $this->wheres[] = [
+            'type' => 'date_part',
+            'column' => $column,
+            'part' => 'DAY',
+            'operator' => $operator,
+            'value' => $value,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $value;
+        return $this;
+    }
+
+    public function whereMonth(string $column, string $operator, mixed $value): self
+    {
+        SqlValidator::validateColumn($column);
+        SqlValidator::validateOperator($operator);
+        $this->wheres[] = [
+            'type' => 'date_part',
+            'column' => $column,
+            'part' => 'MONTH',
+            'operator' => $operator,
+            'value' => $value,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $value;
+        return $this;
+    }
+
+    public function whereYear(string $column, string $operator, mixed $value): self
+    {
+        SqlValidator::validateColumn($column);
+        SqlValidator::validateOperator($operator);
+        $this->wheres[] = [
+            'type' => 'date_part',
+            'column' => $column,
+            'part' => 'YEAR',
+            'operator' => $operator,
+            'value' => $value,
+            'boolean' => 'AND',
+        ];
+        $this->whereBindings[] = $value;
+        return $this;
+    }
+
+    public function whereColumn(string $column1, string $operator, string $column2): self
+    {
+        SqlValidator::validateColumn($column1);
+        SqlValidator::validateOperator($operator);
+        SqlValidator::validateColumn($column2);
+        $this->wheres[] = [
+            'type' => 'column',
+            'column' => $column1,
+            'operator' => $operator,
+            'value' => $column2,
+            'boolean' => 'AND',
+        ];
+        return $this;
+    }
+
+    public function whereExists(self $query): self
+    {
+        $this->wheres[] = [
+            'type' => 'exists',
+            'query' => $query,
+            'boolean' => 'AND',
+            'not' => false,
+        ];
+        $this->whereBindings = array_merge($this->whereBindings, $query->getBindings());
+        return $this;
+    }
+
+    public function whereNotExists(self $query): self
+    {
+        $query->whereExists($query);
+        $this->wheres[count($this->wheres) - 1]['not'] = true;
+        return $this;
+    }
+
+    public function distinct(bool $distinct = true): self
+    {
+        $this->distinct = $distinct;
+        return $this;
+    }
+
+    public function groupByRaw(string $sql, array $bindings = []): self
+    {
+        $this->groupBy[] = ['raw' => true, 'sql' => $sql];
+        $this->whereBindings = array_merge($this->whereBindings, $bindings);
+        return $this;
+    }
+
+    public function orderByRaw(string $sql, array $bindings = []): self
+    {
+        $this->orderBy[] = ['raw' => true, 'sql' => $sql];
+        $this->whereBindings = array_merge($this->whereBindings, $bindings);
+        return $this;
+    }
+
+    public function orderByDesc(string $column): self
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    public function lock(?string $lock = 'FOR UPDATE'): self
+    {
+        $this->lock = $lock;
+        return $this;
+    }
+
+    public function sharedLock(): self
+    {
+        return $this->lock('LOCK IN SHARE MODE');
+    }
+
+    public function lockForUpdate(): self
+    {
+        return $this->lock('FOR UPDATE');
+    }
+
+    public function increment(string $column, int|float $amount = 1): int
+    {
+        SqlValidator::validateColumn($column);
+        $escaped = SqlValidator::escapeIdentifier($column);
+        [$whereSql, $whereBindings] = $this->buildWhere();
+        if (empty($whereSql)) {
+            throw new \RuntimeException('Increment without WHERE clause is not allowed');
+        }
+        $sql = "UPDATE " . SqlValidator::escapeIdentifier($this->table)
+             . " SET {$escaped} = {$escaped} + ? WHERE {$whereSql}";
+        $bindings = array_merge([$amount], $whereBindings);
+        $stmt = $this->connection->execute($sql, $bindings);
+        return $stmt->rowCount();
+    }
+
+    public function decrement(string $column, int|float $amount = 1): int
+    {
+        return $this->increment($column, -$amount);
+    }
+
     public function get(): array
     {
         return $this->connection->query($this->toSql(), $this->getBindings());
@@ -325,9 +507,10 @@ class QueryBuilder
 
     public function toSql(): string
     {
+        $distinctKeyword = $this->distinct ? 'DISTINCT ' : '';
         $select = implode(', ', $this->selects);
         $table = SqlValidator::escapeIdentifier($this->table);
-        $sql = "SELECT {$select} FROM {$table}";
+        $sql = "SELECT {$distinctKeyword}{$select} FROM {$table}";
 
         if (!empty($this->joins)) {
             foreach ($this->joins as $join) {
@@ -342,8 +525,15 @@ class QueryBuilder
         if ($whereSql) $sql .= " WHERE {$whereSql}";
 
         if (!empty($this->groupBy)) {
-            $groupColumns = array_map(fn($col) => SqlValidator::escapeIdentifier($col), $this->groupBy);
-            $sql .= ' GROUP BY ' . implode(', ', $groupColumns);
+            $groupParts = [];
+            foreach ($this->groupBy as $group) {
+                if ($group['raw'] ?? false) {
+                    $groupParts[] = $group['sql'];
+                } else {
+                    $groupParts[] = SqlValidator::escapeIdentifier($group);
+                }
+            }
+            $sql .= ' GROUP BY ' . implode(', ', $groupParts);
         }
 
         if (!empty($this->having)) {
@@ -351,11 +541,20 @@ class QueryBuilder
         }
 
         if (!empty($this->orderBy)) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+            $orderParts = [];
+            foreach ($this->orderBy as $order) {
+                if ($order['raw'] ?? false) {
+                    $orderParts[] = $order['sql'];
+                } else {
+                    $orderParts[] = $order;
+                }
+            }
+            $sql .= ' ORDER BY ' . implode(', ', $orderParts);
         }
 
         if ($this->limit !== null) $sql .= " LIMIT {$this->limit}";
         if ($this->offset !== null) $sql .= " OFFSET {$this->offset}";
+        if ($this->lock !== null) $sql .= " {$this->lock}";
 
         return $sql;
     }
@@ -399,6 +598,34 @@ class QueryBuilder
                     $clause .= "{$column} BETWEEN ? AND ?";
                     $bindings[] = $where['min'];
                     $bindings[] = $where['max'];
+                    break;
+                case 'not_between':
+                    $clause .= "{$column} NOT BETWEEN ? AND ?";
+                    $bindings[] = $where['min'];
+                    $bindings[] = $where['max'];
+                    break;
+                case 'date':
+                    $clause .= "DATE({$column}) {$where['operator']} ?";
+                    $bindings[] = $where['value'];
+                    break;
+                case 'date_part':
+                    $part = $where['part'];
+                    $clause .= "{$part}({$column}) {$where['operator']} ?";
+                    $bindings[] = $where['value'];
+                    break;
+                case 'column':
+                    $valueColumn = SqlValidator::escapeIdentifier($where['value']);
+                    $clause .= "{$column} {$where['operator']} {$valueColumn}";
+                    break;
+                case 'exists':
+                    $not = ($where['not'] ?? false) ? 'NOT ' : '';
+                    $subSql = $where['query']->toSql();
+                    $clause .= "{$not}EXISTS ({$subSql})";
+                    break;
+                case 'subquery':
+                    $subQuery = $where['query']->toSql();
+                    $bindings = array_merge($bindings, $where['query']->getBindings());
+                    $clause .= "{$column} {$where['operator']} ({$subQuery})";
                     break;
             }
 

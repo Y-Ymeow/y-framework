@@ -133,6 +133,36 @@ function redirect(string $url, int $status = 302): \Framework\Http\Response
     return new \Framework\Http\Response('', $status, ['Location' => $url]);
 }
 
+function route(string $name, array $parameters = [], bool $absolute = false): string
+{
+    $app = \Framework\Foundation\Application::getInstance();
+    $router = $app->make(\Framework\Routing\Router::class);
+
+    foreach ($router->getRoutes() as $route) {
+        if (($route['name'] ?? '') === $name) {
+            $path = $route['path'];
+            foreach ($parameters as $key => $value) {
+                $path = str_replace('{' . $key . '}', (string) $value, $path);
+                $path = str_replace('{' . $key . ':...}', (string) $value, $path);
+            }
+            $path = preg_replace('/\{[^}]+\}/', '', $path);
+            if ($absolute) {
+                $appUrl = config('app.url', '');
+                return rtrim($appUrl, '/') . '/' . ltrim($path, '/');
+            }
+            return '/' . ltrim($path, '/');
+        }
+    }
+
+    throw new \RuntimeException("Route [{$name}] not found");
+}
+
+function back(): \Framework\Http\Response
+{
+    $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+    return redirect($referer);
+}
+
 function abort(int $code, string $message = ''): never
 {
     throw new \Framework\Http\HttpException($code, $message);

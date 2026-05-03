@@ -52,6 +52,12 @@ class DataTable extends UXComponent
     protected int $perPage = 15;
     protected int $page = 1;
 
+    // 行内编辑
+    protected bool $editable = false;
+    protected array $editableColumns = [];
+    protected ?string $editAction = null;
+    protected string $editType = 'input';
+
     public function column(string $dataKey, string $title, ?\Closure $render = null, array $options = []): static
     {
         $this->columns[] = array_merge([
@@ -344,6 +350,47 @@ class DataTable extends UXComponent
     {
         $this->rowActionsCallback = $callback;
         return $this;
+    }
+
+    /**
+     * 启用行内编辑
+     *
+     * @param array $columns 可编辑的列 ['column_key' => ['type' => 'input', 'rules' => []], ...]
+     * @param string $action 保存编辑的动作
+     */
+    public function editable(array $columns = [], string $action = 'saveEdit'): static
+    {
+        $this->editable = true;
+        $this->editableColumns = $columns;
+        $this->editAction = $action;
+        return $this;
+    }
+
+    /**
+     * 设置编辑类型
+     *
+     * @param string $type input|textarea|select|switch
+     */
+    public function editType(string $type): static
+    {
+        $this->editType = $type;
+        return $this;
+    }
+
+    /**
+     * 获取可编辑的列
+     */
+    public function getEditableColumns(): array
+    {
+        return $this->editableColumns;
+    }
+
+    /**
+     * 检查列是否可编辑
+     */
+    public function isColumnEditable(string $columnKey): bool
+    {
+        return isset($this->editableColumns[$columnKey]);
     }
 
     protected function toElement(): Element

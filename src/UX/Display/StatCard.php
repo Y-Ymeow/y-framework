@@ -16,6 +16,9 @@ class StatCard extends UXComponent
     protected ?string $trend = null;
     protected ?string $trendValue = null;
     protected string $variant = 'default';
+    protected ?string $clickAction = null;
+    protected string $clickEvent = 'click';
+    protected array $clickParams = [];
 
     public function title(string $title): static
     {
@@ -61,6 +64,39 @@ class StatCard extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置点击事件绑定的动作
+     *
+     * @param string $action 动作名称
+     * @param string $event 触发事件（click, dblclick 等）
+     */
+    public function clickAction(string $action, string $event = 'click'): static
+    {
+        $this->clickAction = $action;
+        $this->clickEvent = $event;
+        return $this;
+    }
+
+    /**
+     * 设置点击参数
+     */
+    public function clickParams(array $params): static
+    {
+        $this->clickParams = $params;
+        return $this;
+    }
+
+    /**
+     * 设置为可点击状态（鼠标指针变为手型）
+     */
+    public function clickable(bool $clickable = true): static
+    {
+        if ($clickable && !$this->clickAction) {
+            $this->clickAction = 'click';
+        }
+        return $this;
+    }
+
     protected function toElement(): Element
     {
         $el = new Element('div');
@@ -68,6 +104,14 @@ class StatCard extends UXComponent
 
         $el->class('ux-stat-card');
         $el->class("ux-stat-card-{$this->variant}");
+
+        if ($this->clickAction) {
+            $el->class('ux-stat-card-clickable');
+            $el->liveAction($this->clickAction, $this->clickEvent);
+            if (!empty($this->clickParams)) {
+                $el->data('action-params', json_encode($this->clickParams, JSON_UNESCAPED_UNICODE));
+            }
+        }
 
         $bodyEl = Element::make('div')->class('ux-stat-card-body');
 

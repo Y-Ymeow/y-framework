@@ -20,10 +20,12 @@ class Router
 {
     private array $routes = [];
     private Application $app;
+    private ?MiddlewareManager $middlewareManager = null;
 
     public function __construct(Application $app)
     {
         $this->app = $app;
+        $this->middlewareManager = MiddlewareManager::getInstance();
     }
 
     public function addRoute(string $method, string $path, mixed $handler, string $name = ''): void
@@ -142,6 +144,7 @@ class Router
                     'name' => $name,
                     'handler' => [$reflection->getName(), $handlerMethod],
                     'middleware' => $middleware,
+                    'group' => $groupName ?: null,
                 ];
             }
         }
@@ -177,6 +180,7 @@ class Router
                     'name' => $name,
                     'handler' => [$className, $method->getName()],
                     'middleware' => $middleware,
+                    'group' => $groupName ?: null,
                 ];
             }
         }
@@ -193,10 +197,25 @@ class Router
             $params = $this->matchPath($route['path'], $path);
             if ($params === false) continue;
 
-            return $this->invoke($route, $request, $params);
+            return $this->invokeWithMiddleware($route, $request, $params);
         }
 
         return $this->sendContent(Element::make('h1')->text('404 Not Found'), 404);
+    }
+
+    /**
+     * 带中间件执行的路由调用
+     */
+    private function invokeWithMiddleware(array $route, Request $request, array $params): Response|StreamedResponse
+    {
+        $middleware = $route['middleware'] ?? [];
+        $groupName = $route['group'] ?? null;
+
+        $destination = function (Request $req) use ($route, $params): Response|StreamedResponse {
+            return $this->invoke($route, $req, $params);
+        };
+
+        return $this->middlewareManager->pipe($request, $destination, $middleware, $groupName);
     }
 
     private function matchPath(string $routePath, string $requestPath): array|false

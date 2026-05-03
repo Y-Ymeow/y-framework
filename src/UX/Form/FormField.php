@@ -20,6 +20,8 @@ abstract class FormField extends UXComponent
     protected string $autocomplete = '';
     protected array $rules = [];
     protected ?string $liveModel = null;
+    protected ?string $error = null;
+    protected bool $invalid = false;
 
     public function name(string $name): static
     {
@@ -87,6 +89,43 @@ abstract class FormField extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置验证错误信息
+     *
+     * @param string|null $message 错误信息，传 null 则清除错误
+     */
+    public function error(?string $message = null): static
+    {
+        $this->error = $message;
+        $this->invalid = $message !== null;
+        return $this;
+    }
+
+    /**
+     * 设置无效状态（不显示错误信息）
+     */
+    public function invalid(bool $invalid = true): static
+    {
+        $this->invalid = $invalid;
+        return $this;
+    }
+
+    /**
+     * 获取错误信息
+     */
+    public function getError(): ?string
+    {
+        return $this->error;
+    }
+
+    /**
+     * 是否处于无效状态
+     */
+    public function isInvalid(): bool
+    {
+        return $this->invalid;
+    }
+
     protected function buildFieldAttrs(): array
     {
         $attrs = [];
@@ -117,6 +156,11 @@ abstract class FormField extends UXComponent
             $attrs['data-live-model'] = $this->liveModel;
         }
 
+        if ($this->invalid) {
+            $attrs['data-invalid'] = 'true';
+            $attrs['class'] = (isset($attrs['class']) ? $attrs['class'] . ' ' : '') . 'ux-field-invalid';
+        }
+
         return $attrs;
     }
 
@@ -141,6 +185,18 @@ abstract class FormField extends UXComponent
         if (!$this->help) return null;
 
         return Element::make('div')->class('ux-form-help')->html($this->help);
+    }
+
+    /**
+     * 渲染错误信息
+     */
+    protected function renderError(): ?Element
+    {
+        if (!$this->error) return null;
+
+        return Element::make('div')
+            ->class('ux-form-error')
+            ->text($this->error);
     }
 
     public function getName(): string

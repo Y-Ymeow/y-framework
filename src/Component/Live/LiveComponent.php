@@ -21,6 +21,7 @@ abstract class LiveComponent
     private array $operations = [];
     private array $refreshFragments = []; // [name => mode]
     private array $manualUpdates = []; // [componentId => patches]
+    private array $validationErrors = [];
     private ?string $stateChecksum = null;
     protected array $routeParams = [];
 
@@ -35,12 +36,16 @@ abstract class LiveComponent
         self::$globalActionCache = $cache;
     }
 
-    public function __construct(array $params = [])
+    /**
+     * 构造函数
+     * 
+     * @param array $routeParams 路由参数（由 LiveComponentResolver 通过容器注入）
+     */
+    public function __construct(array $routeParams = [])
     {
-        if (!empty($params)) {
-            $this->routeParams = $params;
-        }
+        $this->routeParams = $routeParams;
 
+        // 初始化组件 ID
         $shortClass = (new \ReflectionClass($this))->getShortName();
         $key = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $shortClass));
         if (!isset(self::$idCounter[$key])) self::$idCounter[$key] = 0;
@@ -52,11 +57,6 @@ abstract class LiveComponent
 
         // 处理 Session/Cookie 属性恢复
         $this->syncPersistentAttributes();
-
-        // 只有首次请求执行 mount
-        if (!isset($_POST['_state'])) {
-            $this->mount($this->routeParams);
-        }
     }
 
     /**
@@ -96,13 +96,6 @@ abstract class LiveComponent
      * 生命周期：组件实例创建时触发
      */
     public function boot(): void {}
-
-    /**
-     * 生命周期：仅在组件首次挂载时触发
-     *
-     * @param array $params 路由参数（如 URL 中的 {id}）
-     */
-    public function mount(array $params = []): void {}
 
     /**
      * 生命周期：在状态从请求恢复（Hydration）完成后触发
@@ -244,6 +237,11 @@ abstract class LiveComponent
         return $this->componentId;
     }
 
+    /**
+     * 设置组件 ID （用于唯一标识组件） 方便在更新时引用
+     * @param string $id 组件 ID
+     * @return self
+     */
     public function named(string $id): self
     {
         $this->componentId = $id;
@@ -814,6 +812,11 @@ abstract class LiveComponent
         $this->ux('modal', $id, 'open');
     }
 
+    public function closeModal(string $id): void
+    {
+        $this->ux('modal', $id, 'close');
+    }
+
     public function toggleAccordion(string $itemId, ?bool $open = null): void
     {
         $this->ux('accordion', $itemId, 'toggle', ['open' => $open]);
@@ -826,6 +829,117 @@ abstract class LiveComponent
             'type' => $type,
             'duration' => $duration,
             'title' => $title
+        ]);
+    }
+
+    /**
+     * 触发确认对话框（前端显示）
+     *
+     * @param string $message 确认消息
+     * @param string $title 对话框标题（可选）
+     * @param array $options 额外选项
+     * @return bool 仅作为操作标记，实际结果由前端处理
+     */
+    public function confirm(string $message, string $title = '确认', array $options = []): void
+    {
+        $this->operation('confirm', [
+            'message' => $message,
+            'title' => $title,
+            ...$options
+        ]);
+    }
+
+    /**
+     * 触发局部加载状态
+     *
+     * @param string $target 加载目标（CSS 选择器或组件 ID）
+     */
+    public function loading(string $target = ''): void
+    {
+        $this->operation('loading', ['target' => $target ?: 'self']);
+    }
+
+    /**
+     * 结束加载状态
+     *
+     * @param string $target 结束加载的目标
+     */
+    public function loadingEnd(string $target = ''): void
+    {
+        $this->operation('loading:end', ['target' => $target ?: 'self']);
+    }
+
+    /**
+     * 验证表单数据并返回错误信息
+     *
+     * @param array $rules 验证规则
+     * @param array $data 要验证的数据（默认使用组件公开属性）
+     * @return bool 是否通过验证
+     */
+    public function validateForm(array $rules = [], array $data = []): bool
+    {
+        if (empty($data)) {
+            $data = $this->getPublicProperties();
+        }
+
+        $errors = $this->validate($rules);
+        if (!empty($errors)) {
+            $this->operation('validation:errors', ['errors' => $errors]);
+            return false;
+        }
+
+        $this->operation('validation:clear');
+        return true;
+    }
+
+    /**
+     * 获取表单错误信息
+     *
+     * @param string $field 字段名
+     * @return string|null
+     */
+    public function getError(string $field): ?string
+    {
+        return $this->validationErrors[$field] ?? null;
+    }
+
+    /**
+     * 设置表单错误信息
+     *
+     * @param string $field 字段名
+     * @param string $message 错误消息
+     */
+    public function setError(string $field, string $message): void
+    {
+        $this->validationErrors[$field] = $message;
+        $this->operation('validation:errors', ['errors' => $this->validationErrors]);
+    }
+
+    /**
+     * 清除指定字段的错误
+     */
+    public function clearError(string $field): void
+    {
+        unset($this->validationErrors[$field]);
+    }
+
+    /**
+     * 清除所有表单错误
+     */
+    public function clearErrors(): void
+    {
+        $this->validationErrors = [];
+        $this->operation('validation:clear');
+    }
+
+    /**
+     * 触发组件级刷新（通知外部组件更新）
+     */
+    public function notify(string $componentId, string $event, mixed $data = null): void
+    {
+        LiveNotifier::emit($event, [
+            'targetComponent' => $componentId,
+            'data' => $data,
         ]);
     }
 
