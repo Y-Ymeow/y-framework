@@ -9,33 +9,37 @@ A modern, lightweight, Anti-MVC, route-first, component-driven PHP framework.
 
 ## Technical Stack
 - **Language**: PHP 8.4+
-- **DI Container**: php-di
-- **HTTP Layer**: Symfony HttpFoundation
+- **DI Container**: Custom `Framework\Foundation\Container`
+- **HTTP Layer**: Custom `Framework\Http\Request` / `Framework\Http\Response`
 - **CLI**: Symfony Console
 - **Frontend**: Vite + Idiomorph (for DOM patching)
-- **Styling**: Tailwind CSS
+- **Styling**: Built-in CSS Engine (Tailwind-like utility classes)
 
 ## Project Structure
 - `src/`: Framework core logic.
 - `app/`: Application-specific logic (Controllers, Components, Jobs).
 - `admin/`: Admin-specific logic and pages.
 - `config/`: Configuration files.
-- `routes/`: Special route definitions (e.g., `schedule.php`).
+- `lang/`: Translation files (e.g. `lang/zh/messages.php`).
 - `public/`: Web server root directory.
 - `storage/`: Cache, logs, and temporary files.
-- `database/` & `migrations/`: Database schema and migration files.
+- `database/migrations/`: Database migration files.
+- `database/seeders/`: Database seeder files.
 - `docs/`: Project documentation.
 
 ## Key Architectural Patterns
 ### 1. Routing
-- Uses attributes like `#[Route('/path')]`, `#[Get('/')]`, `#[Post('/')]`.
+- Uses attributes like `#[Route('/path', methods: ['GET'])]`.
+- Supports route groups via `#[RouteGroup('/prefix')]`.
 - Supports middleware via `#[Middleware(['auth'])]`.
 - Routing is scanned and can be cached using `php bin/console route:cache`.
 
 ### 2. LiveComponents
 - Server-driven components that handle their own state and actions.
 - State is compressed and base64 encoded: `base64(binary_sig + gzcompress(serialize(data)))`.
-- Action mapping can be cached using `php bin/console live:cache`.
+- Lifecycle: `boot()` → `mount()` → `hydrate()` → actions → `dehydrate()`.
+- Actions use `#[LiveAction]` attribute and return `LiveResponse`.
+- Fragment updates via `->liveFragment('name')` in render and `->fragment('name', $html)` in response.
 
 ### 3. Lifecycle & Hooks
 - Implements an Action/Filter system similar to WordPress.
@@ -45,13 +49,27 @@ A modern, lightweight, Anti-MVC, route-first, component-driven PHP framework.
 ### 4. Database & ORM
 - Custom QueryBuilder and Model implementation.
 - Migration system for schema versioning.
+- Seeder system for initial data.
+- Multi-language support via `HasTranslations` trait.
 
 ## Common CLI Commands
 - `php bin/console route:list`: List all registered routes.
 - `php bin/console route:cache`: Generate route cache.
-- `php bin/console live:cache`: Generate LiveComponent action cache.
+- `php bin/console cache:clear [type]`: Clear cache (route/config/view/all).
 - `php bin/console migrate`: Run pending migrations.
+- `php bin/console migrate:rollback`: Rollback last migration batch.
+- `php bin/console db:seed [class]`: Run database seeders.
+- `php bin/console make:page {Name}`: Create a new page.
 - `php bin/console make:component {Name}`: Create a new LiveComponent.
+- `php bin/console make:model {Name} [-m]`: Create a new Model (with optional migration).
+- `php bin/console make:migration {name} [table]`: Create a migration.
+- `php bin/console make:seed {Name}`: Create a seeder.
+- `php bin/console make:config {name}`: Create a config file.
+- `php bin/console make:translation {locale} [domain]`: Create a translation file.
+- `php bin/console make:middleware {Name}`: Create a middleware.
+- `php bin/console make:admin-resource {Name}`: Create an admin resource.
+- `php bin/console key:generate`: Generate APP_KEY.
+- `php bin/console css:generate`: Generate CSS from utility classes.
 
 ## Essential Helpers
 - `app()`: Get the Application instance.
@@ -61,3 +79,6 @@ A modern, lightweight, Anti-MVC, route-first, component-driven PHP framework.
 - `user()`: Get current authenticated user.
 - `redirect('/path')`: Return a redirect response.
 - `abort(code, message)`: Throw an HTTP exception.
+- `base_path('path')`: Get base path.
+- `storage_path('path')`: Get storage path.
+- `__('key')`: Get translation.
