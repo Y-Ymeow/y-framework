@@ -6,17 +6,41 @@ namespace Framework\UX\Form;
 
 use Framework\View\Base\Element;
 
+/**
+ * 搜索输入框
+ *
+ * 用于搜索输入，支持远程搜索端点、本地选项、自动完成、结果展示。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example SearchInput::make()->name('q')->label('搜索')->endpoint('/search/api')
+ * @ux-example SearchInput::make()->name('keyword')->label('关键词')->options(['苹果', '香蕉', '橙子'])
+ * @ux-js-component search-input.js
+ * @ux-css form.css
+ */
 class SearchInput extends FormField
 {
     protected string $endpoint = '';
     protected array $options = [];
 
+    /**
+     * 设置远程搜索端点
+     * @param string $url 搜索 API 地址
+     * @return static
+     * @ux-example SearchInput::make()->endpoint('/search/api')
+     */
     public function endpoint(string $url): static
     {
         $this->endpoint = $url;
         return $this;
     }
 
+    /**
+     * 设置本地选项列表（用于自动完成）
+     * @param array $options 选项数组
+     * @return static
+     * @ux-example SearchInput::make()->options(['苹果', '香蕉', '橙子'])
+     */
     public function options(array $options): static
     {
         $this->options = $options;

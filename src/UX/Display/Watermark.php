@@ -7,6 +7,18 @@ namespace Framework\UX\Display;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 水印
+ *
+ * 用于在内容上添加水印，支持自定义文字、字体大小、颜色、旋转角度、间距、层级。
+ *
+ * @ux-category Display
+ * @ux-since 1.0.0
+ * @ux-example Watermark::make()->content('机密')->fontSize(20)->rotate(-45)
+ * @ux-example Watermark::make()->content('预览')->gap(150, 150)->zIndex(1)
+ * @ux-js-component —
+ * @ux-css watermark.css
+ */
 class Watermark extends UXComponent
 {
     protected string $content = '';
@@ -17,30 +29,64 @@ class Watermark extends UXComponent
     protected int $gapY = 100;
     protected int $zIndex = 9;
 
+    /**
+     * 设置水印文字内容
+     * @param string $content 水印文字
+     * @return static
+     * @ux-example Watermark::make()->content('机密')
+     */
     public function content(string $content): static
     {
         $this->content = $content;
         return $this;
     }
 
+    /**
+     * 设置水印字体大小
+     * @param int $size 字体大小（px）
+     * @return static
+     * @ux-example Watermark::make()->fontSize(20)
+     * @ux-default 16
+     */
     public function fontSize(int $size): static
     {
         $this->fontSize = $size;
         return $this;
     }
 
+    /**
+     * 设置水印字体颜色
+     * @param string $color 颜色（支持 rgba）
+     * @return static
+     * @ux-example Watermark::make()->fontColor('rgba(0,0,0,0.15)')
+     */
     public function fontColor(string $color): static
     {
         $this->fontColor = $color;
         return $this;
     }
 
+    /**
+     * 设置水印旋转角度
+     * @param int $rotate 旋转角度（度，负值为顺时针）
+     * @return static
+     * @ux-example Watermark::make()->rotate(-45)
+     * @ux-default -30
+     */
     public function rotate(int $rotate): static
     {
         $this->rotate = $rotate;
         return $this;
     }
 
+    /**
+     * 设置水印间距
+     * @param int $x 水平间距（px）
+     * @param int $y 垂直间距（px）
+     * @return static
+     * @ux-example Watermark::make()->gap(150, 150)
+     * @ux-default x=100, y=100
+     */
     public function gap(int $x, int $y): static
     {
         $this->gapX = $x;
@@ -48,6 +94,13 @@ class Watermark extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置水印层级
+     * @param int $zIndex z-index 值
+     * @return static
+     * @ux-example Watermark::make()->zIndex(9)
+     * @ux-default 9
+     */
     public function zIndex(int $zIndex): static
     {
         $this->zIndex = $zIndex;

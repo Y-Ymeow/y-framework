@@ -7,6 +7,18 @@ namespace Framework\UX\Navigation;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 标签页
+ *
+ * 用于展示多标签内容切换，支持线型/胶囊型变体、等宽分布、活体数据绑定。
+ *
+ * @ux-category Navigation
+ * @ux-since 1.0.0
+ * @ux-example Tabs::make()->item('标签1', '内容1')->item('标签2', '内容2')
+ * @ux-example Tabs::make()->item('首页', $view1)->item('关于', $view2)->pills()->justified()
+ * @ux-js-component tabs.js
+ * @ux-css tabs.css
+ */
 class Tabs extends UXComponent
 {
     protected array $items = [];
@@ -15,6 +27,15 @@ class Tabs extends UXComponent
     protected bool $justified = false;
     protected ?string $liveModel = null;
 
+    /**
+     * 添加标签页项
+     * @param string $label 标签显示文字
+     * @param mixed $content 标签内容（支持字符串或组件）
+     * @param string|null $id 标签 ID（自动生成）
+     * @param bool $active 是否默认激活
+     * @return static
+     * @ux-example Tabs::make()->item('首页', $homeView, null, true)
+     */
     public function item(string $label, mixed $content, ?string $id = null, bool $active = false): static
     {
         $id = $id ?? 'tab-' . count($this->items);
@@ -31,40 +52,73 @@ class Tabs extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置当前激活的标签
+     * @param string $id 标签 ID
+     * @return static
+     */
     public function activeTab(string $id): static
     {
         $this->activeTab = $id;
         return $this;
     }
 
+    /**
+     * 设置标签页变体
+     * @param string $variant 变体名：line/pills
+     * @return static
+     * @ux-default 'line'
+     */
     public function variant(string $variant): static
     {
         $this->variant = $variant;
         return $this;
     }
 
+    /**
+     * 设置 Live 数据绑定
+     * @param string $property LiveComponent 属性名
+     * @return static
+     */
     public function liveModel(string $property): static
     {
         $this->liveModel = $property;
         return $this;
     }
 
+    /**
+     * 线型变体（底部横线）
+     * @return static
+     */
     public function line(): static
     {
         return $this->variant('line');
     }
 
+    /**
+     * 胶囊型变体（圆角背景）
+     * @return static
+     */
     public function pills(): static
     {
         return $this->variant('pills');
     }
 
+    /**
+     * 设置等宽分布
+     * @param bool $justified 是否等宽
+     * @return static
+     * @ux-default false
+     */
     public function justified(bool $justified = true): static
     {
         $this->justified = $justified;
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $el = new Element('div');

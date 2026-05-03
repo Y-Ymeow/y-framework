@@ -10,6 +10,18 @@ use Framework\UX\RichEditor\RichEditorExtension;
 use Framework\UX\RichEditor\ExtensionRegistry;
 use Framework\CSS\RichEditorRules;
 
+/**
+ * 富文本编辑器
+ *
+ * 用于富文本内容编辑，支持工具栏、扩展、输出格式（HTML/Markdown/Text）、Live 绑定。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example RichEditor::make()->name('content')->label('内容')->toolbar(['bold', 'italic', 'link', 'image'])
+ * @ux-example RichEditor::make()->name('article')->label('文章')->minimal()->placeholder('开始写作...')
+ * @ux-js-component rich-editor.js
+ * @ux-css rich-editor.css
+ */
 class RichEditor extends FormField
 {
     protected int $rows = 10;
@@ -32,12 +44,26 @@ class RichEditor extends FormField
         AssetRegistry::getInstance()->inlineStyle(RichEditorRules::getStyles());
     }
 
+    /**
+     * 绑定 Live 属性
+     * @param string $name LiveComponent 属性名
+     * @return static
+     * @ux-example RichEditor::make()->liveModel('content')
+     */
     public function liveModel(string $name): static
     {
         $this->liveModel = $name;
         return $this;
     }
 
+    /**
+     * 设置 LiveAction 和触发事件
+     * @param string $action Action 名称
+     * @param string $event 触发事件
+     * @return static
+     * @ux-example RichEditor::make()->liveAction('updateContent', 'change')
+     * @ux-default event='change'
+     */
     public function liveAction(string $action, string $event = 'change'): static
     {
         $this->liveAction = $action;
@@ -45,18 +71,38 @@ class RichEditor extends FormField
         return $this;
     }
 
+    /**
+     * 设置编辑器行数
+     * @param int $rows 行数
+     * @return static
+     * @ux-example RichEditor::make()->rows(15)
+     * @ux-default 10
+     */
     public function rows(int $rows): static
     {
         $this->rows = $rows;
         return $this;
     }
 
+    /**
+     * 设置工具栏项目
+     * @param array $items 工具栏项目数组
+     * @return static
+     * @ux-example RichEditor::make()->toolbar(['bold', 'italic', 'link'])
+     */
     public function toolbar(array $items): static
     {
         $this->toolbar = $items;
         return $this;
     }
 
+    /**
+     * 启用最小化模式（隐藏工具栏，无边框）
+     * @param bool $minimal 是否最小化
+     * @return static
+     * @ux-example RichEditor::make()->minimal()
+     * @ux-default true
+     */
     public function minimal(bool $minimal = true): static
     {
         $this->minimal = $minimal;
@@ -66,48 +112,135 @@ class RichEditor extends FormField
         return $this;
     }
 
+    /**
+     * 设置是否显示边框
+     * @param bool $border 是否显示边框
+     * @return static
+     * @ux-example RichEditor::make()->border(false)
+     * @ux-default true
+     */
     public function border(bool $border = true): static
     {
         $this->border = $border;
         return $this;
     }
 
+    /**
+     * 设置编辑器宽度
+     * @param string $width 宽度（如 100%, 500px）
+     * @return static
+     * @ux-example RichEditor::make()->width('100%')
+     */
     public function width(string $width): static
     {
         $this->width = $width;
         return $this;
     }
 
+    /**
+     * 设置编辑器高度
+     * @param string $height 高度（如 300px）
+     * @return static
+     * @ux-example RichEditor::make()->height('300px')
+     */
     public function height(string $height): static
     {
         $this->height = $height;
         return $this;
     }
 
+    /**
+     * 设置占位文本
+     * @param string $placeholder 占位提示
+     * @return static
+     * @ux-example RichEditor::make()->placeholder('开始写作...')
+     */
     public function placeholder(string $placeholder): static
     {
         $this->placeholder = $placeholder;
         return $this;
     }
 
+    /**
+     * 设置输出格式
+     * @param string $format 格式：html/markdown/text
+     * @return static
+     * @ux-example RichEditor::make()->outputFormat('markdown')
+     * @ux-default 'html'
+     */
     public function outputFormat(string $format): static
     {
         $this->outputFormat = in_array($format, ['html', 'markdown', 'text']) ? $format : 'html';
         return $this;
     }
 
+    /**
+     * 注册编辑器扩展
+     * @param string $name 扩展名称
+     * @param RichEditorExtension $extension 扩展实例
+     * @return static
+     * @ux-example RichEditor::make()->extension('emoji', new EmojiExtension())
+     */
     public function extension(string $name, RichEditorExtension $extension): static
     {
         $this->extensions[$name] = $extension;
         return $this;
     }
 
+    /**
+     * 注册内容解析器
+     * @param callable $parser 解析器回调
+     * @param string $name 解析器名称
+     * @return static
+     * @ux-example RichEditor::make()->parser(fn($c) => Markdown::parse($c), 'markdown')
+     */
     public function parser(callable $parser, string $name = 'default'): static
     {
         $this->parsers[$name] = $parser;
         return $this;
     }
 
+    /**
+     * 解析内容（应用扩展和解析器）
+     * @param string $content 内容
+     * @param string $parserName 解析器名称
+     * @return string 解析后的内容
+     */
+    public function parseContent(string $content, string $parserName = 'default'): string
+    {
+        if (isset($this->parsers[$parserName])) {
+            return ($this->parsers[$parserName])($content);
+        }
+
+        foreach ($this->extensions as $extension) {
+            $content = $extension->parse($content);
+        }
+
+        return $content;
+    }
+
+    /**
+     * 清洗内容（移除危险标签和脚本）
+     * @param string $content 内容
+     * @return string 清洗后的内容
+     */
+    public function sanitize(string $content): string
+    {
+        $allowedTags = '<p><br><strong><b><em><i><u><s><strike><del><h1><h2><h3><h4><h5><h6><blockquote><pre><code><ul><ol><li><a><img><div><span>';
+        $allowedAttrs = ['href', 'src', 'alt', 'title', 'class', 'id', 'target'];
+
+        $content = strip_tags($content, $allowedTags);
+
+        $content = preg_replace_callback('/<([a-z][a-z0-9]*)[^>]*?\s+(?:on|javascript:)[^>]*>/i', function ($m) {
+            return '<' . $m[1] . '>';
+        }, $content);
+
+        return $content;
+    }
+
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $groupEl = Element::make('div')->class('ux-form-group');
@@ -199,6 +332,12 @@ class RichEditor extends FormField
         return $groupEl;
     }
 
+    /**
+     * 构建工具栏
+     * @param string $editorId 编辑器 ID
+     * @return Element
+     * @ux-internal
+     */
     protected function buildToolbar(string $editorId): Element
     {
         $toolbarEl = Element::make('div')->class('ux-rich-editor__toolbar');
@@ -238,6 +377,12 @@ class RichEditor extends FormField
         return $toolbarEl;
     }
 
+    /**
+     * 获取工具栏按钮配置
+     * @param string $action 动作名称
+     * @return array|null
+     * @ux-internal
+     */
     protected function getToolbarButtonConfig(string $action): ?array
     {
         $configs = [
@@ -257,32 +402,5 @@ class RichEditor extends FormField
         ];
 
         return $configs[$action] ?? null;
-    }
-
-    public function parseContent(string $content, string $parserName = 'default'): string
-    {
-        if (isset($this->parsers[$parserName])) {
-            return ($this->parsers[$parserName])($content);
-        }
-
-        foreach ($this->extensions as $extension) {
-            $content = $extension->parse($content);
-        }
-
-        return $content;
-    }
-
-    public function sanitize(string $content): string
-    {
-        $allowedTags = '<p><br><strong><b><em><i><u><s><strike><del><h1><h2><h3><h4><h5><h6><blockquote><pre><code><ul><ol><li><a><img><div><span>';
-        $allowedAttrs = ['href', 'src', 'alt', 'title', 'class', 'id', 'target'];
-
-        $content = strip_tags($content, $allowedTags);
-
-        $content = preg_replace_callback('/<([a-z][a-z0-9]*)[^>]*?\s+(?:on|javascript:)[^>]*>/i', function ($m) {
-            return '<' . $m[1] . '>';
-        }, $content);
-
-        return $content;
     }
 }

@@ -1,6 +1,6 @@
 # Foundation 核心基础 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 组件清单
 
@@ -38,7 +38,7 @@
 
 - **文件:** `php/src/Foundation/Application.php`
 
-**公开方法 (14)：**
+**公开方法 (15)：**
 
 - `getInstance(): ?Framework\Foundation\Application`
 - `singleton(string $abstract, mixed $concrete = null): void`
@@ -49,6 +49,7 @@
 - `storagePath(string $path = ''): string`
 - `configPath(string $path = ''): string`
 - `make(string $class): mixed`
+- `makeWith(string $class, array $parameters = []): mixed`
 - `instance(string $abstract, mixed $instance): void`
 - `register(Framework\Foundation\ServiceProvider $provider): void`
 - `boot(): void`
@@ -59,10 +60,11 @@
 
 - **文件:** `php/src/Foundation/Container.php`
 
-**公开方法 (7)：**
+**公开方法 (8)：**
 
 - `set(string $id, mixed $value): void`
 - `get(string $id): mixed`
+- `makeWith(string $id, array $extraParams = []): mixed` — 创建实例并传递额外参数
 - `has(string $id): bool`
 - `singleton(string $id, mixed $concrete = null): void`
 - `bind(string $id, mixed $concrete = null): void`

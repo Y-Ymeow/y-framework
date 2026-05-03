@@ -7,6 +7,18 @@ namespace Framework\UX\Data;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 描述列表
+ *
+ * 用于展示键值对描述信息，支持多列布局、标题、边框、标签对齐、额外内容。
+ *
+ * @ux-category Data
+ * @ux-since 1.0.0
+ * @ux-example DescriptionList::make()->item('姓名', '张三')->item('邮箱', 'test@example.com')->columns(2)
+ * @ux-example DescriptionList::make()->title('详细信息')->items($items)->bordered()->labelAlign('left')
+ * @ux-js-component description-list.js
+ * @ux-css description-list.css
+ */
 class DescriptionList extends UXComponent
 {
     protected array $items = [];
@@ -19,6 +31,14 @@ class DescriptionList extends UXComponent
     protected string $labelAlign = 'right';
     protected ?string $fragmentName = null;
 
+    /**
+     * 添加一个描述项
+     * @param string $label 标签文字
+     * @param mixed $value 值
+     * @param \Closure|null $render 自定义渲染回调
+     * @return static
+     * @ux-example DescriptionList::make()->item('姓名', '张三')->item('邮箱', 'test@example.com')
+     */
     public function item(string $label, mixed $value, ?\Closure $render = null): static
     {
         $this->items[] = [
@@ -29,6 +49,11 @@ class DescriptionList extends UXComponent
         return $this;
     }
 
+    /**
+     * 批量添加描述项
+     * @param array $items 描述项配置数组
+     * @return static
+     */
     public function items(array $items): static
     {
         foreach ($items as $item) {
@@ -41,58 +66,113 @@ class DescriptionList extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置列数
+     * @param int $columns 列数（至少 1）
+     * @return static
+     * @ux-default 3
+     */
     public function columns(int $columns): static
     {
         $this->columns = max(1, $columns);
         return $this;
     }
 
+    /**
+     * 设置变体
+     * @param string $variant 变体：default
+     * @return static
+     * @ux-default 'default'
+     */
     public function variant(string $variant): static
     {
         $this->variant = $variant;
         return $this;
     }
 
+    /**
+     * 设置尺寸
+     * @param string $size 尺寸：sm/md/lg
+     * @return static
+     * @ux-default 'md'
+     */
     public function size(string $size): static
     {
         $this->size = $size;
         return $this;
     }
 
+    /**
+     * 小尺寸
+     * @return static
+     * @ux-example DescriptionList::make()->items($items)->sm()
+     */
     public function sm(): static
     {
         return $this->size('sm');
     }
 
+    /**
+     * 大尺寸
+     * @return static
+     * @ux-example DescriptionList::make()->items($items)->lg()
+     */
     public function lg(): static
     {
         return $this->size('lg');
     }
 
+    /**
+     * 设置是否带边框
+     * @param bool $bordered 是否带边框
+     * @return static
+     * @ux-default false
+     */
     public function bordered(bool $bordered = true): static
     {
         $this->bordered = $bordered;
         return $this;
     }
 
+    /**
+     * 设置标题
+     * @param string $title 标题
+     * @return static
+     */
     public function title(string $title): static
     {
         $this->title = $title;
         return $this;
     }
 
+    /**
+     * 设置额外内容（标题右侧）
+     * @param mixed $extra 自定义内容（Element 或组件）
+     * @return static
+     */
     public function extra(mixed $extra): static
     {
         $this->extra = $extra;
         return $this;
     }
 
+    /**
+     * 设置标签对齐方式
+     * @param string $align 对齐：left/right
+     * @return static
+     * @ux-default 'right'
+     */
     public function labelAlign(string $align): static
     {
         $this->labelAlign = $align;
         return $this;
     }
 
+    /**
+     * 设置分片名称（用于 Live 局部更新）
+     * @param string $name 分片名
+     * @return static
+     */
     public function fragment(string $name): static
     {
         $this->fragmentName = $name;

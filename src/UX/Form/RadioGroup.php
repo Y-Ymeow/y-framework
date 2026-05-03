@@ -6,17 +6,42 @@ namespace Framework\UX\Form;
 
 use Framework\View\Base\Element;
 
+/**
+ * 单选框组
+ *
+ * 用于单选框分组，支持选项列表、内联布局、标签、验证、禁用、Live 绑定。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example RadioGroup::make()->name('gender')->label('性别')->options(['male' => '男', 'female' => '女'])
+ * @ux-example RadioGroup::make()->name('plan')->label('套餐')->options($plans)->inline()->liveModel('selectedPlan')
+ * @ux-js-component —
+ * @ux-css form.css
+ */
 class RadioGroup extends FormField
 {
     protected array $options = [];
     protected bool $inline = false;
 
+    /**
+     * 设置选项列表
+     * @param array $options 选项数组 ['value' => '标签']
+     * @return static
+     * @ux-example RadioGroup::make()->options(['male' => '男', 'female' => '女'])
+     */
     public function options(array $options): static
     {
         $this->options = $options;
         return $this;
     }
 
+    /**
+     * 设置内联布局
+     * @param bool $inline 是否内联
+     * @return static
+     * @ux-example RadioGroup::make()->inline()
+     * @ux-default true
+     */
     public function inline(bool $inline = true): static
     {
         $this->inline = $inline;

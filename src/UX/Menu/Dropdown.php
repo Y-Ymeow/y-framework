@@ -11,6 +11,18 @@ use Framework\View\Form;
 use Framework\View\Link;
 use Framework\View\Text;
 
+/**
+ * 下拉菜单
+ *
+ * 用于显示下拉菜单，支持触发元素、菜单项、分组、图标。
+ *
+ * @ux-category Menu
+ * @ux-since 1.0.0
+ * @ux-example Dropdown::make()->trigger(Button::make()->label('菜单')->primary())->item('选项1')->item('选项2')
+ * @ux-example Dropdown::make()->trigger('更多')->item('编辑')->divider()->item('删除')->danger()
+ * @ux-js-component dropdown.js
+ * @ux-css dropdown.css
+ */
 class Dropdown extends UXComponent
 {
     protected string $label = 'Dropdown';
@@ -20,12 +32,28 @@ class Dropdown extends UXComponent
     protected mixed $customTrigger = null;
     protected bool $noborder = false;
 
+    /**
+     * 设置默认标签文字（当不使用自定义 trigger 时显示）
+     * @param string $label 标签文字
+     * @return static
+     * @ux-default 'Dropdown'
+     */
     public function label(string $label): static
     {
         $this->label = $label;
         return $this;
     }
 
+    /**
+     * 添加菜单项
+     * @param string $label 显示文字
+     * @param string|null $url 链接地址
+     * @param string|null $icon 图标类名（可省略 bi- 前缀）
+     * @param string|null $action LiveAction 名称
+     * @param array $params 动作参数
+     * @return static
+     * @ux-example Dropdown::make()->item('编辑', '/edit', 'pencil', 'editItem')
+     */
     public function item(string $label, ?string $url = '#', ?string $icon = null, ?string $action = null, array $params = []): static
     {
         $this->items[] = [
@@ -39,6 +67,12 @@ class Dropdown extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置无边框样式
+     * @param bool $noborder 是否无边框
+     * @return static
+     * @ux-default false
+     */
     public function noborder(bool $noborder = true): static
     {
         $this->noborder = $noborder;
@@ -47,6 +81,8 @@ class Dropdown extends UXComponent
 
     /**
      * 传入自定义 Element 作为菜单项（最灵活）
+     * @param mixed $content 自定义内容（Element 或组件）
+     * @return static
      */
     public function element(mixed $content): static
     {
@@ -57,18 +93,34 @@ class Dropdown extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加分隔线
+     * @return static
+     */
     public function divider(): static
     {
         $this->items[] = ['type' => 'divider'];
         return $this;
     }
 
+    /**
+     * 设置菜单弹出位置
+     * @param string $position 位置：bottom-start/bottom-end/top-start/top-end 等
+     * @return static
+     * @ux-default 'bottom-start'
+     */
     public function position(string $position): static
     {
         $this->position = $position;
         return $this;
     }
 
+    /**
+     * 启用悬停触发
+     * @param bool $hover 是否悬停触发
+     * @return static
+     * @ux-default false
+     */
     public function hover(bool $hover = true): static
     {
         $this->hover = $hover;
@@ -77,6 +129,9 @@ class Dropdown extends UXComponent
 
     /**
      * 自定义 trigger 元素（替代默认的文字按钮）
+     * @param mixed $trigger 自定义触发元素（Element 或组件）
+     * @return static
+     * @ux-example Dropdown::make()->customTrigger(Button::make()->label('更多')->icon('ellipsis'))
      */
     public function customTrigger(mixed $trigger): static
     {
@@ -84,6 +139,9 @@ class Dropdown extends UXComponent
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $element = new Element('div');

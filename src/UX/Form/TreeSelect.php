@@ -7,6 +7,18 @@ namespace Framework\UX\Form;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 树形选择器
+ *
+ * 用于树形结构数据选择，支持多选、搜索、清除、禁用、空状态提示、Live 绑定。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example TreeSelect::make()->treeData($deptTree)->placeholder('选择部门')
+ * @ux-example TreeSelect::make()->treeData($roles)->multiple()->showSearch()->allowClear()
+ * @ux-js-component tree-select.js
+ * @ux-css tree-select.css
+ */
 class TreeSelect extends UXComponent
 {
     protected array $treeData = [];
@@ -19,54 +31,114 @@ class TreeSelect extends UXComponent
     protected ?string $action = null;
     protected ?string $emptyText = '暂无数据';
 
+    /**
+     * 设置树形数据
+     * @param array $data 树形数据数组（每项需包含 value, label/title, children 等）
+     * @return static
+     * @ux-example TreeSelect::make()->treeData($deptTree)
+     */
     public function treeData(array $data): static
     {
         $this->treeData = $data;
         return $this;
     }
 
+    /**
+     * 设置选中值
+     * @param string $value 选中值（多选时为逗号分隔的字符串）
+     * @return static
+     * @ux-example TreeSelect::make()->value('1')
+     */
     public function value(string $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 设置占位文本
+     * @param string $placeholder 占位提示
+     * @return static
+     * @ux-example TreeSelect::make()->placeholder('选择部门')
+     * @ux-default '请选择'
+     */
     public function placeholder(string $placeholder): static
     {
         $this->placeholder = $placeholder;
         return $this;
     }
 
+    /**
+     * 启用多选模式
+     * @param bool $multiple 是否多选
+     * @return static
+     * @ux-example TreeSelect::make()->multiple()
+     * @ux-default true
+     */
     public function multiple(bool $multiple = true): static
     {
         $this->multiple = $multiple;
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-example TreeSelect::make()->disabled()
+     * @ux-default true
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 启用清除按钮
+     * @param bool $allow 是否允许清除
+     * @return static
+     * @ux-example TreeSelect::make()->allowClear()
+     * @ux-default true
+     */
     public function allowClear(bool $allow = true): static
     {
         $this->allowClear = $allow;
         return $this;
     }
 
+    /**
+     * 启用搜索功能
+     * @param bool $show 是否启用
+     * @return static
+     * @ux-example TreeSelect::make()->showSearch()
+     * @ux-default true
+     */
     public function showSearch(bool $show = true): static
     {
         $this->showSearch = $show;
         return $this;
     }
 
+    /**
+     * 设置 LiveAction（选择时触发）
+     * @param string $action Action 名称
+     * @return static
+     * @ux-example TreeSelect::make()->action('selectNode')
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 设置空状态提示文字
+     * @param string $text 提示文字
+     * @return static
+     * @ux-example TreeSelect::make()->emptyText('暂无数据')
+     * @ux-default '暂无数据'
+     */
     public function emptyText(string $text): static
     {
         $this->emptyText = $text;

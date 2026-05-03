@@ -59,72 +59,160 @@ class Modal extends UXComponent
     protected mixed $footer = null;
     protected bool $open = false;
 
+    /**
+     * 设置弹窗标题
+     * @param string $title 标题文字
+     * @return static
+     * @ux-example Modal::make()->title('确认操作')
+     */
     public function title(string $title): static
     {
         $this->title = $title;
         return $this;
     }
 
+    /**
+     * 设置弹窗内容
+     * @param mixed $content 内容（字符串/Closure/组件）
+     * @return static
+     * @ux-example Modal::make()->content('确定要执行此操作吗？')
+     */
     public function content(mixed $content): static
     {
-        $this->content = is_string($content) ? $content : $this->resolveValue($content);
+        if (is_string($content)) {
+            $this->content = (string) $content;    
+        } elseif ($content instanceof \Closure) {
+            $this->content = $content();
+        } else {
+            $this->content = $content;
+        }
         return $this;
     }
 
+    /**
+     * 设置弹窗尺寸
+     * @param string $size 尺寸：sm/md/lg/xl/fullscreen
+     * @return static
+     * @ux-example Modal::make()->size('lg')
+     * @ux-default 'md'
+     */
     public function size(string $size): static
     {
         $this->size = $size;
         return $this;
     }
 
+    /**
+     * 小尺寸
+     * @return static
+     * @ux-example Modal::make()->sm()
+     */
     public function sm(): static { return $this->size('sm'); }
+
+    /**
+     * 大尺寸
+     * @return static
+     * @ux-example Modal::make()->lg()
+     */
     public function lg(): static { return $this->size('lg'); }
+
+    /**
+     * 超大尺寸
+     * @return static
+     * @ux-example Modal::make()->xl()
+     */
     public function xl(): static { return $this->size('xl'); }
+
+    /**
+     * 全屏尺寸
+     * @return static
+     * @ux-example Modal::make()->fullscreen()
+     */
     public function fullscreen(): static { return $this->size('fullscreen'); }
 
+    /**
+     * 设置是否可关闭（显示关闭按钮）
+     * @param bool $closeable 是否可关闭
+     * @return static
+     * @ux-example Modal::make()->closeable(false)
+     * @ux-default true
+     */
     public function closeable(bool $closeable = true): static
     {
         $this->closeable = $closeable;
         return $this;
     }
 
+    /**
+     * 设置是否显示遮罩层
+     * @param bool $backdrop 是否显示遮罩
+     * @return static
+     * @ux-example Modal::make()->backdrop(true)
+     * @ux-default true
+     */
     public function backdrop(bool $backdrop = true): static
     {
         $this->backdrop = $backdrop;
         return $this;
     }
 
+    /**
+     * 设置是否居中显示
+     * @param bool $centered 是否居中
+     * @return static
+     * @ux-example Modal::make()->centered(true)
+     * @ux-default true
+     */
     public function centered(bool $centered = true): static
     {
         $this->centered = $centered;
         return $this;
     }
 
+    /**
+     * 设置底部内容
+     * @param mixed $footer 底部内容（字符串/数组/组件）
+     * @return static
+     * @ux-example Modal::make()->footer([Button::make()->label('取消')])
+     */
     public function footer(mixed $footer): static
     {
         $this->footer = $footer;
         return $this;
     }
 
+    /**
+     * 设置打开状态
+     * @param bool $open 是否打开
+     * @return static
+     * @ux-example Modal::make()->open(true)
+     * @ux-default false
+     */
     public function open(bool $open = true): static
     {
         $this->open = $open;
         return $this;
     }
 
+    /**
+     * 关闭弹窗
+     * @return static
+     * @ux-example $modal->close()
+     */
     public function close(): static
     {
         return $this->open(false);
     }
 
     /**
-     * 设置底部按钮（快捷方法）
-     *
+     * 设置底部按钮（快捷方法：确定+取消）
      * @param string $okText 确定按钮文字
-     * @param string $okAction 确定按钮触发的动作或事件
-     * @param string $cancelText 取消按钮文字
+     * @param string $okAction 确定按钮触发的动作
      * @param string $okVariant 确定按钮样式
+     * @param string $cancelText 取消按钮文字
      * @param string $cancelVariant 取消按钮样式
+     * @return static
+     * @ux-example Modal::make()->ok('确认', 'confirmAction', 'primary', '取消', 'secondary')
      */
     public function ok(
         string $okText = '确定',
@@ -158,6 +246,10 @@ class Modal extends UXComponent
 
     /**
      * 仅设置取消按钮（快捷方法）
+     * @param string $cancelText 取消按钮文字
+     * @param string $cancelVariant 取消按钮样式
+     * @return static
+     * @ux-example Modal::make()->cancel('关闭', 'secondary')
      */
     public function cancel(string $cancelText = '取消', string $cancelVariant = 'secondary'): static
     {
@@ -167,6 +259,22 @@ class Modal extends UXComponent
                 ->variant($cancelVariant)
                 ->attr('data-ux-modal-close', $this->id)
         );
+    }
+
+    /**
+     * 生成触发按钮
+     * @param string $label 按钮文字
+     * @param string $variant 按钮变体
+     * @return string 渲染后的 HTML
+     * @ux-example echo $modal->trigger('打开弹窗')
+     */
+    public function trigger(string $label, string $variant = 'primary'): string
+    {
+        return Button::make()
+            ->label($label)
+            ->variant($variant)
+            ->attr('data-ux-modal-open', $this->id)
+            ->render();
     }
 
     protected function toElement(): Element
@@ -231,14 +339,5 @@ class Modal extends UXComponent
         $el->child($dialogEl);
 
         return $el;
-    }
-
-    public function trigger(string $label, string $variant = 'primary'): string
-    {
-        return Button::make()
-            ->label($label)
-            ->variant($variant)
-            ->attr('data-ux-modal-open', $this->id)
-            ->render();
     }
 }

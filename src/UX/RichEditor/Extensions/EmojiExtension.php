@@ -50,18 +50,34 @@ class EmojiExtension extends RichEditorExtension
         return 'emoji';
     }
 
+    /**
+     * 设置表情映射表
+     * @param array $map 表情映射（shortcode => emoji）
+     * @return static
+     */
     public function setEmojiMap(array $map): static
     {
         $this->emojiMap = array_merge($this->emojiMap, $map);
         return $this;
     }
 
+    /**
+     * 执行表情插入
+     * @param string $content 内容
+     * @param array $params 参数（emoji）
+     * @return string 处理后的内容
+     */
     public function execute(string $content, array $params = []): string
     {
         $emoji = $params['emoji'] ?? '';
         return $content . $emoji;
     }
 
+    /**
+     * 解析表情短代码为 emoji
+     * @param string $content 内容
+     * @return string 解析后的内容
+     */
     public function parse(string $content): string
     {
         if (!$this->config['shortcodes']) {
@@ -71,11 +87,20 @@ class EmojiExtension extends RichEditorExtension
         return strtr($content, $this->emojiMap);
     }
 
+    /**
+     * 渲染预览内容（解析表情短代码）
+     * @param string $content 内容
+     * @return string 预览内容
+     */
     public function renderPreview(string $content): string
     {
         return $this->parse($content);
     }
 
+    /**
+     * 获取可用表情列表
+     * @return array 表情映射表
+     */
     public function getAvailableEmojis(): array
     {
         return $this->emojiMap;

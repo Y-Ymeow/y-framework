@@ -6,10 +6,29 @@ namespace Framework\UX\Form;
 
 use Framework\View\Base\Element;
 
+/**
+ * 复选框
+ *
+ * 用于多选或开关，支持设置默认选中状态。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example Checkbox::make()->label('同意协议')->model('agree')
+ * @ux-example Checkbox::make()->label('已读')->checked()
+ * @ux-js-component —
+ * @ux-css form.css
+ */
 class Checkbox extends FormField
 {
     protected bool $checked = false;
 
+    /**
+     * 设置选中状态
+     * @param bool $checked 是否选中
+     * @return static
+     * @ux-example Checkbox::make()->checked()
+     * @ux-default true
+     */
     public function checked(bool $checked = true): static
     {
         $this->checked = $checked;

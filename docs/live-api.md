@@ -1,6 +1,6 @@
 # Live 组件系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 目录
 
@@ -12,6 +12,7 @@
 - [`LiveComponentResolver`](#framework-component-live-livecomponentresolver)
 - [`LiveEventBus`](#framework-component-live-liveeventbus)
 - [`LiveListener`](#framework-component-live-attribute-livelistener)
+- [`LiveNotifier`](#framework-component-live-livenotifier) — LiveNotifier 实时通知器
 - [`LivePoll`](#framework-component-live-attribute-livepoll) — LivePoll — 标记可轮询的 LiveAction
 - [`LiveSse`](#framework-component-live-attribute-livesse) — LiveSse — 标记返回 SSE 长连接响应的 LiveAction
 - [`LiveStream`](#framework-component-live-attribute-livestream) — LiveStream — 标记返回流式响应的 LiveAction
@@ -80,13 +81,16 @@
 |---|---|---|
 | `setGlobalActionCache` |  | `array $cache` |
 | `boot` | 生命周期：组件实例创建时触发 | — |
-| `mount` | 生命周期：仅在组件首次挂载时触发 | — |
 | `hydrate` | 生命周期：在状态从请求恢复（Hydration）完成后触发 | — |
 | `dehydrate` | 生命周期：在状态序列化发往前端（Dehydration）开始前触发 | — |
+| `param` | 获取路由参数值 | `string $key`, `mixed $default` = null |
+| `params` | 获取所有路由参数 | — |
+| `hasParam` | 判断是否存在指定路由参数 | `string $key` |
+| `setRouteParams` | 设置路由参数（用于子请求或测试） | `array $params` |
 | `updated` | 生命周期钩子：当任何公开属性更新后触发 | `string $name`, `mixed $value` |
 | `render` |  | — |
 | `getComponentId` |  | — |
-| `named` |  | `string $id` |
+| `named` | 设置组件 ID （用于唯一标识组件） 方便在更新时引用 | `string $id` |
 | `toHtml` |  | `bool $onlyFragment` = false |
 | `getLiveListeners` | 获取组件定义的监听器 | — |
 | `getLivePolls` | 获取组件定义的轮询方法 | — |
@@ -110,9 +114,18 @@
 | `dispatchEvent` |  | `string $event`, `array $detail` = [] |
 | `ux` |  | `string $component`, `string $id`, `string $action`, `array $data` = [] |
 | `openModal` |  | `string $id` |
-| `closeModal` |  | `?string $id` = null |
+| `closeModal` |  | `string $id` |
 | `toggleAccordion` |  | `string $itemId`, `?bool $open` = null |
 | `toast` |  | `string $message`, `string $type` = 'success', `int $duration` = 3000, `?string $title` = null |
+| `confirm` | 触发确认对话框（前端显示） | `string $message`, `string $title` = '确认', `array $options` = [] |
+| `loading` | 触发局部加载状态 | `string $target` = '' |
+| `loadingEnd` | 结束加载状态 | `string $target` = '' |
+| `validateForm` | 验证表单数据并返回错误信息 | `array $rules` = [], `array $data` = [] |
+| `getError` | 获取表单错误信息 | `string $field` |
+| `setError` | 设置表单错误信息 | `string $field`, `string $message` |
+| `clearError` | 清除指定字段的错误 | `string $field` |
+| `clearErrors` | 清除所有表单错误 | — |
+| `notify` | 触发组件级刷新（通知外部组件更新） | `string $componentId`, `string $event`, `mixed $data` = null |
 | `refresh` |  | `string $names` |
 | `append` |  | `string $name` |
 | `prepend` |  | `string $name` |
@@ -163,6 +176,25 @@
 |---|---|---|
 | `$event` | `string` |  |
 | `$priority` | `int` |  |
+
+
+<a name="framework-component-live-livenotifier"></a>
+#### `Framework\Component\Live\LiveNotifier`
+
+LiveNotifier 实时通知器
+
+**文件:** `php/src/Component/Live/LiveNotifier.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `action` | 通过 SSE 触发组件 Action | `string $componentId`, `string $action`, `array $params` = [], `?string $channel` = null |
+| `state` | 通过 SSE 直接更新组件属性 | `string $componentId`, `array $state`, `?string $channel` = null |
+| `batch` | 通过 SSE 批量更新多个组件 | `array $updates`, `?string $channel` = null |
+| `broadcast` | 通过 SSE 广播消息到频道 | `string $channel`, `array $message`, `string $event` = 'message' |
+| `toUser` | 通过 SSE 推送消息给指定用户 | `int $userId`, `string $channel`, `array $message` |
+| `emit` | 在当前请求周期内触发 LiveEventBus 事件 | `string $event`, `mixed $data` = null |
 
 
 <a name="framework-component-live-attribute-livepoll"></a>

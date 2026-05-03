@@ -1,6 +1,6 @@
 # Foundation 核心基础 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 目录
 
@@ -65,6 +65,7 @@
 | `storagePath` |  | `string $path` = '' |
 | `configPath` |  | `string $path` = '' |
 | `make` |  | `string $class` |
+| `makeWith` |  | `string $class`, `array $parameters` = [] |
 | `instance` |  | `string $abstract`, `mixed $instance` |
 | `register` |  | `Framework\Foundation\ServiceProvider $provider` |
 | `boot` |  | — |
@@ -83,6 +84,7 @@
 |---|---|---|
 | `set` |  | `string $id`, `mixed $value` |
 | `get` |  | `string $id` |
+| `makeWith` | 创建实例并传递额外参数 | `string $id`, `array $extraParams` = [] |
 | `has` |  | `string $id` |
 | `singleton` |  | `string $id`, `mixed $concrete` = null |
 | `bind` |  | `string $id`, `mixed $concrete` = null |

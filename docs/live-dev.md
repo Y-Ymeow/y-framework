@@ -1,6 +1,6 @@
 # Live 组件系统 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 组件清单
 
@@ -13,6 +13,7 @@
 | `LiveComponentResolver` | `Framework\Component\Live` | `php/src/Component/Live/LiveComponentResolver.php` | class |
 | `LiveEventBus` | `Framework\Component\Live` | `php/src/Component/Live/LiveEventBus.php` | class |
 | `LiveListener` | `Framework\Component\Live\Attribute` | `php/src/Component/Live/Attribute/LiveListener.php` | class |
+| `LiveNotifier` | `Framework\Component\Live` | `php/src/Component/Live/LiveNotifier.php` | class |
 | `LivePoll` | `Framework\Component\Live\Attribute` | `php/src/Component/Live/Attribute/LivePoll.php` | class |
 | `LiveSse` | `Framework\Component\Live\Attribute` | `php/src/Component/Live/Attribute/LiveSse.php` | class |
 | `LiveStream` | `Framework\Component\Live\Attribute` | `php/src/Component/Live/Attribute/LiveStream.php` | class |
@@ -45,17 +46,20 @@
 
 - **文件:** `php/src/Component/Live/LiveComponent.php`
 
-**公开方法 (39)：**
+**公开方法 (51)：**
 
 - `setGlobalActionCache(array $cache): void`
 - `boot(): void` — 生命周期：组件实例创建时触发
-- `mount(): void` — 生命周期：仅在组件首次挂载时触发
 - `hydrate(): void` — 生命周期：在状态从请求恢复（Hydration）完成后触发
 - `dehydrate(): void` — 生命周期：在状态序列化发往前端（Dehydration）开始前触发
+- `param(string $key, mixed $default = null): mixed` — 获取路由参数值
+- `params(): array` — 获取所有路由参数
+- `hasParam(string $key): bool` — 判断是否存在指定路由参数
+- `setRouteParams(array $params): static` — 设置路由参数（用于子请求或测试）
 - `updated(string $name, mixed $value): void` — 生命周期钩子：当任何公开属性更新后触发
 - `render(): void`
 - `getComponentId(): string`
-- `named(string $id): Framework\Component\Live\LiveComponent`
+- `named(string $id): Framework\Component\Live\LiveComponent` — 设置组件 ID （用于唯一标识组件） 方便在更新时引用
 - `toHtml(bool $onlyFragment = false): string`
 - `getLiveListeners(): array` — 获取组件定义的监听器
 - `getLivePolls(): array` — 获取组件定义的轮询方法
@@ -79,9 +83,18 @@
 - `dispatchEvent(string $event, array $detail = []): void`
 - `ux(string $component, string $id, string $action, array $data = []): void`
 - `openModal(string $id): void`
-- `closeModal(?string $id = null): void`
+- `closeModal(string $id): void`
 - `toggleAccordion(string $itemId, ?bool $open = null): void`
 - `toast(string $message, string $type = 'success', int $duration = 3000, ?string $title = null): void`
+- `confirm(string $message, string $title = '确认', array $options = []): void` — 触发确认对话框（前端显示）
+- `loading(string $target = ''): void` — 触发局部加载状态
+- `loadingEnd(string $target = ''): void` — 结束加载状态
+- `validateForm(array $rules = [], array $data = []): bool` — 验证表单数据并返回错误信息
+- `getError(string $field): ?string` — 获取表单错误信息
+- `setError(string $field, string $message): void` — 设置表单错误信息
+- `clearError(string $field): void` — 清除指定字段的错误
+- `clearErrors(): void` — 清除所有表单错误
+- `notify(string $componentId, string $event, mixed $data = null): void` — 触发组件级刷新（通知外部组件更新）
 - `refresh(string $names): void`
 - `append(string $name): void`
 - `prepend(string $name): void`
@@ -115,6 +128,19 @@
 ### `Framework\Component\Live\Attribute\LiveListener`
 
 - **文件:** `php/src/Component/Live/Attribute/LiveListener.php`
+
+### `Framework\Component\Live\LiveNotifier`
+
+- **文件:** `php/src/Component/Live/LiveNotifier.php`
+
+**公开方法 (6)：**
+
+- `action(string $componentId, string $action, array $params = [], ?string $channel = null): void` — 通过 SSE 触发组件 Action
+- `state(string $componentId, array $state, ?string $channel = null): void` — 通过 SSE 直接更新组件属性
+- `batch(array $updates, ?string $channel = null): void` — 通过 SSE 批量更新多个组件
+- `broadcast(string $channel, array $message, string $event = 'message'): void` — 通过 SSE 广播消息到频道
+- `toUser(int $userId, string $channel, array $message): void` — 通过 SSE 推送消息给指定用户
+- `emit(string $event, mixed $data = null): void` — 在当前请求周期内触发 LiveEventBus 事件
 
 ### `Framework\Component\Live\Attribute\LivePoll`
 

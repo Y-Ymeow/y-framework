@@ -1,6 +1,6 @@
 # View 视图系统 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 组件清单
 
@@ -110,7 +110,7 @@
 
 - **文件:** `php/src/View/Base/Element.php`
 
-**公开方法 (35)：**
+**公开方法 (37)：**
 
 - `make(Framework\View\Base\Element|string|null $tagOrcontent = null, Framework\View\Base\Element|string|null $content = null): static` — 静态工厂方法 — 创建 Element 实例
 - `id(string $id): static` — 设置元素 ID
@@ -125,6 +125,8 @@
 - `child(mixed $child): static` — 添加单个子元素
 - `children(mixed $children): static` — 批量添加子元素
 - `state(array $data): static` — 设置 data-state 状态数据（JSON 编码）
+- `visible(bool $visible = true): static` — 快捷设置元素可见性
+- `hidden(): static` — 快捷设置元素隐藏
 - `model(string $name): static` — 声明式模型绑定（data-model）
 - `liveModel(string $name): static` — LiveComponent 双向绑定（增强版）
 - `bindText(string $expr): static` — 文本绑定指令（data-text）
@@ -162,7 +164,7 @@
 - `password(string $name = ''): Framework\View\FormInput`
 - `email(string $name = ''): Framework\View\FormInput`
 - `number(string $name = ''): Framework\View\FormInput`
-- `hidden(string $name = ''): Framework\View\FormInput`
+- `hiddenField(string $name = ''): Framework\View\FormInput`
 - `textarea(string $name = ''): Framework\View\FormTextarea`
 - `select(string $name = ''): Framework\View\FormSelect`
 - `checkbox(string $name = ''): Framework\View\FormInput`

@@ -6,10 +6,29 @@ namespace Framework\UX\Form;
 
 use Framework\View\Base\Element;
 
+/**
+ * 多行文本框
+ *
+ * 用于多行文本输入，支持行数、标签、验证、禁用、只读、Live 绑定。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example Textarea::make()->name('content')->label('内容')->rows(6)
+ * @ux-example Textarea::make()->name('description')->label('描述')->placeholder('请输入描述')->liveModel('description')
+ * @ux-js-component —
+ * @ux-css form.css
+ */
 class Textarea extends FormField
 {
     protected int $rows = 4;
 
+    /**
+     * 设置行数
+     * @param int $rows 行数
+     * @return static
+     * @ux-example Textarea::make()->rows(6)
+     * @ux-default 4
+     */
     public function rows(int $rows): static
     {
         $this->rows = $rows;

@@ -1,6 +1,6 @@
 # 路由系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 目录
 
@@ -8,7 +8,8 @@
 - [`CssRoute`](#framework-routing-cssroute)
 - [`FileDownloadRoute`](#framework-routing-filedownloadroute)
 - [`MediaRoute`](#framework-routing-mediaroute)
-- [`Middleware`](#framework-routing-attribute-middleware)
+- [`Middleware`](#framework-routing-attribute-middleware) — 路由中间件属性
+- [`MiddlewareManager`](#framework-routing-middlewaremanager) — 中间件管理器
 - [`Route`](#framework-routing-attribute-route)
 - [`RouteGroup`](#framework-routing-attribute-routegroup)
 - [`Router`](#framework-routing-router)
@@ -59,6 +60,8 @@
 <a name="framework-routing-attribute-middleware"></a>
 #### `Framework\Routing\Attribute\Middleware`
 
+路由中间件属性
+
 **文件:** `php/src/Routing/Attribute/Middleware.php`
 
 **属性：**
@@ -66,6 +69,37 @@
 | 属性 | 类型 | 说明 |
 |---|---|---|
 | `$middleware` | `array|string` |  |
+| `$priority` | `int` |  |
+| `$params` | `array` |  |
+| `$only` | `array` |  |
+| `$except` | `array` |  |
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `appliesTo` | 检查中间件是否应该应用到当前方法 | `string $methodName` |
+
+
+<a name="framework-routing-middlewaremanager"></a>
+#### `Framework\Routing\MiddlewareManager`
+
+中间件管理器
+
+**文件:** `php/src/Routing/MiddlewareManager.php`
+
+**方法：**
+
+| 方法 | 说明 | 参数 |
+|---|---|---|
+| `getInstance` |  | — |
+| `reset` |  | — |
+| `alias` | 注册中间件别名 | `string $alias`, `string $class` |
+| `resolve` | 解析中间件名称（支持别名） | `string $name` |
+| `use` | 注册全局中间件 | `array\|string $middleware`, `int $priority` = 0, `array $params` = [] |
+| `group` | 注册路由组中间件 | `string $group`, `array\|string $middleware`, `int $priority` = 0, `array $params` = [] |
+| `getMiddleware` | 获取按优先级排序的中间件列表 | `?string $group` = null |
+| `pipe` | 执行中间件管道 | `Framework\Http\Request $request`, `callable $destination`, `array $additionalMiddleware` = [], `?string $group` = null |
 
 
 <a name="framework-routing-attribute-route"></a>

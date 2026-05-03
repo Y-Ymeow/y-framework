@@ -1,6 +1,6 @@
 # View 视图系统 — API 参考
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 目录
 
@@ -152,6 +152,8 @@ Element — HTML 元素基类
 | `child` | 添加单个子元素 | `mixed $child` |
 | `children` | 批量添加子元素 | `mixed $children` |
 | `state` | 设置 data-state 状态数据（JSON 编码） | `array $data` |
+| `visible` | 快捷设置元素可见性 | `bool $visible` = true |
+| `hidden` | 快捷设置元素隐藏 | — |
 | `model` | 声明式模型绑定（data-model） | `string $name` |
 | `liveModel` | LiveComponent 双向绑定（增强版） | `string $name` |
 | `bindText` | 文本绑定指令（data-text） | `string $expr` |
@@ -194,7 +196,7 @@ Form — 表单及表单元素
 | `password` |  | `string $name` = '' |
 | `email` |  | `string $name` = '' |
 | `number` |  | `string $name` = '' |
-| `hidden` |  | `string $name` = '' |
+| `hiddenField` |  | `string $name` = '' |
 | `textarea` |  | `string $name` = '' |
 | `select` |  | `string $name` = '' |
 | `checkbox` |  | `string $name` = '' |

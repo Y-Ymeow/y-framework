@@ -56,52 +56,100 @@ class Calendar extends UXComponent
     protected ?string $cellRender = null;
     protected array $validRange = [];
 
+    /**
+     * 设置选中日期值
+     * @param string $value 日期值（Y-m-d 格式）
+     * @return static
+     */
     public function value(string $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 设置视图模式
+     * @param string $mode 模式：month/year
+     * @return static
+     * @ux-default 'month'
+     */
     public function mode(string $mode): static
     {
         $this->mode = $mode;
         return $this;
     }
 
+    /**
+     * 月份视图
+     * @return static
+     * @ux-example Calendar::make()->month()
+     */
     public function month(): static
     {
         return $this->mode('month');
     }
 
+    /**
+     * 年份视图
+     * @return static
+     * @ux-example Calendar::make()->year()
+     */
     public function year(): static
     {
         return $this->mode('year');
     }
 
+    /**
+     * 设置全屏模式
+     * @param bool $fullscreen 是否全屏
+     * @return static
+     * @ux-default false
+     */
     public function fullscreen(bool $fullscreen = true): static
     {
         $this->fullscreen = $fullscreen;
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-default false
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 设置日历选择动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 设置有效日期范围
+     * @param string $start 开始日期（Y-m-d）
+     * @param string $end 结束日期（Y-m-d）
+     * @return static
+     * @ux-example Calendar::make()->validRange('2026-01-01', '2026-12-31')
+     */
     public function validRange(string $start, string $end): static
     {
         $this->validRange = ['start' => $start, 'end' => $end];
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $el = new Element('div');

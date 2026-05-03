@@ -42,18 +42,35 @@ class MentionExtension extends RichEditorExtension
         return 'mention';
     }
 
+    /**
+     * 设置数据源
+     * @param array $data 数据源数组
+     * @return static
+     */
     public function setDataSource(array $data): static
     {
         $this->dataSource = $data;
         return $this;
     }
 
+    /**
+     * 设置搜索回调（自定义搜索逻辑）
+     * @param callable $callback 搜索回调
+     * @return static
+     */
     public function setSearchCallback(callable $callback): static
     {
         $this->searchCallback = $callback;
         return $this;
     }
 
+    /**
+     * 执行 Mention 插入
+     * @param string $content 内容
+     * @param array $params 参数（query, selected）
+     * @return string 处理后的内容
+     * @ux-example MentionExtension::execute($content, ['query' => '张三', 'selected' => ['id' => 1, 'name' => '张三']])
+     */
     public function execute(string $content, array $params = []): string
     {
         $query = $params['query'] ?? '';
@@ -69,6 +86,11 @@ class MentionExtension extends RichEditorExtension
         return str_replace($this->trigger . $query, $mention, $content);
     }
 
+    /**
+     * 搜索匹配项
+     * @param string $query 搜索关键词
+     * @return array 匹配结果
+     */
     protected function search(string $query): array
     {
         if ($this->searchCallback) {
@@ -81,6 +103,11 @@ class MentionExtension extends RichEditorExtension
         });
     }
 
+    /**
+     * 渲染 Mention 标签
+     * @param array $item 数据项
+     * @return string HTML 标签
+     */
     protected function renderMention(array $item): string
     {
         $display = $item[$this->displayField] ?? '';

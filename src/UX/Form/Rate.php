@@ -48,9 +48,10 @@ class Rate extends UXComponent
 
     /**
      * 设置默认评分值
-     * @param float $value 评分
+     * @param float $value 评分（0-5）
      * @return static
      * @ux-example Rate::make()->value(3.5)
+     * @ux-default 0
      */
     public function value(float $value): static
     {
@@ -110,6 +111,9 @@ class Rate extends UXComponent
     }
 
     /**
+     * 设置 LiveAction（评分时触发）
+     * @param string $action Action 名称
+     * @return static
      * @ux-internal
      */
     public function action(string $action): static
@@ -118,6 +122,11 @@ class Rate extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置悬停触发 Action
+     * @param string $action Action 名称
+     * @return static
+     */
     public function hoverAction(string $action): static
     {
         $this->hoverAction = $action;

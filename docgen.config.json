@@ -1,1 +1,137 @@
-{"version": "2.1", "output_dir": "docs", "modules": {"ux": {"title": "UX 组件库", "description": "前端交互式组件库，基于 Element 对象驱动，支持 LiveComponent 双向绑定。每个组件自动关联对应的 JS 交互模块。", "scan": "src/UX", "namespace": "Framework\\UX", "tags": {"category": "ux-category", "since": "ux-since", "example": "ux-example", "internal": "ux-internal", "default": "ux-default"}, "templates": ["api", "dev"]}, "live": {"title": "Live 组件系统", "description": "实时组件引擎，支持状态同步、Action 调度、分片更新、跨组件事件。", "scan": "src/Component/Live", "namespace": "Framework\\Component\\Live", "tags": {"category": "live-category", "since": "live-since", "example": "live-example", "internal": "live-internal"}, "templates": ["api", "dev"]}, "view": {"title": "View 视图系统", "description": "底层 Element 渲染引擎，响应式指令系统，HTML 安全过滤。所有 UX 组件的根基。支持 Web/WASM 双模式输出。", "scan": "src/View", "namespace": "Framework\\View", "tags": {"category": "view-category", "since": "view-since", "example": "view-example", "internal": "view-internal"}, "templates": ["api", "dev", "arch"]}, "routing": {"title": "路由系统", "description": "Route-First 路由优先架构，支持注解路由、分组路由、中间件。", "scan": "src/Routing", "namespace": "Framework\\Routing", "tags": {"category": "route-category", "since": "route-since", "example": "route-example", "internal": "route-internal"}, "templates": ["api", "dev"]}, "http": {"title": "HTTP 核心", "description": "请求与响应对象，中间件管道，Session/Cookie 管理。自动适配 Web/WASM 环境。", "scan": "src/Http", "namespace": "Framework\\Http", "tags": {"category": "http-category", "since": "http-since", "example": "http-example", "internal": "http-internal"}, "templates": ["api", "dev"]}, "admin": {"title": "Admin 后台管理", "description": "自动生成的 CRUD 管理后台，Resource 定义即页面。", "scan": "src/Admin", "namespace": "Framework\\Admin", "tags": {"category": "admin-category", "since": "admin-since", "example": "admin-example", "internal": "admin-internal"}, "templates": ["api", "dev", "index"]}, "foundation": {"title": "Foundation 核心基础", "description": "框架核心基础设施：应用容器、环境检测、服务提供者、自动加载。包含 WASM/Tauri 运行时适配。", "scan": "src/Foundation", "namespace": "Framework\\Foundation", "tags": {"category": "foundation-category", "since": "foundation-since", "example": "foundation-example", "internal": "foundation-internal"}, "templates": ["api", "dev", "arch"]}}}
+{
+  "version": "2.1",
+  "output_dir": "docs",
+  "modules": {
+    "ux": {
+      "title": "UX 组件库",
+      "description": "前端交互式组件库，基于 Element 对象驱动，支持 LiveComponent 双向绑定。每个组件自动关联对应的 JS 交互模块。",
+      "scan": "src/UX",
+      "namespace": "Framework\\UX",
+      "tags": {
+        "category": "ux-category",
+        "since": "ux-since",
+        "example": "ux-example",
+        "internal": "ux-internal",
+        "default": "ux-default"
+      },
+      "templates": ["api", "dev"]
+    },
+    "live": {
+      "title": "Live 组件系统",
+      "description": "实时组件引擎，支持状态同步、Action 调度、分片更新、跨组件事件。",
+      "scan": "src/Component/Live",
+      "namespace": "Framework\\Component\\Live",
+      "tags": {
+        "category": "live-category",
+        "since": "live-since",
+        "example": "live-example",
+        "internal": "live-internal"
+      },
+      "templates": ["api", "dev"]
+    },
+    "view": {
+      "title": "View 视图系统",
+      "description": "底层 Element 渲染引擎，响应式指令系统，HTML 安全过滤。所有 UX 组件的根基。支持 Web/WASM 双模式输出。",
+      "scan": "src/View",
+      "namespace": "Framework\\View",
+      "tags": {
+        "category": "view-category",
+        "since": "view-since",
+        "example": "view-example",
+        "internal": "view-internal"
+      },
+      "templates": ["api", "dev", "arch"]
+    },
+    "routing": {
+      "title": "路由系统",
+      "description": "Route-First 路由优先架构，支持注解路由、分组路由、中间件。",
+      "scan": "src/Routing",
+      "namespace": "Framework\\Routing",
+      "tags": {
+        "category": "route-category",
+        "since": "route-since",
+        "example": "route-example",
+        "internal": "route-internal"
+      },
+      "templates": ["api", "dev"]
+    },
+    "http": {
+      "title": "HTTP 核心",
+      "description": "请求与响应对象，中间件管道，Session/Cookie 管理。自动适配 Web/WASM 环境。",
+      "scan": "src/Http",
+      "namespace": "Framework\\Http",
+      "tags": {
+        "category": "http-category",
+        "since": "http-since",
+        "example": "http-example",
+        "internal": "http-internal"
+      },
+      "templates": ["api", "dev"]
+    },
+    "admin": {
+      "title": "Admin 后台管理",
+      "description": "自动生成的 CRUD 管理后台，Resource 定义即页面。",
+      "scan": "src/Admin",
+      "namespace": "Framework\\Admin",
+      "tags": {
+        "category": "admin-category",
+        "since": "admin-since",
+        "example": "admin-example",
+        "internal": "admin-internal"
+      },
+      "templates": ["api", "dev", "index"]
+    },
+    "foundation": {
+      "title": "Foundation 核心基础",
+      "description": "框架核心基础设施：应用容器、环境检测、服务提供者、自动加载。包含 WASM/Tauri 运行时适配。",
+      "scan": "src/Foundation",
+      "namespace": "Framework\\Foundation",
+      "tags": {
+        "category": "foundation-category",
+        "since": "foundation-since",
+        "example": "foundation-example",
+        "internal": "foundation-internal"
+      },
+      "templates": ["api", "dev", "arch"]
+    },
+    "database": {
+      "title": "数据库模块",
+      "description": "数据库连接管理、QueryBuilder 链式查询、事务处理。支持 whereBetween、whereDate、whereExists、increment/decrement 等丰富查询方法。",
+      "scan": "src/Database",
+      "namespace": "Framework\\Database",
+      "tags": {
+        "category": "db-category",
+        "since": "db-since",
+        "example": "db-example",
+        "internal": "db-internal"
+      },
+      "templates": ["api", "dev"]
+    },
+    "validation": {
+      "title": "验证器模块",
+      "description": "表单数据验证引擎，支持 required、email、min/max、between、unique、exists、mimes、date 等 30+ 种验证规则。",
+      "scan": "src/Validation",
+      "namespace": "Framework\\Validation",
+      "tags": {
+        "category": "validation-category",
+        "since": "validation-since",
+        "example": "validation-example",
+        "internal": "validation-internal"
+      },
+      "templates": ["api", "dev"]
+    },
+    "config": {
+      "title": "配置管理",
+      "description": "配置加载、缓存、动态修改持久化、配置验证、嵌套环境变量支持。",
+      "scan": "src/Config",
+      "namespace": "Framework\\Config",
+      "tags": {
+        "category": "config-category",
+        "since": "config-since",
+        "example": "config-example",
+        "internal": "config-internal"
+      },
+      "templates": ["api", "dev"]
+    }
+  }
+}

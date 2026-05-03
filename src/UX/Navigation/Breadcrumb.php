@@ -7,11 +7,30 @@ namespace Framework\UX\Navigation;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 面包屑
+ *
+ * 用于展示页面层级导航，支持自定义分隔符、链接/纯文本项。
+ *
+ * @ux-category Navigation
+ * @ux-since 1.0.0
+ * @ux-example Breadcrumb::make()->item('首页', '/')->item('分类', '/cat')->item('当前页')
+ * @ux-example Breadcrumb::make()->item('Home')->item('Products')->item('Details')->separator('>')
+ * @ux-js-component —
+ * @ux-css breadcrumb.css
+ */
 class Breadcrumb extends UXComponent
 {
     protected array $items = [];
     protected string $separator = '/';
 
+    /**
+     * 添加面包屑项
+     * @param string $label 显示文字
+     * @param string|null $link 链接地址（最后一项通常为 null）
+     * @return static
+     * @ux-example Breadcrumb::make()->item('首页', '/')->item('分类', '/cat')->item('当前页')
+     */
     public function item(string $label, ?string $link = null): static
     {
         $this->items[] = [
@@ -21,12 +40,21 @@ class Breadcrumb extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置分隔符
+     * @param string $separator 分隔符，默认 '/'
+     * @return static
+     * @ux-default '/'
+     */
     public function separator(string $separator): static
     {
         $this->separator = $separator;
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $navEl = new Element('nav');

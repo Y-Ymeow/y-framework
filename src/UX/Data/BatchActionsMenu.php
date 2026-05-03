@@ -6,6 +6,17 @@ namespace Framework\UX\Data;
 
 use Framework\View\Base\Element;
 
+/**
+ * 批量操作菜单
+ *
+ * 用于表格等多选场景的批量操作菜单，支持自定义动作、选中计数、可见性控制。
+ *
+ * @ux-category Data
+ * @ux-since 1.0.0
+ * @ux-example BatchActionsMenu::make()->action('删除', 'batchDelete', 'danger')->action('导出', 'batchExport')
+ * @ux-example BatchActionsMenu::make()->actions($actions)->selectedKeys($selected)->liveAction('handleBatch')
+ * @ux-css batch-actions.css
+ */
 class BatchActionsMenu
 {
     protected string $emptyText = '';
@@ -16,18 +27,38 @@ class BatchActionsMenu
     protected bool $visible = false;
     protected string $selectCountText = '';
 
+    /**
+     * 设置空状态提示文字
+     * @param string $text 提示文字
+     * @return static
+     */
     public function emptyText(string $text): static
     {
         $this->emptyText = $text;
         return $this;
     }
 
+    /**
+     * 设置选中计数显示文字
+     * @param string $text 提示文字（支持 {count} 占位符）
+     * @return static
+     */
     public function selectCountText(string $text): static
     {
         $this->selectCountText = $text;
         return $this;
     }
 
+    /**
+     * 添加一个批量操作项
+     * @param string $label 显示文字
+     * @param string $action LiveAction 名称
+     * @param string $variant 变体：default/primary/danger 等
+     * @param string|null $icon 图标类名（可省略 bi- 前缀）
+     * @param string|null $confirm 确认提示文字
+     * @return static
+     * @ux-example BatchActionsMenu::make()->action('删除', 'batchDelete', 'danger')->action('导出', 'batchExport')
+     */
     public function action(string $label, string $action, string $variant = 'default', ?string $icon = null, ?string $confirm = null): static
     {
         $this->actions[] = [
@@ -40,6 +71,11 @@ class BatchActionsMenu
         return $this;
     }
 
+    /**
+     * 批量添加操作项
+     * @param array $actions 操作配置数组
+     * @return static
+     */
     public function actions(array $actions): static
     {
         foreach ($actions as $action) {
@@ -54,6 +90,12 @@ class BatchActionsMenu
         return $this;
     }
 
+    /**
+     * 设置 LiveAction
+     * @param string $action LiveAction 名称
+     * @param string $event 触发事件
+     * @return static
+     */
     public function liveAction(string $action, string $event = 'click'): static
     {
         $this->liveAction = $action;
@@ -61,12 +103,23 @@ class BatchActionsMenu
         return $this;
     }
 
+    /**
+     * 设置已选中的行 key 列表
+     * @param array $keys 行 key 数组
+     * @return static
+     */
     public function selectedKeys(array $keys): static
     {
         $this->selectedKeys = $keys;
         return $this;
     }
 
+    /**
+     * 设置是否可见
+     * @param bool $visible 是否可见
+     * @return static
+     * @ux-default false
+     */
     public function visible(bool $visible = true): static
     {
         $this->visible = $visible;

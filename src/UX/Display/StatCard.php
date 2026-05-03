@@ -7,6 +7,18 @@ namespace Framework\UX\Display;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 统计卡片
+ *
+ * 用于展示关键指标数据，支持标题、数值、描述、图标、趋势、变体、点击交互。
+ *
+ * @ux-category Display
+ * @ux-since 1.0.0
+ * @ux-example StatCard::make()->title('总收入')->value('¥12,345')->trendUp('12%')->icon('bi-currency-yen')
+ * @ux-example StatCard::make()->title('用户数')->value('1,234')->description('较上月增长')->clickable()->clickAction('showDetails')
+ * @ux-js-component stat-card.js
+ * @ux-css stat-card.css
+ */
 class StatCard extends UXComponent
 {
     protected string $title = '';
@@ -20,30 +32,60 @@ class StatCard extends UXComponent
     protected string $clickEvent = 'click';
     protected array $clickParams = [];
 
+    /**
+     * 设置统计卡片标题
+     * @param string $title 标题文字
+     * @return static
+     * @ux-example StatCard::make()->title('总收入')
+     */
     public function title(string $title): static
     {
         $this->title = $title;
         return $this;
     }
 
+    /**
+     * 设置统计数值
+     * @param string $value 数值（支持格式化字符串）
+     * @return static
+     * @ux-example StatCard::make()->value('¥12,345')
+     */
     public function value(string $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 设置描述文字
+     * @param string $description 描述文字
+     * @return static
+     * @ux-example StatCard::make()->description('较上月增长')
+     */
     public function description(string $description): static
     {
         $this->description = $description;
         return $this;
     }
 
+    /**
+     * 设置图标
+     * @param string $icon 图标类名或 HTML
+     * @return static
+     * @ux-example StatCard::make()->icon('bi-currency-yen')
+     */
     public function icon(string $icon): static
     {
         $this->icon = $icon;
         return $this;
     }
 
+    /**
+     * 设置上升趋势
+     * @param string $value 增长值
+     * @return static
+     * @ux-example StatCard::make()->trendUp('12%')
+     */
     public function trendUp(string $value): static
     {
         $this->trend = 'up';
@@ -51,6 +93,12 @@ class StatCard extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置下降趋势
+     * @param string $value 下降值
+     * @return static
+     * @ux-example StatCard::make()->trendDown('5%')
+     */
     public function trendDown(string $value): static
     {
         $this->trend = 'down';
@@ -58,6 +106,13 @@ class StatCard extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置卡片变体
+     * @param string $variant 变体名
+     * @return static
+     * @ux-example StatCard::make()->variant('primary')
+     * @ux-default 'default'
+     */
     public function variant(string $variant): static
     {
         $this->variant = $variant;
@@ -66,9 +121,11 @@ class StatCard extends UXComponent
 
     /**
      * 设置点击事件绑定的动作
-     *
-     * @param string $action 动作名称
-     * @param string $event 触发事件（click, dblclick 等）
+     * @param string $action Action 名称
+     * @param string $event 触发事件
+     * @return static
+     * @ux-example StatCard::make()->clickAction('showDetails')
+     * @ux-default event='click'
      */
     public function clickAction(string $action, string $event = 'click'): static
     {
@@ -79,6 +136,9 @@ class StatCard extends UXComponent
 
     /**
      * 设置点击参数
+     * @param array $params 参数数组
+     * @return static
+     * @ux-example StatCard::make()->clickParams(['id' => 1])
      */
     public function clickParams(array $params): static
     {
@@ -87,7 +147,10 @@ class StatCard extends UXComponent
     }
 
     /**
-     * 设置为可点击状态（鼠标指针变为手型）
+     * 设置为可点击状态
+     * @param bool $clickable 是否可点击
+     * @return static
+     * @ux-example StatCard::make()->clickable()
      */
     public function clickable(bool $clickable = true): static
     {

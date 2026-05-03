@@ -7,6 +7,18 @@ namespace Framework\UX\Form;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 穿梭框
+ *
+ * 用于双栏数据穿梭选择，支持数据源、目标项、标题、搜索、禁用、Live 绑定。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example Transfer::make()->dataSource($users)->targetKeys([1, 2, 3])->titles('可选', '已选')
+ * @ux-example Transfer::make()->dataSource($items)->targetKeys($selected)->showSearch()->searchPlaceholder('搜索...')
+ * @ux-js-component transfer.js
+ * @ux-css transfer.css
+ */
 class Transfer extends UXComponent
 {
     protected array $dataSource = [];
@@ -17,42 +29,88 @@ class Transfer extends UXComponent
     protected ?string $action = null;
     protected ?string $searchPlaceholder = '请输入搜索内容';
 
+    /**
+     * 设置数据源
+     * @param array $data 数据数组（每项需包含 key/value, title/label/name 等）
+     * @return static
+     * @ux-example Transfer::make()->dataSource($users)
+     */
     public function dataSource(array $data): static
     {
         $this->dataSource = $data;
         return $this;
     }
 
+    /**
+     * 设置目标项（已选中的项）
+     * @param array $keys 选中项的 key 数组
+     * @return static
+     * @ux-example Transfer::make()->targetKeys([1, 2, 3])
+     */
     public function targetKeys(array $keys): static
     {
         $this->targetKeys = $keys;
         return $this;
     }
 
+    /**
+     * 设置左右面板标题
+     * @param string $left 左侧标题
+     * @param string $right 右侧标题
+     * @return static
+     * @ux-example Transfer::make()->titles('可选', '已选')
+     */
     public function titles(string $left, string $right): static
     {
         $this->titles = json_encode([$left, $right]);
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-example Transfer::make()->disabled()
+     * @ux-default true
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 启用搜索功能
+     * @param bool $show 是否启用
+     * @return static
+     * @ux-example Transfer::make()->showSearch()
+     * @ux-default true
+     */
     public function showSearch(bool $show = true): static
     {
         $this->showSearch = $show;
         return $this;
     }
 
+    /**
+     * 设置 LiveAction（穿梭时触发）
+     * @param string $action Action 名称
+     * @return static
+     * @ux-example Transfer::make()->action('transferItems')
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 设置搜索占位文本
+     * @param string $placeholder 占位提示
+     * @return static
+     * @ux-example Transfer::make()->searchPlaceholder('搜索...')
+     * @ux-default '请输入搜索内容'
+     */
     public function searchPlaceholder(string $placeholder): static
     {
         $this->searchPlaceholder = $placeholder;

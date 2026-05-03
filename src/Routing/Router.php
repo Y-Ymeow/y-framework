@@ -162,7 +162,26 @@ class Router
             $attr = $attrRef->newInstance();
             
             $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
-            $middleware = array_merge($classMiddleware, $attr->middleware);
+
+            // 应用类级别中间件的 only/except 过滤
+            $filteredClassMiddleware = [];
+            foreach ($classMiddleware as $mw) {
+                if (is_string($mw)) {
+                    $filteredClassMiddleware[] = $mw;
+                }
+            }
+
+            // 检查类 Middleware 属性的 only/except
+            $refClass = new \ReflectionClass($className);
+            $classMiddlewareAttrs = $refClass->getAttributes(Attr\Middleware::class);
+            foreach ($classMiddlewareAttrs as $ma) {
+                $m = $ma->newInstance();
+                if ($m->appliesTo($method->getName())) {
+                    $filteredClassMiddleware = array_merge($filteredClassMiddleware, (array)$m->middleware);
+                }
+            }
+
+            $middleware = array_merge($filteredClassMiddleware, $attr->middleware);
 
             $methodMiddlewareAttrs = $method->getAttributes(Attr\Middleware::class);
             foreach ($methodMiddlewareAttrs as $ma) {

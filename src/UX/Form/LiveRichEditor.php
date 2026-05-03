@@ -8,6 +8,18 @@ use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\View\Base\Element;
 
+/**
+ * 实时富文本编辑器
+ *
+ * 基于 LiveComponent 的实时富文本编辑器，支持工具栏、最小化模式、输出格式、扩展。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example LiveRichEditor::make()->name('content')->label('内容')->toolbar(['bold', 'italic', 'link'])
+ * @ux-example LiveRichEditor::make()->name('bio')->minimal()->placeholder('个人简介')
+ * @ux-js-component rich-editor.js
+ * @ux-css rich-editor.css
+ */
 class LiveRichEditor extends LiveComponent
 {
     public string $name = '';
@@ -22,6 +34,10 @@ class LiveRichEditor extends LiveComponent
     public string $outputFormat = 'html';
     public array $extensions = [];
 
+    /**
+     * 渲染编辑器
+     * @return string|Element
+     */
     public function render(): string|Element
     {
         $groupEl = Element::make('div')->class('ux-form-group');
@@ -90,6 +106,11 @@ class LiveRichEditor extends LiveComponent
         return $groupEl;
     }
 
+    /**
+     * 构建工具栏
+     * @param string $editorId 编辑器 ID
+     * @return Element
+     */
     protected function buildToolbar(string $editorId): Element
     {
         $toolbarEl = Element::make('div')->class('ux-rich-editor__toolbar');
@@ -122,6 +143,11 @@ class LiveRichEditor extends LiveComponent
         return $toolbarEl;
     }
 
+    /**
+     * 获取工具栏按钮配置
+     * @param string $action 动作名称
+     * @return array|null
+     */
     protected function getToolbarButtonConfig(string $action): ?array
     {
         $configs = [
@@ -141,6 +167,10 @@ class LiveRichEditor extends LiveComponent
         return $configs[$action] ?? null;
     }
 
+    /**
+     * 更新内容（LiveAction）
+     * @param array $params 参数（content）
+     */
     #[LiveAction]
     public function updateContent(array $params): void
     {
@@ -148,6 +178,10 @@ class LiveRichEditor extends LiveComponent
         $this->refresh();
     }
 
+    /**
+     * 插入文本（LiveAction）
+     * @param array $params 参数（text）
+     */
     #[LiveAction]
     public function insertText(array $params): void
     {
@@ -156,6 +190,9 @@ class LiveRichEditor extends LiveComponent
         $this->refresh();
     }
 
+    /**
+     * 清空内容（LiveAction）
+     */
     #[LiveAction]
     public function clear(): void
     {

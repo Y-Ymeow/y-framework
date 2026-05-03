@@ -4,10 +4,23 @@ declare(strict_types=1);
 
 namespace Framework\UX\Data;
 
-use Framework\UX\UI\Pagination;
+use Framework\UX\Navigation\Pagination;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 数据表格
+ *
+ * 用于展示结构化表格数据，支持列定义、排序、筛选、分页、行操作、单元格编辑、批量操作、Live 集成。
+ *
+ * @ux-category Data
+ * @ux-since 1.0.0
+ * @ux-example DataTable::make()->columns($columns)->rows($users)->sortable()->pagination(100)
+ * @ux-example DataTable::make()->columns(['name' => '姓名', 'email' => '邮箱'])->rows($data)->searchable()->selectable()
+ * @ux-example DataTable::make()->columns($cols)->rows($items)->actions(['edit' => 'editRow', 'delete' => 'deleteRow'])
+ * @ux-js-component data-table.js
+ * @ux-css data-table.css
+ */
 class DataTable extends UXComponent
 {
     protected array $columns = [];
@@ -58,6 +71,15 @@ class DataTable extends UXComponent
     protected ?string $editAction = null;
     protected string $editType = 'input';
 
+    /**
+     * 添加一列
+     * @param string $dataKey 数据键名
+     * @param string $title 列标题
+     * @param \Closure|null $render 自定义渲染回调
+     * @param array $options 列选项（width, align, sortable, fixed, visible, tooltip, searchable 等）
+     * @return static
+     * @ux-example DataTable::make()->column('name', '姓名')->column('email', '邮箱', null, ['sortable' => true])
+     */
     public function column(string $dataKey, string $title, ?\Closure $render = null, array $options = []): static
     {
         $this->columns[] = array_merge([
@@ -78,7 +100,10 @@ class DataTable extends UXComponent
     }
 
     /**
-     * Add a column using DataTableColumn object (chainable)
+     * 使用 DataTableColumn 对象添加列（链式）
+     * @param DataTableColumn $column 列对象
+     * @return static
+     * @ux-example DataTable::make()->addColumn(DataTableColumn::make('name', '姓名')->sortable()->alignCenter())
      */
     public function addColumn(DataTableColumn $column): static
     {
@@ -87,13 +112,20 @@ class DataTable extends UXComponent
     }
 
     /**
-     * Get searchable columns
+     * 获取可搜索的列
+     * @return array
      */
     public function getSearchableColumns(): array
     {
         return array_filter($this->columns, fn($col) => !empty($col['searchable']));
     }
 
+    /**
+     * 批量设置列
+     * @param array $columns 列配置数组
+     * @return static
+     * @ux-example DataTable::make()->columns(['name' => '姓名', 'email' => '邮箱'])
+     */
     public function columns(array $columns): static
     {
         foreach ($columns as $col) {
@@ -110,87 +142,172 @@ class DataTable extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置数据源
+     * @param array $data 数据数组
+     * @return static
+     */
     public function dataSource(array $data): static
     {
         $this->dataSource = $data;
         return $this;
     }
 
+    /**
+     * 设置数据行（别名）
+     * @param array $data 数据数组
+     * @return static
+     */
     public function rows(array $data): static
     {
         return $this->dataSource($data);
     }
 
+    /**
+     * 设置行键名
+     * @param string $key 键名
+     * @return static
+     * @ux-default 'id'
+     */
     public function rowKey(string $key): static
     {
         $this->rowKey = $key;
         return $this;
     }
 
+    /**
+     * 设置表格尺寸
+     * @param string $size 尺寸：sm/md/lg
+     * @return static
+     * @ux-default 'md'
+     */
     public function size(string $size): static
     {
         $this->size = $size;
         return $this;
     }
 
+    /**
+     * 小尺寸
+     * @return static
+     * @ux-example DataTable::make()->rows($data)->sm()
+     */
     public function sm(): static
     {
         return $this->size('sm');
     }
 
+    /**
+     * 大尺寸
+     * @return static
+     * @ux-example DataTable::make()->rows($data)->lg()
+     */
     public function lg(): static
     {
         return $this->size('lg');
     }
 
+    /**
+     * 设置斑马纹
+     * @param bool $striped 是否斑马纹
+     * @return static
+     * @ux-default false
+     */
     public function striped(bool $striped = true): static
     {
         $this->striped = $striped;
         return $this;
     }
 
+    /**
+     * 设置是否带边框
+     * @param bool $bordered 是否带边框
+     * @return static
+     * @ux-default false
+     */
     public function bordered(bool $bordered = true): static
     {
         $this->bordered = $bordered;
         return $this;
     }
 
+    /**
+     * 设置是否悬停高亮
+     * @param bool $hoverable 是否悬停高亮
+     * @return static
+     * @ux-default true
+     */
     public function hoverable(bool $hoverable = true): static
     {
         $this->hoverable = $hoverable;
         return $this;
     }
 
+    /**
+     * 设置是否可选（单选/多选）
+     * @param bool $selectable 是否可选
+     * @return static
+     * @ux-default false
+     */
     public function selectable(bool $selectable = true): static
     {
         $this->selectable = $selectable;
         return $this;
     }
 
+    /**
+     * 设置空数据提示文字
+     * @param string $text 提示文字
+     * @return static
+     */
     public function emptyText(string $text): static
     {
         $this->emptyText = $text;
         return $this;
     }
 
+    /**
+     * 设置自定义头部内容
+     * @param mixed $header 自定义内容（Element 或组件）
+     * @return static
+     */
     public function header(mixed $header): static
     {
         $this->header = $header;
         return $this;
     }
 
+    /**
+     * 设置自定义底部内容
+     * @param mixed $footer 自定义内容（Element 或组件）
+     * @return static
+     */
     public function footer(mixed $footer): static
     {
         $this->footer = $footer;
         return $this;
     }
 
+    /**
+     * 设置表格标题
+     * @param string $title 标题
+     * @return static
+     */
     public function title(string $title): static
     {
         $this->title = $title;
         return $this;
     }
 
+    /**
+     * 设置分页
+     * @param int $total 总条数
+     * @param int $current 当前页
+     * @param int $perPage 每页条数
+     * @param string $baseUrl 分页链接基础 URL
+     * @return static
+     * @ux-example DataTable::make()->rows($data)->pagination(100, 1, 15)
+     */
     public function pagination(int $total, int $current = 1, int $perPage = 15, string $baseUrl = ''): static
     {
         $this->pagination = new Pagination();
@@ -202,60 +319,115 @@ class DataTable extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置自定义分页组件
+     * @param Pagination $pagination 分页组件
+     * @return static
+     */
     public function paginationComponent(Pagination $pagination): static
     {
         $this->pagination = $pagination;
         return $this;
     }
 
+    /**
+     * 设置行属性
+     * @param string $key 属性名
+     * @param string $value 属性值
+     * @return static
+     */
     public function rowAttr(string $key, string $value): static
     {
         $this->rowAttrs[$key] = $value;
         return $this;
     }
 
+    /**
+     * 设置行回调（动态添加类名等）
+     * @param \Closure $callback 回调函数，接收 ($row, $index) 返回字符串或数组
+     * @return static
+     */
     public function rowCallback(\Closure $callback): static
     {
         $this->rowCallback = $callback;
         return $this;
     }
 
+    /**
+     * 设置当前排序字段
+     * @param string|null $field 字段名
+     * @return static
+     */
     public function sortField(?string $field): static
     {
         $this->sortField = $field;
         return $this;
     }
 
+    /**
+     * 设置排序方向
+     * @param string $direction 方向：asc/desc
+     * @return static
+     * @ux-default 'asc'
+     */
     public function sortDirection(string $direction): static
     {
         $this->sortDirection = $direction;
         return $this;
     }
 
+    /**
+     * 设置分片名称（用于 Live 局部更新）
+     * @param string $name 分片名
+     * @return static
+     */
     public function fragment(string $name): static
     {
         $this->fragmentName = $name;
         return $this;
     }
 
+    /**
+     * 设置排序动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function sortAction(string $action): static
     {
         $this->sortAction = $action;
         return $this;
     }
 
+    /**
+     * 设置分页动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function pageAction(string $action): static
     {
         $this->pageAction = $action;
         return $this;
     }
 
+    /**
+     * 设置选择动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function selectAction(string $action): static
     {
         $this->selectAction = $action;
         return $this;
     }
 
+    /**
+     * 注册单个动作
+     * @param string $name 动作名
+     * @param string $action LiveAction 名称
+     * @param string $event 触发事件
+     * @param array $config 额外配置（label, class, icon, params 等）
+     * @return static
+     */
     public function registerAction(string $name, string $action, string $event = 'click', array $config = []): static
     {
         $this->actions[$name] = array_merge([
@@ -265,6 +437,11 @@ class DataTable extends UXComponent
         return $this;
     }
 
+    /**
+     * 批量注册动作
+     * @param array $actions 动作配置数组
+     * @return static
+     */
     public function actions(array $actions): static
     {
         foreach ($actions as $name => $config) {
@@ -279,54 +456,105 @@ class DataTable extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置是否可搜索
+     * @param bool $searchable 是否可搜索
+     * @return static
+     * @ux-default false
+     */
     public function searchable(bool $searchable = true): static
     {
         $this->searchable = $searchable;
         return $this;
     }
 
+    /**
+     * 设置搜索动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function searchAction(string $action): static
     {
         $this->searchAction = $action;
         return $this;
     }
 
+    /**
+     * 设置搜索值
+     * @param string|null $value 搜索值
+     * @return static
+     */
     public function searchValue(?string $value): static
     {
         $this->searchValue = $value;
         return $this;
     }
 
+    /**
+     * 设置搜索框占位符
+     * @param string $placeholder 占位符
+     * @return static
+     */
     public function searchPlaceholder(string $placeholder): static
     {
         $this->searchPlaceholder = $placeholder;
         return $this;
     }
 
+    /**
+     * 设置批量操作列表
+     * @param array $actions 批量操作配置数组
+     * @return static
+     */
     public function batchActions(array $actions): static
     {
         $this->batchActions = $actions;
         return $this;
     }
 
+    /**
+     * 设置批量操作动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function batchAction(string $action): static
     {
         $this->batchAction = $action;
         return $this;
     }
 
+    /**
+     * 设置每页条数选项
+     * @param array $options 选项数组
+     * @return static
+     * @ux-default [10, 15, 30, 50, 100]
+     */
     public function perPageOptions(array $options): static
     {
         $this->perPageOptions = $options;
         return $this;
     }
 
+    /**
+     * 设置每页条数动作
+     * @param string $action LiveAction 名称
+     * @return static
+     */
     public function perPageAction(string $action): static
     {
         $this->perPageAction = $action;
         return $this;
     }
 
+    /**
+     * 显示每页条数选择器
+     * @param bool $show 是否显示
+     * @param int $total 总条数
+     * @param int $perPage 每页条数
+     * @param int $page 当前页
+     * @return static
+     * @ux-default false
+     */
     public function showPerPage(bool $show = true, int $total = 0, int $perPage = 15, int $page = 1): static
     {
         $this->showPerPage = $show;
@@ -336,6 +564,11 @@ class DataTable extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置提示回调
+     * @param \Closure $callback 回调函数，接收 ($row, $index) 返回提示文字
+     * @return static
+     */
     public function tooltip(?\Closure $callback): static
     {
         $this->tooltipCallback = $callback;
@@ -345,6 +578,9 @@ class DataTable extends UXComponent
     /**
      * 注册行操作组件
      * 闭包接收 ($row, $rowKey, $rowIndex) 返回组件数组
+     * @param \Closure $callback 回调函数
+     * @return static
+     * @ux-example DataTable::make()->rows($data)->rowActions(fn($row) => [Button::make()->label('编辑')->liveAction('edit', $row['id'])])
      */
     public function rowActions(\Closure $callback): static
     {
@@ -354,9 +590,10 @@ class DataTable extends UXComponent
 
     /**
      * 启用行内编辑
-     *
-     * @param array $columns 可编辑的列 ['column_key' => ['type' => 'input', 'rules' => []], ...]
-     * @param string $action 保存编辑的动作
+     * @param array $columns 可编辑的列配置 ['column_key' => ['type' => 'input', 'rules' => []], ...]
+     * @param string $action 保存编辑的 LiveAction 名称
+     * @return static
+     * @ux-example DataTable::make()->rows($data)->editable(['name' => ['type' => 'input']], 'saveEdit')
      */
     public function editable(array $columns = [], string $action = 'saveEdit'): static
     {
@@ -368,8 +605,9 @@ class DataTable extends UXComponent
 
     /**
      * 设置编辑类型
-     *
-     * @param string $type input|textarea|select|switch
+     * @param string $type 编辑类型：input|textarea|select|switch
+     * @return static
+     * @ux-default 'input'
      */
     public function editType(string $type): static
     {
@@ -378,7 +616,8 @@ class DataTable extends UXComponent
     }
 
     /**
-     * 获取可编辑的列
+     * 获取可编辑的列配置
+     * @return array
      */
     public function getEditableColumns(): array
     {
@@ -387,6 +626,8 @@ class DataTable extends UXComponent
 
     /**
      * 检查列是否可编辑
+     * @param string $columnKey 列键名
+     * @return bool
      */
     public function isColumnEditable(string $columnKey): bool
     {
@@ -486,6 +727,11 @@ class DataTable extends UXComponent
         return $wrapper;
     }
 
+    /**
+     * 构建 colgroup 元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildColgroup(): Element
     {
         $colgroup = Element::make('colgroup');
@@ -511,6 +757,11 @@ class DataTable extends UXComponent
         return $colgroup;
     }
 
+    /**
+     * 构建 thead 元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildThead(): Element
     {
         $thead = Element::make('thead')->class('ux-data-table-thead');
@@ -595,6 +846,11 @@ class DataTable extends UXComponent
         return $thead;
     }
 
+    /**
+     * 构建 tbody 元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildTbody(): Element
     {
         $tbody = Element::make('tbody')->class('ux-data-table-tbody');
@@ -734,6 +990,11 @@ class DataTable extends UXComponent
         return $tbody;
     }
 
+    /**
+     * 构建 tfoot 元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildTfoot(): Element
     {
         $tfoot = Element::make('tfoot')->class('ux-data-table-tfoot');
@@ -756,6 +1017,11 @@ class DataTable extends UXComponent
         return $tfoot;
     }
 
+    /**
+     * 构建搜索框元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildSearchElement(): Element
     {
         $wrapper = Element::make('div')->class('ux-data-table-search');
@@ -793,6 +1059,11 @@ class DataTable extends UXComponent
         return $wrapper;
     }
 
+    /**
+     * 构建操作按钮组元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildActionsElement(): Element
     {
         $wrapper = Element::make('div')->class('ux-data-table-actions');
@@ -825,6 +1096,11 @@ class DataTable extends UXComponent
         return $wrapper;
     }
 
+    /**
+     * 构建批量操作元素
+     * @return Element
+     * @ux-internal
+     */
     protected function buildBatchActionsElement(): Element
     {
         $wrapper = Element::make('div')->class('ux-data-table-batch-actions');
@@ -906,6 +1182,11 @@ class DataTable extends UXComponent
         return $wrapper;
     }
 
+    /**
+     * 应用分页 Live 配置
+     * @return void
+     * @ux-internal
+     */
     protected function applyPaginationLive(): void
     {
         if (!$this->pagination) return;

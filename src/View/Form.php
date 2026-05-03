@@ -63,7 +63,7 @@ class Form extends Element
         return FormInput::make($name)->type('number');
     }
 
-    public static function hidden(string $name = ''): FormInput
+    public static function hiddenField(string $name = ''): FormInput
     {
         return FormInput::make($name)->type('hidden');
     }

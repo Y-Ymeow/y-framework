@@ -7,6 +7,19 @@ namespace Framework\UX\Form;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 滑块
+ *
+ * 用于数值范围选择，支持最小/最大值、步长、禁用、垂直/水平、范围选择、提示框。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example Slider::make()->min(0)->max(100)->value(50)
+ * @ux-example Slider::make()->range()->rangeValue(20, 80)->vertical()
+ * @ux-example Slider::make()->value(75)->step(5)->format('%.0f%%')->showTooltip()
+ * @ux-js-component slider.js
+ * @ux-css slider.css
+ */
 class Slider extends UXComponent
 {
     protected float $min = 0;
@@ -21,66 +34,141 @@ class Slider extends UXComponent
     protected ?string $action = null;
     protected ?string $format = null;
 
+    /**
+     * 设置最小值
+     * @param float $min 最小值
+     * @return static
+     * @ux-example Slider::make()->min(0)
+     * @ux-default 0
+     */
     public function min(float $min): static
     {
         $this->min = $min;
         return $this;
     }
 
+    /**
+     * 设置最大值
+     * @param float $max 最大值
+     * @return static
+     * @ux-example Slider::make()->max(100)
+     * @ux-default 100
+     */
     public function max(float $max): static
     {
         $this->max = $max;
         return $this;
     }
 
+    /**
+     * 设置默认值
+     * @param float $value 默认值
+     * @return static
+     * @ux-example Slider::make()->value(50)
+     * @ux-default 0
+     */
     public function value(float $value): static
     {
         $this->value = $value;
         return $this;
     }
 
+    /**
+     * 设置步长
+     * @param float $step 步长
+     * @return static
+     * @ux-example Slider::make()->step(5)
+     * @ux-default 1
+     */
     public function step(float $step): static
     {
         $this->step = $step;
         return $this;
     }
 
+    /**
+     * 设置禁用状态
+     * @param bool $disabled 是否禁用
+     * @return static
+     * @ux-example Slider::make()->disabled()
+     * @ux-default true
+     */
     public function disabled(bool $disabled = true): static
     {
         $this->disabled = $disabled;
         return $this;
     }
 
+    /**
+     * 设置为垂直方向
+     * @param bool $vertical 是否垂直
+     * @return static
+     * @ux-example Slider::make()->vertical()
+     * @ux-default true
+     */
     public function vertical(bool $vertical = true): static
     {
         $this->vertical = $vertical;
         return $this;
     }
 
+    /**
+     * 启用范围选择（双滑块）
+     * @param bool $range 是否范围选择
+     * @return static
+     * @ux-example Slider::make()->range()
+     * @ux-default true
+     */
     public function range(bool $range = true): static
     {
         $this->range = $range;
         return $this;
     }
 
+    /**
+     * 设置范围值
+     * @param float $start 起始值
+     * @param float $end 结束值
+     * @return static
+     * @ux-example Slider::make()->rangeValue(20, 80)
+     */
     public function rangeValue(float $start, float $end): static
     {
         $this->rangeValue = [$start, $end];
         return $this;
     }
 
+    /**
+     * 显示提示框
+     * @param bool $show 是否显示
+     * @return static
+     * @ux-example Slider::make()->showTooltip(false)
+     * @ux-default true
+     */
     public function showTooltip(bool $show = true): static
     {
         $this->showTooltip = $show;
         return $this;
     }
 
+    /**
+     * 设置 LiveAction（滑块变化时触发）
+     * @param string $action Action 名称
+     * @return static
+     * @ux-example Slider::make()->action('updateSlider')
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 设置数值格式化
+     * @param string $format sprintf 格式字符串
+     * @return static
+     * @ux-example Slider::make()->format('%.0f%%')
+     */
     public function format(string $format): static
     {
         $this->format = $format;

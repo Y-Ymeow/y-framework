@@ -7,27 +7,62 @@ namespace Framework\UX\Menu;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 菜单
+ *
+ * 用于显示导航菜单，支持多级嵌套、图标、激活状态、水平/垂直布局。
+ *
+ * @ux-category Menu
+ * @ux-since 1.0.0
+ * @ux-example Menu::make()->item('首页', '/')->item('关于', '/about')
+ * @ux-example Menu::make()->item('产品', '/products')->subItem('产品1', '/p1')->subItem('产品2', '/p2')
+ * @ux-js-component menu.js
+ * @ux-css menu.css
+ */
 class Menu extends UXComponent
 {
     protected string $direction = 'vertical';
     protected array $items = [];
 
+    /**
+     * 设置菜单方向
+     * @param string $dir 方向：horizontal/vertical
+     * @return static
+     * @ux-default 'vertical'
+     */
     public function direction(string $dir): static
     {
         $this->direction = $dir;
         return $this;
     }
 
+    /**
+     * 水平布局
+     * @return static
+     */
     public function horizontal(): static
     {
         return $this->direction('horizontal');
     }
 
+    /**
+     * 垂直布局
+     * @return static
+     */
     public function vertical(): static
     {
         return $this->direction('vertical');
     }
 
+    /**
+     * 添加菜单项
+     * @param string $label 显示文字
+     * @param string|null $href 链接地址
+     * @param string|null $icon 图标类名（可省略 bi- 前缀）
+     * @param bool $active 是否激活状态
+     * @return static
+     * @ux-example Menu::make()->item('首页', '/', 'home', true)
+     */
     public function item(string $label, ?string $href = null, ?string $icon = null, bool $active = false): static
     {
         $this->items[] = [
@@ -40,6 +75,14 @@ class Menu extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加菜单分组（可包含子项）
+     * @param string $label 分组标题
+     * @param string|null $icon 分组图标
+     * @param bool $open 是否默认展开
+     * @param string|null $id 分组 ID（自动生成）
+     * @return static
+     */
     public function group(string $label, ?string $icon = null, bool $open = false, ?string $id = null): static
     {
         $this->items[] = [
@@ -53,6 +96,14 @@ class Menu extends UXComponent
         return $this;
     }
 
+    /**
+     * 向最后一个分组添加子项（或作为独立项）
+     * @param string $label 显示文字
+     * @param string|null $href 链接地址
+     * @param string|null $icon 图标类名
+     * @param bool $active 是否激活状态
+     * @return static
+     */
     public function subitem(string $label, ?string $href = null, ?string $icon = null, bool $active = false): static
     {
         $last = count($this->items) - 1;
@@ -76,12 +127,19 @@ class Menu extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加分隔线
+     * @return static
+     */
     public function divider(): static
     {
         $this->items[] = ['type' => 'divider'];
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $el = new Element('ul');

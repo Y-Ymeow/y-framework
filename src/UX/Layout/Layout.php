@@ -7,6 +7,18 @@ namespace Framework\UX\Layout;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 页面布局
+ *
+ * 用于构建页面整体布局，支持侧边栏、页眉、页脚、固定布局、左右侧边栏。
+ *
+ * @ux-category Layout
+ * @ux-since 1.0.0
+ * @ux-example Layout::make()->header()->sidebar()->footer()->child($main)
+ * @ux-example Layout::make()->header(true)->sidebarLeft()->sidebarWidth(240)->footer(true)
+ * @ux-js-component layout.js
+ * @ux-css layout.css
+ */
 class Layout extends UXComponent
 {
     protected bool $hasSidebar = false;
@@ -17,6 +29,13 @@ class Layout extends UXComponent
     protected bool $fixedHeader = false;
     protected bool $fixedFooter = false;
 
+    /**
+     * 启用侧边栏
+     * @param bool $left 是否在左侧（false 为右侧）
+     * @return static
+     * @ux-example Layout::make()->sidebar()->sidebarLeft()
+     * @ux-default left=true
+     */
     public function sidebar(bool $left = true): static
     {
         $this->hasSidebar = true;
@@ -24,22 +43,46 @@ class Layout extends UXComponent
         return $this;
     }
 
+    /**
+     * 启用左侧边栏
+     * @return static
+     * @ux-example Layout::make()->sidebarLeft()
+     */
     public function sidebarLeft(): static
     {
         return $this->sidebar(true);
     }
 
+    /**
+     * 启用右侧边栏
+     * @return static
+     * @ux-example Layout::make()->sidebarRight()
+     */
     public function sidebarRight(): static
     {
         return $this->sidebar(false);
     }
 
+    /**
+     * 设置侧边栏宽度
+     * @param int $width 宽度（px）
+     * @return static
+     * @ux-example Layout::make()->sidebarWidth(240)
+     * @ux-default 64
+     */
     public function sidebarWidth(int $width): static
     {
         $this->sidebarWidth = (string)$width;
         return $this;
     }
 
+    /**
+     * 启用页眉
+     * @param bool $fixed 是否固定页眉
+     * @return static
+     * @ux-example Layout::make()->header(true)
+     * @ux-default fixed=false
+     */
     public function header(bool $fixed = false): static
     {
         $this->hasHeader = true;
@@ -47,6 +90,13 @@ class Layout extends UXComponent
         return $this;
     }
 
+    /**
+     * 启用页脚
+     * @param bool $fixed 是否固定页脚
+     * @return static
+     * @ux-example Layout::make()->footer(true)
+     * @ux-default fixed=false
+     */
     public function footer(bool $fixed = false): static
     {
         $this->hasFooter = true;
@@ -67,6 +117,12 @@ class Layout extends UXComponent
         return $el;
     }
 
+    /**
+     * 渲染页眉
+     * @param mixed $content 页眉内容
+     * @return Element
+     * @ux-example $layout->renderHeader('页眉文字')
+     */
     public function renderHeader(mixed $content): Element
     {
         $el = new Element('header');
@@ -92,6 +148,12 @@ class Layout extends UXComponent
         return $el;
     }
 
+    /**
+     * 渲染侧边栏
+     * @param mixed $content 侧边栏内容
+     * @return Element
+     * @ux-example $layout->renderSidebar($sidebarContent)
+     */
     public function renderSidebar(mixed $content): Element
     {
         $el = new Element('aside');
@@ -113,6 +175,12 @@ class Layout extends UXComponent
         return $el;
     }
 
+    /**
+     * 渲染主内容区
+     * @param mixed $content 主内容
+     * @return Element
+     * @ux-example $layout->renderMain($mainContent)
+     */
     public function renderMain(mixed $content): Element
     {
         $el = new Element('main');
@@ -124,6 +192,12 @@ class Layout extends UXComponent
         return $el;
     }
 
+    /**
+     * 渲染页脚
+     * @param mixed $content 页脚内容
+     * @return Element
+     * @ux-example $layout->renderFooter('© 2024')
+     */
     public function renderFooter(mixed $content): Element
     {
         $el = new Element('footer');
@@ -148,6 +222,13 @@ class Layout extends UXComponent
         return $el;
     }
 
+    /**
+     * 渲染主体（侧边栏 + 主内容）
+     * @param mixed $sidebar 侧边栏内容
+     * @param mixed $main 主内容
+     * @return Element
+     * @ux-example $layout->renderBody($sidebar, $main)
+     */
     public function renderBody(mixed $sidebar, mixed $main): Element
     {
         $el = new Element('div');

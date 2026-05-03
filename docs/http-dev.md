@@ -1,14 +1,17 @@
 # HTTP 核心 — 开发文档
 
-> 由 DocGen 自动生成于 2026-05-02 19:56:28
+> 由 DocGen 自动生成于 2026-05-03 15:49:15
 
 ## 组件清单
 
 | 名称 | 命名空间 | 文件 | 类型 |
 |---|---|---|---|
+| `Authenticate` | `Framework\Http\Middleware` | `php/src/Http/Middleware/Authenticate.php` | class |
+| `ConvertEmptyStringsToNull` | `Framework\Http\Middleware` | `php/src/Http/Middleware/ConvertEmptyStringsToNull.php` | class |
 | `Cookie` | `Framework\Http` | `php/src/Http/Cookie.php` | class |
 | `HttpClient` | `Framework\Http` | `php/src/Http/HttpClient.php` | class |
 | `HttpException` | `Framework\Http` | `php/src/Http/HttpException.php` | extends RuntimeException |
+| `RedirectIfAuthenticated` | `Framework\Http\Middleware` | `php/src/Http/Middleware/RedirectIfAuthenticated.php` | class |
 | `Request` | `Framework\Http` | `php/src/Http/Request.php` | class |
 | `Response` | `Framework\Http` | `php/src/Http/Response.php` | class |
 | `Session` | `Framework\Http` | `php/src/Http/Session.php` | class |
@@ -17,11 +20,30 @@
 | `StaticFile` | `Framework\Http` | `php/src/Http/StaticFile.php` | class |
 | `StreamResponse` | `Framework\Http` | `php/src/Http/StreamResponse.php` | extends Framework\Http\Response |
 | `StreamedResponse` | `Framework\Http` | `php/src/Http/StreamedResponse.php` | extends Framework\Http\Response |
+| `ThrottleRequests` | `Framework\Http\Middleware` | `php/src/Http/Middleware/ThrottleRequests.php` | class |
+| `TrimStrings` | `Framework\Http\Middleware` | `php/src/Http/Middleware/TrimStrings.php` | class |
 | `Upload` | `Framework\Http` | `php/src/Http/Upload.php` | class |
+| `VerifyCsrfToken` | `Framework\Http\Middleware` | `php/src/Http/Middleware/VerifyCsrfToken.php` | class |
 
 ---
 
 ## 详细实现
+
+### `Framework\Http\Middleware\Authenticate`
+
+- **文件:** `php/src/Http/Middleware/Authenticate.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next, string $redirectToRoute = 'login'): Framework\Http\Response`
+
+### `Framework\Http\Middleware\ConvertEmptyStringsToNull`
+
+- **文件:** `php/src/Http/Middleware/ConvertEmptyStringsToNull.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next): Framework\Http\Response`
 
 ### `Framework\Http\Cookie`
 
@@ -64,42 +86,62 @@
 
 - `getStatusCode(): int`
 
+### `Framework\Http\Middleware\RedirectIfAuthenticated`
+
+- **文件:** `php/src/Http/Middleware/RedirectIfAuthenticated.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next, string $redirectToRoute = 'home'): Framework\Http\Response`
+
 ### `Framework\Http\Request`
 
 - **文件:** `php/src/Http/Request.php`
 
-**公开方法 (30)：**
+**公开方法 (42)：**
 
-- `method(): string`
-- `path(): string`
-- `url(): string`
-- `get(string $key, mixed $default = null): mixed`
-- `input(string $key, mixed $default = null): mixed`
-- `query(string $key, mixed $default = null): mixed`
-- `post(string $key, mixed $default = null): mixed`
-- `json(): ?array`
-- `header(string $key, ?string $default = null): ?string`
-- `all(): array`
-- `cookie(string $key, ?string $default = null): ?string`
-- `ip(): string`
-- `host(): string`
-- `isMethod(string $method): bool`
-- `isAjax(): bool`
-- `ajax(): bool`
-- `getRequestUri(): string`
-- `getUri(): string`
-- `getMethod(): string`
-- `isJson(): bool`
-- `expectsJson(): bool`
-- `file(string $key): ?Symfony\Component\HttpFoundation\File\UploadedFile`
-- `setRoute(string $name, string $handler, array $params = []): Framework\Http\Request`
-- `route(): ?object`
-- `routeName(): ?string`
-- `routeHandler(): ?string`
-- `routeParams(): array`
-- `getSfRequest(): Symfony\Component\HttpFoundation\Request`
-- `createFromGlobals(): Framework\Http\Request`
-- `create(string $uri, string $method = 'GET', array $parameters = [], array $cookies = [], array $files = [], array $server = [], mixed $content = null): Framework\Http\Request`
+- `createFromGlobals(): Framework\Http\Request` — 从 PHP 超全局变量创建请求
+- `create(string $uri, string $method = 'GET', array $parameters = [], array $cookies = [], array $files = [], array $server = [], ?string $content = null): Framework\Http\Request` — 创建模拟请求
+- `method(): string` — 获取 HTTP 方法
+- `path(): string` — 获取请求路径
+- `url(): string` — 获取完整 URL
+- `input(string $key, mixed $default = null): mixed` — 获取请求参数（从 query、post、json 中查找）
+- `get(string $key, mixed $default = null): mixed` — 获取请求参数（input 的别名）
+- `all(): array` — 获取所有请求参数
+- `query(string $key, mixed $default = null): mixed` — 获取 query string 参数
+- `post(string $key, mixed $default = null): mixed` — 获取 POST 参数
+- `json(): ?array` — 解析 JSON 请求体
+- `header(string $key, ?string $default = null): ?string` — 获取请求头
+- `cookie(string $key, ?string $default = null): ?string` — 获取 Cookie 值
+- `file(string $key): ?Framework\Http\Upload` — 获取上传文件
+- `ip(): string` — 获取客户端 IP
+- `host(): string` — 获取主机名
+- `isMethod(string $method): bool` — 判断是否为指定 HTTP 方法
+- `isAjax(): bool` — 判断是否为 AJAX 请求
+- `ajax(): bool` — 判断是否为 AJAX 请求（别名）
+- `getRequestUri(): string` — 获取请求 URI
+- `getUri(): string` — 获取完整 URI
+- `getMethod(): string` — 获取 HTTP 方法
+- `isJson(): bool` — 判断是否为 JSON 请求
+- `expectsJson(): bool` — 判断客户端是否期望 JSON 响应
+- `getContent(): string` — 获取请求体原始内容
+- `setRoute(string $name, string $handler, array $params = []): Framework\Http\Request` — 设置路由信息
+- `route(): ?object` — 获取路由信息对象
+- `routeName(): ?string` — 获取路由名称
+- `routeHandler(): ?string` — 获取路由处理器
+- `routeParams(): array` — 获取路由参数
+- `has(string $key): bool` — 检查参数是否存在
+- `bearerToken(): ?string` — 获取 Bearer Token
+- `userAgent(): string` — 获取 User-Agent
+- `isSafe(): bool` — 判断请求是否安全（GET/HEAD/OPTIONS）
+- `setInput(string $key, mixed $value): Framework\Http\Request` — 设置请求参数
+- `merge(array $params): Framework\Http\Request` — 合并请求参数
+- `setHeader(string $key, string $value): Framework\Http\Request` — 设置请求头
+- `setMethod(string $method): Framework\Http\Request` — 设置 HTTP 方法
+- `setRequestUri(string $uri): Framework\Http\Request` — 设置请求 URI
+- `setContent(string $content): Framework\Http\Request` — 设置请求体内容
+- `setCookie(string $key, string $value): Framework\Http\Request` — 设置 Cookie
+- `removeInput(string $key): Framework\Http\Request` — 移除请求参数
 
 ### `Framework\Http\Response`
 
@@ -209,6 +251,22 @@
 - `getContent(): string` — 获取响应内容（会执行回调）
 - `setCallback(callable $callback): Framework\Http\StreamedResponse` — 设置输出回调
 
+### `Framework\Http\Middleware\ThrottleRequests`
+
+- **文件:** `php/src/Http/Middleware/ThrottleRequests.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next, int $maxAttempts = 60, int $decayMinutes = 1): Framework\Http\Response`
+
+### `Framework\Http\Middleware\TrimStrings`
+
+- **文件:** `php/src/Http/Middleware/TrimStrings.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next): Framework\Http\Response`
+
 ### `Framework\Http\Upload`
 
 - **文件:** `php/src/Http/Upload.php`
@@ -232,4 +290,12 @@
 - `store(string $directory, ?string $name = null): string`
 - `storeAs(string $directory, string $name): string`
 - `storePublicly(string $directory, ?string $name = null): string`
+
+### `Framework\Http\Middleware\VerifyCsrfToken`
+
+- **文件:** `php/src/Http/Middleware/VerifyCsrfToken.php`
+
+**公开方法 (1)：**
+
+- `handle(Framework\Http\Request $request, callable $next): Framework\Http\Response`
 

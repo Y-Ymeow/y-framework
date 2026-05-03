@@ -39,6 +39,14 @@ class PlaceholderExtension extends RichEditorExtension
         return $this;
     }
 
+    /**
+     * 添加占位符
+     * @param string $key 占位符键
+     * @param string $label 显示标签
+     * @param mixed $defaultValue 默认值
+     * @return static
+     * @ux-example $this->addPlaceholder('username', '用户名', '匿名用户')
+     */
     public function addPlaceholder(string $key, string $label, mixed $defaultValue = null): static
     {
         $this->placeholders[$key] = [
@@ -48,6 +56,12 @@ class PlaceholderExtension extends RichEditorExtension
         return $this;
     }
 
+    /**
+     * 执行占位符插入
+     * @param string $content 内容
+     * @param array $params 参数（key）
+     * @return string 处理后的内容
+     */
     public function execute(string $content, array $params = []): string
     {
         $key = $params['key'] ?? '';
@@ -59,6 +73,11 @@ class PlaceholderExtension extends RichEditorExtension
         return $content . $placeholder;
     }
 
+    /**
+     * 渲染占位符标签
+     * @param string $key 占位符键
+     * @return string HTML 标签
+     */
     protected function renderPlaceholder(string $key): string
     {
         $label = $this->placeholders[$key]['label'] ?? $key;
@@ -71,6 +90,11 @@ class PlaceholderExtension extends RichEditorExtension
         );
     }
 
+    /**
+     * 解析占位符标签为短代码
+     * @param string $content 内容
+     * @return string 解析后的内容
+     */
     public function parse(string $content): string
     {
         return preg_replace_callback(
@@ -83,6 +107,11 @@ class PlaceholderExtension extends RichEditorExtension
         );
     }
 
+    /**
+     * 渲染预览内容（将短代码转为占位符标签）
+     * @param string $content 内容
+     * @return string 预览内容
+     */
     public function renderPreview(string $content): string
     {
         return preg_replace_callback($this->pattern, function ($matches) {
@@ -98,6 +127,13 @@ class PlaceholderExtension extends RichEditorExtension
         }, $content);
     }
 
+    /**
+     * 在内容中替换占位符为实际值
+     * @param string $content 内容
+     * @param array $values 值映射
+     * @return string 替换后的内容
+     * @ux-example $this->replaceInContent($content, ['username' => '张三', 'date' => '2024-01-01'])
+     */
     public function replaceInContent(string $content, array $values): string
     {
         return preg_replace_callback($this->pattern, function ($matches) use ($values) {
@@ -107,6 +143,10 @@ class PlaceholderExtension extends RichEditorExtension
         }, $content);
     }
 
+    /**
+     * 获取所有占位符
+     * @return array 占位符列表
+     */
     public function getPlaceholders(): array
     {
         return $this->placeholders;

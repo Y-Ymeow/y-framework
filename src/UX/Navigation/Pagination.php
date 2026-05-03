@@ -7,6 +7,18 @@ namespace Framework\UX\Navigation;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 分页
+ *
+ * 用于数据分页导航，支持页码列表、上一页/下一页、每页条数选择、Live 集成。
+ *
+ * @ux-category Navigation
+ * @ux-since 1.0.0
+ * @ux-example Pagination::make()->total(100)->current(2)->perPage(10)
+ * @ux-example Pagination::make()->total($total)->perPageOptions([10, 20, 50])->showPerPage()
+ * @ux-js-component pagination.js
+ * @ux-css pagination.css
+ */
 class Pagination extends UXComponent
 {
     protected int $total = 0;
@@ -20,42 +32,81 @@ class Pagination extends UXComponent
     protected bool $showPerPage = false;
     protected int $perPageTotal = 0;
 
+    /**
+     * 设置数据总量
+     * @param int $total 总记录数
+     * @return static
+     */
     public function total(int $total): static
     {
         $this->total = $total;
         return $this;
     }
 
+    /**
+     * 设置当前页码
+     * @param int $current 当前页码（从 1 开始）
+     * @return static
+     * @ux-default 1
+     */
     public function current(int $current): static
     {
         $this->current = $current;
         return $this;
     }
 
+    /**
+     * 设置每页显示条数
+     * @param int $perPage 每页条数
+     * @return static
+     * @ux-default 15
+     */
     public function perPage(int $perPage): static
     {
         $this->perPage = $perPage;
         return $this;
     }
 
+    /**
+     * 设置分页基础 URL
+     * @param string $baseUrl 基础 URL
+     * @return static
+     */
     public function baseUrl(string $baseUrl): static
     {
         $this->baseUrl = $baseUrl;
         return $this;
     }
 
+    /**
+     * 设置每页条数可选值
+     * @param array $options 可选值列表，如 [10, 20, 50]
+     * @return static
+     */
     public function perPageOptions(array $options): static
     {
         $this->perPageOptions = $options;
         return $this;
     }
 
+    /**
+     * 设置每页条数变更的 LiveAction
+     * @param string $action Action 方法名
+     * @return static
+     */
     public function perPageAction(string $action): static
     {
         $this->perPageAction = $action;
         return $this;
     }
 
+    /**
+     * 启用每页条数选择器并设置统计信息
+     * @param int $total 总记录数
+     * @param int $perPage 每页条数
+     * @param int $current 当前页码
+     * @return static
+     */
     public function showPerPage(int $total = 0, int $perPage = 15, int $current = 1): static
     {
         $this->showPerPage = true;
@@ -65,6 +116,9 @@ class Pagination extends UXComponent
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $lastPage = (int)ceil($this->total / $this->perPage);

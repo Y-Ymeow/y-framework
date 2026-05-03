@@ -7,12 +7,31 @@ namespace Framework\UX\Navigation;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 步骤条
+ *
+ * 用于展示多步骤流程，支持步骤标题、描述、当前步骤、垂直/水平布局。
+ *
+ * @ux-category Navigation
+ * @ux-since 1.0.0
+ * @ux-example Steps::make()->item('步骤1')->item('步骤2')->item('步骤3')->current(2)
+ * @ux-example Steps::make()->item('开始', '初始化')->item('处理', '运行中')->item('完成', '已结束')->vertical()
+ * @ux-js-component —
+ * @ux-css steps.css
+ */
 class Steps extends UXComponent
 {
     protected array $items = [];
     protected int $current = 0;
     protected string $direction = 'horizontal';
 
+    /**
+     * 添加步骤项
+     * @param string $title 步骤标题
+     * @param string|null $description 步骤描述（可选）
+     * @return static
+     * @ux-example Steps::make()->item('注册', '填写基本信息')
+     */
     public function item(string $title, ?string $description = null): static
     {
         $this->items[] = [
@@ -22,18 +41,31 @@ class Steps extends UXComponent
         return $this;
     }
 
+    /**
+     * 设置当前步骤（从 0 开始）
+     * @param int $current 当前步骤索引
+     * @return static
+     * @ux-default 0
+     */
     public function current(int $current): static
     {
         $this->current = $current;
         return $this;
     }
 
+    /**
+     * 设置为垂直布局
+     * @return static
+     */
     public function vertical(): static
     {
         $this->direction = 'vertical';
         return $this;
     }
 
+    /**
+     * @ux-internal
+     */
     protected function toElement(): Element
     {
         $el = new Element('div');

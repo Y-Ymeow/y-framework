@@ -8,6 +8,18 @@ use Framework\UX\UI\Button;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 表单构建器
+ *
+ * 用于快速构建表单，支持多种字段类型、HTTP 方法、提交按钮、Live 绑定、数据填充。
+ *
+ * @ux-category Form
+ * @ux-since 1.0.0
+ * @ux-example FormBuilder::make()->post()->action('/save')->text('name', '姓名')->email('email', '邮箱')->submitLabel('提交')
+ * @ux-example FormBuilder::make()->get()->text('q', '搜索')->submitLabel('搜索')
+ * @ux-js-component form-builder.js
+ * @ux-css form.css
+ */
 class FormBuilder extends UXComponent
 {
     protected string $method = 'POST';
@@ -17,50 +29,104 @@ class FormBuilder extends UXComponent
     protected ?string $submitLabel = null;
     protected array $liveBind = [];
 
+    /**
+     * 设置表单提交方法
+     * @param string $method HTTP 方法：GET/POST/PUT/DELETE
+     * @return static
+     * @ux-example FormBuilder::make()->method('POST')
+     * @ux-default 'POST'
+     */
     public function method(string $method): static
     {
         $this->method = strtoupper($method);
         return $this;
     }
 
+    /**
+     * 设置为 GET 方法
+     * @return static
+     * @ux-example FormBuilder::make()->get()
+     */
     public function get(): static
     {
         return $this->method('GET');
     }
 
+    /**
+     * 设置为 POST 方法
+     * @return static
+     * @ux-example FormBuilder::make()->post()
+     */
     public function post(): static
     {
         return $this->method('POST');
     }
 
+    /**
+     * 设置为 PUT 方法
+     * @return static
+     * @ux-example FormBuilder::make()->put()
+     */
     public function put(): static
     {
         return $this->method('PUT');
     }
 
+    /**
+     * 设置为 DELETE 方法
+     * @return static
+     * @ux-example FormBuilder::make()->delete()
+     */
     public function delete(): static
     {
         return $this->method('DELETE');
     }
 
+    /**
+     * 设置表单提交地址
+     * @param string $action 提交 URL
+     * @return static
+     * @ux-example FormBuilder::make()->action('/save')
+     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
+    /**
+     * 启用 multipart（用于文件上传）
+     * @param bool $multipart 是否启用
+     * @return static
+     * @ux-example FormBuilder::make()->multipart()
+     * @ux-default true
+     */
     public function multipart(bool $multipart = true): static
     {
         $this->multipart = $multipart;
         return $this;
     }
 
+    /**
+     * 设置提交按钮文字
+     * @param string $label 按钮文字
+     * @return static
+     * @ux-example FormBuilder::make()->submitLabel('提交')
+     */
     public function submitLabel(string $label): static
     {
         $this->submitLabel = $label;
         return $this;
     }
 
+    /**
+     * 添加文本输入框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项（placeholder, required, disabled 等）
+     * @return static
+     * @ux-example FormBuilder::make()->text('name', '姓名')
+     */
     public function text(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -71,6 +137,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加邮箱输入框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->email('email', '邮箱')
+     */
     public function email(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -81,6 +155,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加密码输入框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->password('password', '密码')
+     */
     public function password(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -91,6 +173,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加数字输入框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->number('age', '年龄')
+     */
     public function number(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -101,6 +191,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加多行文本框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->textarea('content', '内容')
+     */
     public function textarea(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -111,6 +209,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加富文本编辑器字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->richEditor('content', '内容')
+     */
     public function richEditor(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -121,6 +227,15 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加下拉选择框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 字段选项
+     * @param array $selectOptions 下拉选项 ['value' => 'label']
+     * @return static
+     * @ux-example FormBuilder::make()->select('city', '城市', [], ['Beijing' => '北京'])
+     */
     public function select(string $name, string $label, array $options = [], array $selectOptions = []): static
     {
         $this->fields[] = array_merge([
@@ -132,6 +247,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加复选框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->checkbox('agree', '同意协议')
+     */
     public function checkbox(string $name, string $label, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -142,6 +265,15 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加单选框字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $choices 选项列表 ['value' => 'label']
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->radio('gender', '性别', ['male' => '男', 'female' => '女'])
+     */
     public function radio(string $name, string $label, array $choices, array $options = []): static
     {
         $this->fields[] = array_merge([
@@ -153,6 +285,14 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加文件上传字段
+     * @param string $name 字段名
+     * @param string $label 标签文字
+     * @param array $options 选项
+     * @return static
+     * @ux-example FormBuilder::make()->file('avatar', '头像')
+     */
     public function file(string $name, string $label, array $options = []): static
     {
         $this->multipart = true;
@@ -164,6 +304,13 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 添加隐藏字段
+     * @param string $name 字段名
+     * @param string $value 默认值
+     * @return static
+     * @ux-example FormBuilder::make()->hidden('csrf_token', $token)
+     */
     public function hidden(string $name, string $value): static
     {
         $this->fields[] = [
@@ -174,12 +321,25 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    /**
+     * 绑定字段到 LiveComponent 属性
+     * @param string $field 字段名
+     * @param string $property LiveComponent 属性名
+     * @return static
+     * @ux-example FormBuilder::make()->liveBind('email', 'user.email')
+     */
     public function liveBind(string $field, string $property): static
     {
         $this->liveBind[$field] = $property;
         return $this;
     }
 
+    /**
+     * 填充表单数据
+     * @param array $data 数据数组
+     * @return static
+     * @ux-example FormBuilder::make()->fill(['name' => '张三', 'email' => 'test@example.com'])
+     */
     public function fill(array $data): static
     {
         foreach ($this->fields as &$field) {

@@ -7,6 +7,18 @@ namespace Framework\UX\Feedback;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
+/**
+ * 空状态
+ *
+ * 用于显示空状态页面，支持自定义图片、描述、额外内容和尺寸。
+ *
+ * @ux-category Feedback
+ * @ux-since 1.0.0
+ * @ux-example EmptyState::make()->description('暂无数据')->extra(Button::make()->label('添加')->primary())
+ * @ux-example EmptyState::make()->image('/empty.svg')->description('没有找到结果')
+ * @ux-js-component —
+ * @ux-css empty.css
+ */
 class EmptyState extends UXComponent
 {
     protected ?string $description = null;
@@ -15,41 +27,82 @@ class EmptyState extends UXComponent
     protected mixed $extra = null;
     protected string $size = 'md';
 
+    /**
+     * 设置空状态描述文字
+     * @param string $description 描述文字
+     * @return static
+     * @ux-example EmptyState::make()->description('暂无数据')
+     */
     public function description(string $description): static
     {
         $this->description = $description;
         return $this;
     }
 
+    /**
+     * 设置空状态图片
+     * @param string $image 图片 URL 或 HTML
+     * @return static
+     * @ux-example EmptyState::make()->image('/empty.svg')
+     */
     public function image(string $image): static
     {
         $this->image = $image;
         return $this;
     }
 
+    /**
+     * 设置图片样式
+     * @param string $style CSS 样式
+     * @return static
+     * @ux-example EmptyState::make()->imageStyle('width: 200px')
+     */
     public function imageStyle(string $style): static
     {
         $this->imageStyle = $style;
         return $this;
     }
 
+    /**
+     * 设置额外内容（按钮/链接等）
+     * @param mixed $extra 额外内容（字符串/组件）
+     * @return static
+     * @ux-example EmptyState::make()->extra(Button::make()->label('添加')->primary())
+     */
     public function extra(mixed $extra): static
     {
         $this->extra = $extra;
         return $this;
     }
 
+    /**
+     * 设置尺寸
+     * @param string $size 尺寸：sm/md/lg
+     * @return static
+     * @ux-example EmptyState::make()->size('lg')
+     * @ux-default 'md'
+     */
     public function size(string $size): static
     {
         $this->size = $size;
         return $this;
     }
 
+    /**
+     * 小尺寸
+     * @return static
+     * @ux-example EmptyState::make()->sm()
+     */
     public function sm(): static
     {
         return $this->size('sm');
     }
 
+    /**
+     * 大尺寸
+     * @return static
+     * @ux-example EmptyState::make()->lg()
+     */
     public function lg(): static
     {
         return $this->size('lg');
