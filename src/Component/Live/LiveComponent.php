@@ -845,11 +845,11 @@ abstract class LiveComponent
 
     public function toast(string $message, string $type = 'success', int $duration = 3000, ?string $title = null): void
     {
-        $this->operation('ux:toast', [
+        $this->dispatchEvent('toast:show', [
             'message' => $message,
             'type' => $type,
             'duration' => $duration,
-            'title' => $title
+            'title' => $title,
         ]);
     }
 
