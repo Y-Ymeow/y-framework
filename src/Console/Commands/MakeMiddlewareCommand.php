@@ -13,10 +13,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
 
 #[AsCommand(
-    name: 'make:component',
-    description: 'Create a new Live Component',
+    name: 'make:middleware',
+    description: 'Create a new middleware class',
 )]
-class MakeComponentCommand extends Command
+class MakeMiddlewareCommand extends Command
 {
     private Application $app;
 
@@ -28,20 +28,20 @@ class MakeComponentCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the component (e.g. UserList)');
+        $this->addArgument('name', InputArgument::REQUIRED, 'The name of the middleware (e.g. AuthMiddleware)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $name = $input->getArgument('name');
-        
+
         $className = $this->getClassName($name);
         $namespace = $this->getNamespace($name);
         $filePath = $this->getFilePath($name);
 
         if (file_exists($filePath)) {
-            $io->error("Component [{$name}] already exists!");
+            $io->error("Middleware [{$className}] already exists!");
             return Command::FAILURE;
         }
 
@@ -53,7 +53,7 @@ class MakeComponentCommand extends Command
         $content = $this->getStub($className, $namespace);
         file_put_contents($filePath, $content);
 
-        $io->success("Component [{$className}] created successfully.");
+        $io->success("Middleware [{$className}] created successfully.");
         $io->note("Path: {$filePath}");
 
         return Command::SUCCESS;
@@ -70,13 +70,13 @@ class MakeComponentCommand extends Command
         $parts = explode('/', str_replace('\\', '/', $name));
         array_pop($parts);
         $subNamespace = empty($parts) ? '' : '\\' . implode('\\', $parts);
-        return "App\\Components" . $subNamespace;
+        return "App\\Middleware" . $subNamespace;
     }
 
     private function getFilePath(string $name): string
     {
         $name = str_replace('\\', '/', $name);
-        return $this->app->basePath("app/Components/{$name}.php");
+        return $this->app->basePath("app/Middleware/{$name}.php");
     }
 
     private function getStub(string $className, string $namespace): string
@@ -88,35 +88,20 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Component\Live\LiveComponent;
-use Framework\Component\Live\Attribute\LiveAction;
-use Framework\View\LiveResponse;
-use Framework\View\Base\Element;
-use Framework\View\Container;
-use Framework\View\Text;
+use Framework\Http\Request;
+use Framework\Http\Response;
 
-class {$className} extends LiveComponent
+class {$className}
 {
-    public int \$count = 0;
-
-    #[LiveAction]
-    public function increment(): LiveResponse
+    public function handle(Request \$request, callable \$next): Response
     {
-        \$this->count++;
-        return LiveResponse::make();
-    }
+        // 前置逻辑
 
-    public function render(): string|Element
-    {
-        return Container::make()
-            ->class('p-4 border rounded shadow-sm bg-white')
-            ->child(Text::p("Count: {\$this->count}")->class('text-lg font-bold'))
-            ->child(
-                (new Element('button'))
-                    ->liveAction('increment')
-                    ->class('mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600')
-                    ->text('Increment')
-            );
+        \$response = \$next(\$request);
+
+        // 后置逻辑
+
+        return \$response;
     }
 }
 PHP;

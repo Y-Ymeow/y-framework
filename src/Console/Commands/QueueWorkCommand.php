@@ -4,41 +4,72 @@ declare(strict_types=1);
 
 namespace Framework\Console\Commands;
 
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Framework\Foundation\Application;
 use Framework\Queue\QueueManager;
 
-class QueueWorkCommand
+#[AsCommand(
+    name: 'queue:work',
+    description: 'Start processing jobs on the queue',
+)]
+class QueueWorkCommand extends Command
 {
-    public function handle(): void
+    private Application $app;
+
+    public function __construct(Application $app)
     {
-        $this->info("Starting queue worker...");
-        $this->info("Press Ctrl+C to stop.");
+        parent::__construct();
+        $this->app = $app;
+    }
+
+    protected function configure(): void
+    {
+        $this
+            ->addOption('queue', null, InputOption::VALUE_OPTIONAL, 'The queue to listen on', 'default')
+            ->addOption('tries', null, InputOption::VALUE_OPTIONAL, 'Max attempts per job', 3)
+            ->addOption('delay', null, InputOption::VALUE_OPTIONAL, 'Seconds to wait between polls', 1);
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        if (!$this->app->isBooted()) {
+            $this->app->bootstrapProviders();
+        }
+
+        $queue = $input->getOption('queue');
+        $delay = (int) $input->getOption('delay');
+
+        $io->title('Queue Worker');
+        $io->text("Queue: <info>{$queue}</info>");
+        $io->text('Press Ctrl+C to stop.');
+        $io->newLine();
 
         while (true) {
-            $job = QueueManager::driver()->pop();
-            
-            if ($job === null) {
-                sleep(1);
-                continue;
-            }
-
             try {
-                $this->info("Processing job: {$job->id} ({$job->jobClass})");
+                $job = QueueManager::driver()->pop($queue);
+
+                if ($job === null) {
+                    sleep($delay);
+                    continue;
+                }
+
+                $io->text("[" . date('H:i:s') . "] Processing: {$job->id} ({$job->jobClass})");
+
                 $job->handle();
-                $this->info("Job completed: {$job->id}");
+
+                $io->text("<info>✓ Completed:</info> {$job->id}");
             } catch (\Throwable $e) {
-                $this->error("Job failed: {$job->id} - {$e->getMessage()}");
-                $job->failed($e);
+                $io->text("<error>✗ Failed:</error> {$e->getMessage()}");
             }
         }
-    }
 
-    private function info(string $message): void
-    {
-        echo "[" . date('Y-m-d H:i:s') . "] {$message}\n";
-    }
-
-    private function error(string $message): void
-    {
-        echo "[" . date('Y-m-d H:i:s') . "] ERROR: {$message}\n";
+        return Command::SUCCESS;
     }
 }

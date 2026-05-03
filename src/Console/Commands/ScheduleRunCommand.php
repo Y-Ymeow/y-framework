@@ -4,41 +4,67 @@ declare(strict_types=1);
 
 namespace Framework\Console\Commands;
 
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Framework\Foundation\Application;
 use Framework\Scheduler\Scheduler;
 
-class ScheduleRunCommand
+#[AsCommand(
+    name: 'schedule:run',
+    description: 'Run scheduled tasks that are due',
+)]
+class ScheduleRunCommand extends Command
 {
-    public function handle(Scheduler $scheduler): void
+    private Application $app;
+
+    public function __construct(Application $app)
     {
-        $this->info("Running scheduled tasks...");
+        parent::__construct();
+        $this->app = $app;
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        if (!$this->app->isBooted()) {
+            $this->app->bootstrapProviders();
+        }
+
+        $scheduler = $this->app->make(Scheduler::class);
+        $io->title('Running Scheduled Tasks');
 
         $due = $scheduler->due();
         $count = count($due);
 
         if ($count === 0) {
-            $this->info("No tasks due.");
-            return;
+            $io->info('No tasks due.');
+            return Command::SUCCESS;
         }
 
-        $this->info("{$count} task(s) due.");
+        $io->text("{$count} task(s) due.");
+
+        $completed = 0;
+        $failed = 0;
 
         foreach ($due as $event) {
+            $io->text("Running: " . get_class($event));
             try {
                 $event->run();
-                $this->info("Task completed.");
+                $io->text("<info>✓ Completed</info>");
+                $completed++;
             } catch (\Throwable $e) {
-                $this->error("Task failed: " . $e->getMessage());
+                $io->text("<error>✗ Failed:</error> " . $e->getMessage());
+                $failed++;
             }
         }
-    }
 
-    private function info(string $message): void
-    {
-        echo "[" . date('Y-m-d H:i:s') . "] {$message}\n";
-    }
+        $io->newLine();
+        $io->success("{$completed} completed, {$failed} failed.");
 
-    private function error(string $message): void
-    {
-        echo "[" . date('Y-m-d H:i:s') . "] ERROR: {$message}\n";
+        return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 }

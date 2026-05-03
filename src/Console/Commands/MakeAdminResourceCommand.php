@@ -94,7 +94,6 @@ use Framework\Admin\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\UX\Data\DataTableColumn;
-use Framework\UX\Display\Badge;
 use Framework\UX\UI\Button;
 use Framework\UX\UI\Navigate;
 use Framework\Database\Model;
@@ -103,7 +102,6 @@ use Framework\Database\Model;
     name: '{$resourceName}',
     model: {$modelName}::class,
     title: '{$modelName}管理',
-    icon: 'heroicon.collection',
 )]
 class {$className} extends BaseResource
 {
@@ -125,49 +123,30 @@ class {$className} extends BaseResource
     public function configureForm(FormBuilder \$form): void
     {
         \$form->text('name', '名称', ['required' => true]);
-        // 添加更多表单字段
     }
 
     public function configureTable(DataTable \$table): void
     {
-        \$table->addColumn(
-            DataTableColumn::make('id', 'ID')
-                ->width('60px')
-                ->sortable()
-        );
-        \$table->addColumn(
-            DataTableColumn::make('name', '名称')
-                ->sortable()
-                ->searchLike()
-        );
-        \$table->addColumn(
-            DataTableColumn::make('created_at', '创建时间')
-                ->sortable()
-                ->width('160px')
-        );
-        \$table->rowActions(function (\$row, \$rowKey, \$index) {
-            return [
-                Navigate::make()
-                    ->href(recordEditUrl('{$resourceName}', \$rowKey))
-                    ->text('编辑')
-                    ->bi('pencil')
-                    ->secondary()
-                    ->sm(),
-                Button::make()
-                    ->label('删除')
-                    ->danger()
-                    ->sm()
-                    ->icon('trash', 'left')
-                    ->liveAction('deleteRow')
-                    ->data('action-params', json_encode(['rowKey' => \$rowKey]))
-                    ->data('confirm', '确定删除此记录？'),
-            ];
-        });
-    }
-
-    public function getLiveActions(): array
-    {
-        return [];
+        \$table->column('id', 'ID')
+            ->column('name', '名称')
+            ->column('created_at', '创建时间')
+            ->rowActions(function (\$row, \$rowKey, \$index) {
+                return [
+                    Navigate::make()
+                        ->href(recordEditUrl('{$resourceName}', \$rowKey))
+                        ->text('编辑')
+                        ->bi('pencil')
+                        ->secondary()
+                        ->sm(),
+                    Button::make()
+                        ->label('删除')
+                        ->danger()
+                        ->sm()
+                        ->liveAction('deleteRow')
+                        ->data('action-params', json_encode(['rowKey' => \$rowKey]))
+                        ->data('confirm', '确定删除此记录？'),
+                ];
+            });
     }
 }
 

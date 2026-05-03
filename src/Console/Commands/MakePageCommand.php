@@ -93,29 +93,22 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Component\Live\LiveComponent;
 use Framework\Routing\Attribute\Route;
-use Framework\View\Base\Element;
+use Framework\Http\Response;
+use Framework\View\Container;
+use Framework\View\Text;
 
-#[Route('{$route}')]
-class {$className} extends LiveComponent
+class {$className}
 {
-    public string \$title = 'Welcome to {$className}';
-
-    public function mount(): void
+    #[Route('{$route}', methods: ['GET'])]
+    public function index(): Response
     {
-        // 页面挂载时的初始化逻辑
-    }
-
-    #[Route('/', methods: 'GET')]
-    public function render(): string|Element
-    {
-        return Element::make('div')
+        \$doc = Container::make()
             ->class('p-8 max-w-4xl mx-auto')
-            ->children(
-                Element::make('h1')->class('text-3xl font-bold mb-4')->text(\$this->title),
-                Element::make('p')->class('text-gray-600')->text('This is a newly created page.')
-            );
+            ->child(Text::h1('{$className}')->class('text-3xl font-bold mb-4'))
+            ->child(Text::p('This is a newly created page.')->textGray());
+
+        return Response::html(\$doc);
     }
 }
 PHP;

@@ -56,12 +56,6 @@ class Kernel
             //SystemRoutesProvider::register($this->router, $basePath);
         }
 
-        // 加载 LiveComponent Action 缓存
-        $liveCacheFile = $basePath . '/storage/cache/live_components.php';
-        if (file_exists($liveCacheFile)) {
-            \Framework\Component\Live\LiveComponent::setGlobalActionCache(require $liveCacheFile);
-        }
-
         Hook::fire('app.booted');
 
         $this->bootstrapped = true;
