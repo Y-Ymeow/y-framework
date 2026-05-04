@@ -27,12 +27,12 @@ abstract class LiveComponent
     private array $manualUpdates = [];
     private array $validationErrors = [];
     private ?string $stateChecksum = null;
+    private ?string $lockedChecksum = null;
     protected array $routeParams = [];
     protected array $propValues = [];
     protected bool $mountCalled = false;
     private array $computedCache = [];
-
-    protected array $liveActions = [];
+    private array $liveActions = [];
 
     public static function setGlobalActionCache(array $cache): void
     {
@@ -320,6 +320,18 @@ abstract class LiveComponent
         $publicData = $this->getPublicProperties();
         $data['__checksum'] = $this->generateDataChecksum($publicData);
 
+        // 额外存储 locked 属性的 checksum（用于校验非编辑属性）
+        $editableProps = $this->frontendEditableProperties();
+        $lockedData = [];
+        foreach ($publicData as $propName => $value) {
+            if (!in_array($propName, $editableProps, true)) {
+                $lockedData[$propName] = $value;
+            }
+        }
+        if (!empty($lockedData)) {
+            $data['__locked_checksum'] = $this->generateDataChecksum($lockedData);
+        }
+
         $serialized = serialize($data);
         $compressed = function_exists('gzcompress') ? gzcompress($serialized) : $serialized;
 
@@ -414,6 +426,12 @@ abstract class LiveComponent
             unset($data['__checksum']);
         }
 
+        // 提取并存储 locked checksum（用于后续校验）
+        if (isset($data['__locked_checksum'])) {
+            $this->lockedChecksum = $data['__locked_checksum'];
+            unset($data['__locked_checksum']);
+        }
+
         foreach ($data as $key => $value) {
             $prop = new \ReflectionProperty($this, $key);
             if (!$prop->isStatic() && !$prop->isPublic()) {
@@ -491,24 +509,25 @@ abstract class LiveComponent
         }
 
         // 分级校验：
-        // - #[State] 标记的属性：允许前端直接修改，跳过checksum校验
+        // - #[State] 标记的属性：允许前端直接修改，不参与checksum校验
         // - 其他属性（#[Prop], #[Session], #[Cookie]）：严格checksum校验
-        if ($this->stateChecksum !== null) {
-            $dataToVerify = [];
-            foreach ($publicProps as $propName) {
-                if (!in_array($propName, $editableProps) && array_key_exists($propName, $cleanedData)) {
-                    $dataToVerify[$propName] = $cleanedData[$propName];
+        if ($this->lockedChecksum !== null) {
+            // 提取非编辑（locked）属性
+            $lockedData = [];
+            foreach ($cleanedData as $propName => $value) {
+                if (!in_array($propName, $editableProps, true)) {
+                    $lockedData[$propName] = $value;
                 }
             }
 
-            if (!empty($dataToVerify)) {
-                $currentChecksum = $this->generateDataChecksum($dataToVerify);
-                $expectedChecksumPart = $this->generateDataChecksum($dataToVerify);
+            // 校验 locked 数据是否被篡改
+            if (!empty($lockedData)) {
+                $currentLockedChecksum = $this->generateDataChecksum($lockedData);
 
-                if (!hash_equals($this->stateChecksum, $this->generateDataChecksum($cleanedData)) && !empty(array_diff_key($cleanedData, array_flip($editableProps)))) {
+                if (!hash_equals($this->lockedChecksum, $currentLockedChecksum)) {
                     if (config('app.debug')) {
-                        error_log("Checksum mismatch! Expected: {$this->stateChecksum}, Got: {$currentChecksum}");
-                        error_log("Verified Data: " . json_encode($dataToVerify));
+                        error_log("Checksum mismatch! Locked data changed unexpectedly.");
+                        error_log("Expected: {$this->lockedChecksum}, Got: {$currentLockedChecksum}");
                     }
                     throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
                 }
@@ -598,6 +617,11 @@ abstract class LiveComponent
         }
 
         return null;
+    }
+
+    public function addLiveAction(string $actionName, array $config): void
+    {
+        $this->liveActions[$actionName] = $config;
     }
 
     public function callAction(string $actionName, array $params = []): mixed

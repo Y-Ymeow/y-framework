@@ -39,7 +39,7 @@ class AdminListPage extends LiveComponent
         // 从 Resource 获取手动注册的 LiveActions
         $resourceActions = $resource->getLiveActions();
         foreach ($resourceActions as $name => $config) {
-            $this->liveActions[$name] = $config;
+            $this->addLiveAction($name, $config);
         }
     }
 
