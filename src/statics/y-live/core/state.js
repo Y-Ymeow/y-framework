@@ -29,10 +29,10 @@ export function setupLiveComponent(el, onAction, target = null) {
 }
 
 function bindLiveActions(el, componentClass, stateRef, state, onAction, scanTarget) {
-    // 如果 scanTarget 本身就有 data-action，也需要处理
-    const actionEls = scanTarget.querySelectorAll('[data-action]');
+    const actionEls = scanTarget.querySelectorAll('[data-live-action], [data-action]');
     const list = Array.from(actionEls);
-    if (scanTarget.hasAttribute('data-action')) list.push(scanTarget);
+    if (scanTarget.hasAttribute('data-live-action')) list.push(scanTarget);
+    else if (scanTarget.hasAttribute('data-action')) list.push(scanTarget);
 
     list.forEach(actionEl => {
         if (actionEl._y_action_bound) return;
@@ -42,10 +42,45 @@ function bindLiveActions(el, componentClass, stateRef, state, onAction, scanTarg
 
         actionEl._y_action_bound = true;
 
-        const actionName = actionEl.dataset.action;
-        const eventType = actionEl.dataset.actionEvent || 'click';
+        // 优先使用 data-live-action，回退 data-action
+        // 支持 data-live-action:click="save" 格式（事件类型嵌入属性名）
+        let actionName = null;
+        let eventType = 'click';
+
+        for (const attr of actionEl.attributes) {
+            const name = attr.name;
+            if (name === 'data-live-action' || name === 'data-action') {
+                actionName = attr.value;
+            } else if (name.startsWith('data-live-action:') || name.startsWith('data-action:')) {
+                actionName = attr.value;
+                eventType = name.split(':')[1];
+            }
+        }
+
+        // 兼容旧的 data-action-event
+        if (actionEl.dataset.actionEvent && !actionEl.attributes['data-live-action:']) {
+            eventType = actionEl.dataset.actionEvent;
+        }
+
+        if (!actionName) return;
 
         actionEl.addEventListener(eventType, (e) => {
+            // 需求3: 禁用机制 — data-live-disabled="expr"
+            const disabledExpr = actionEl.getAttribute('data-live-disabled');
+            if (disabledExpr) {
+                const disabled = evaluate(disabledExpr, state, actionEl);
+                if (disabled) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            // 原生 disabled 属性也阻止触发
+            if (actionEl.disabled) {
+                e.preventDefault();
+                return;
+            }
+
             if (eventType === 'submit' || (eventType === 'click' && (actionEl.tagName === 'A' || actionEl.type === 'submit'))) {
                 e.preventDefault();
             }
@@ -56,13 +91,24 @@ function bindLiveActions(el, componentClass, stateRef, state, onAction, scanTarg
                 params.value = actionEl.type === 'checkbox' ? actionEl.checked : actionEl.value;
             }
 
-            const paramsAttr = actionEl.dataset.actionParams;
+            // 需求2: 支持表达式参数
+            const paramsAttr = actionEl.getAttribute('data-live-action-params') || actionEl.dataset.actionParams;
             if (paramsAttr) {
+                // 尝试 JSON 解析
+                let parsed = null;
                 try {
-                    const parsed = JSON.parse(paramsAttr);
+                    parsed = JSON.parse(paramsAttr);
+                } catch (_) {}
+
+                if (parsed !== null) {
+                    // 纯 JSON，直接合并
                     params = { ...params, ...parsed };
-                } catch (err) {
-                    console.error('Failed to parse data-action-params:', paramsAttr, err);
+                } else {
+                    // 非 JSON → 当作表达式求值
+                    const exprResult = evaluate(paramsAttr, state, actionEl);
+                    if (exprResult !== null && exprResult !== undefined && typeof exprResult === 'object') {
+                        params = { ...params, ...exprResult };
+                    }
                 }
             }
 

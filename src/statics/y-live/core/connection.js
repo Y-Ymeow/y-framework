@@ -3,6 +3,9 @@ export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-action',
     'data-action-event',
     'data-action-params',
+    'data-live-action',
+    'data-live-action-params',
+    'data-live-disabled',
     'data-live',
     'data-live-id',
     'data-live-state',
@@ -34,7 +37,7 @@ export function setLoading(el, loading) {
     if (loading) liveEl.classList.add('y-loading-root');
     else liveEl.classList.remove('y-loading-root');
 
-    liveEl.querySelectorAll('[data-action]').forEach(btn => {
+    liveEl.querySelectorAll('[data-action], [data-live-action]').forEach(btn => {
         btn.disabled = loading;
         if (loading) btn.classList.add('y-loading');
         else btn.classList.remove('y-loading');

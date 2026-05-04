@@ -119,7 +119,34 @@ src/
 │   ├── Document/Document.php  # HTML 文档构建器
 │   └── Container/
 ├── Component/           # 组件
-│   └── Live/LiveComponent.php   # 实时组件
+│   └── Live/
+│       ├── LiveComponent.php        # 实时组件基类（trait 拆分）
+│       ├── LiveRequestHandler.php   # Live 请求路由处理器
+│       ├── LiveEventBus.php         # 跨组件事件总线
+│       ├── LiveNotifier.php         # 通知系统
+│       ├── ConfirmDialog.php        # 确认对话框
+│       ├── LanguageSwitcherLive.php # 语言切换器示例
+│       ├── Attribute/               # Live 组件 Attribute
+│       │   ├── State.php
+│       │   ├── Prop.php
+│       │   ├── Computed.php
+│       │   ├── LiveAction.php
+│       │   ├── LiveListener.php
+│       │   ├── LivePoll.php
+│       │   ├── LiveSse.php
+│       │   ├── LiveStream.php
+│       │   ├── Persistent.php
+│       │   ├── Session.php
+│       │   ├── Cookie.php
+│       │   └── Rule.php
+│       ├── Concerns/                # LiveComponent Trait
+│       │   ├── HasState.php         # 状态序列化/反序列化
+│       │   ├── HasProperties.php    # 属性注入/反射/过滤
+│       │   ├── HasActions.php       # Action 注册/调用
+│       │   └── HasOperations.php    # 操作队列/UX 辅助
+│       └── Persistent/              # 持久化驱动
+│           ├── RedisDriver.php
+│           └── ...
 ├── Events/              # 事件系统
 │   └── Hook.php
 ├── Config/              # 配置管理
@@ -128,25 +155,29 @@ src/
 │   └── LogManager.php
 ├── Support/             # 支持
 │   └── helpers.php      # 全局辅助函数
-└── Lifecycle/           # 生命周期
-    └── LifecycleManager.php
+├── Lifecycle/           # 生命周期
+│   └── LifecycleManager.php
+└── statics/             # 前端资源
+    ├── y-live/          # Live 前端引擎
+    ├── y-directive/     # 响应式指令系统
+    └── y-ux/            # UX 组件库
 ```
 
 ### 2.2 请求处理流程
 
 ```
 Request → Kernel → Router (Route Cache) → Middleware → Controller/Action → Response
-                ↓
-          Auth Check
-                ↓
-          LiveComponent Action
+                 ↓
+           Auth Check
+                 ↓
+           LiveRequestHandler → LiveComponent Action
 ```
 
 流程说明：
 1. `Request` 进入 `Kernel`
 2. `Kernel` 调用 `Router` 匹配路由（生产环境优先使用**路由缓存**）
 3. 经过 `Middleware` 链（全局 → 路由组 → 方法）
-4. 若匹配到 `LiveComponent`，触发 `Auth Check` → `LiveComponent Action`
+4. 若匹配到 `LiveComponent`，触发 `Auth Check` → `LiveRequestHandler` → `LiveComponent Action`
 5. 否则执行普通 `Controller/Action`，返回 `Response`
 
 > **路由缓存**: 生产环境下框架会缓存编译后的路由表（仅缓存 Attribute 路由），避免每次请求都重新解析路由定义。`register_route()` 传入的闭包路由不会进入缓存。
@@ -581,14 +612,16 @@ use Framework\Component\Live\LiveComponent;
 
 class Counter extends LiveComponent
 {
+    #[State]
     public int $count = 0;
 
-    public function increment()
+    #[LiveAction]
+    public function increment(): void
     {
         $this->count++;
     }
 
-    public function render()
+    public function render(): Element
     {
         return Element::make('div')
             ->class('counter')
@@ -596,10 +629,21 @@ class Counter extends LiveComponent
                 Element::make('span')
                     ->bindText('count')  // 双向绑定
                     ->text($this->count),
-                
+
+                // 方式 1: 新格式 data-live-action:click="increment"
                 Element::make('button')
-                    ->liveAction('increment')  // 点击调用方法
+                    ->liveAction('increment')
                     ->text('+1'),
+
+                // 方式 2: 指定事件类型（生成 data-live-action:input="search"）
+                Element::make('input')
+                    ->liveAction('search', 'input')
+                    ->attr('type', 'text'),
+
+                // 方式 3: 兼容旧格式（生成 data-action + data-action-event）
+                Element::make('button')
+                    ->liveAction('save', 'click', legacyAttrs: true)
+                    ->text('保存'),
             ]);
     }
 }
@@ -614,10 +658,31 @@ Element::make('input')
     ->attr('type', 'text')
     ->placeholder('用户名');
 
-// 事件绑定
+// 事件绑定 — 新格式：data-live-action:eventType
+Element::make('button')
+    ->liveAction('save')  // 生成 data-live-action:click="save"
+    ->text('保存');
+
+// 事件绑定 — 指定事件类型
+Element::make('button')
+    ->liveAction('search', 'input')  // 生成 data-live-action:input="search"
+    ->text('搜索');
+
+// 参数传递 — 支持 JSON 或表达式
+// JSON 格式（自动检测）
+Element::make('button')
+    ->liveParams(['id' => 123])  // data-live-action-params='{"id":123}'
+    ->text('提交');
+
+// 表达式格式（前端状态求值）
+Element::make('button')
+    ->liveParams("{count: count + 1, id: item.id}")  // 前端实时求值
+    ->text('提交');
+
+// 禁用条件 — data-live-disabled
 Element::make('button')
     ->liveAction('save')
-    ->liveParams(['id' => 123])  // 传递参数
+    ->liveDisabled('count === 0')  // 当 count === 0 时禁用
     ->text('保存');
 
 // 分片更新
@@ -1053,385 +1118,42 @@ class DeleteAction extends LiveComponent
 }
 ```
 
----
+### 8.15 Live 架构 — `LiveRequestHandler`
 
-## 9. 服务容器
+Live 组件的请求处理由 `LiveRequestHandler` 统一调度，包含 4 个路由端点：
 
-### 9.1 绑定与解析
+| 端点 | 方法 | 用途 |
+|------|------|------|
+| `/live/update` | `POST` | 常规 Action 调用，返回 JSON 响应 |
+| `/live/stream` | `POST` | 流式 Action，返回 NDJSON/SSE 流 |
+| `/live/navigate` | `POST` | SPA 导航，返回目标页面 HTML 片段 |
+| `/live/intl` | `POST` | 国际化翻译查询 |
 
-```php
-$container = app();
+**前端指令格式**：
 
-// 绑定接口到实现
-$container->bind('mailer', function ($container) {
-    return new SmtpMailer();
-});
+```html
+<!-- 新格式：data-live-action:eventType -->
+<button data-live-action:click="save">保存</button>
+<input data-live-action:input="search" type="text">
 
-// 单例绑定
-$container->singleton('config', function () {
-    return new ConfigManager();
-});
+<!-- 参数支持 JSON 或表达式 -->
+<button data-live-action-params="{count: count + 1}">提交</button>
 
-// 解析
-$mailer = $container->make('mailer');
-$config = $container->make('config');
+<!-- 禁用条件 -->
+<button data-live-disabled="count === 0">提交</button>
 
-// 自动解析（推荐）
-class UserController
-{
-    public function __construct(
-        private Validator $validator,
-        private AuthManager $auth
-    ) {}
-}
-// 依赖自动注入
+<!-- 兼容旧格式 -->
+<button data-action="save" data-action-event="click">保存</button>
 ```
 
-### 9.2 全局访问
-
-```php
-// 获取容器实例
-$container = app();
-
-// 解析服务
-$service = app('service-name');
-
-// 检查绑定
-if (app()->bound('mailer')) {
-    // ...
-}
-```
-
----
-
-## 10. 事件系统
-
-### 10.1 ActionHook
-
-```php
-use Framework\Events\Hook;
-
-// 注册监听器
-Hook::addAction('user.registered', function ($user) {
-    Mail::send('welcome', ['user' => $user]);
-});
-
-// 触发事件
-Hook::fire('user.registered', $user);
-
-// 过滤器
-$name = Hook::filter('title', 'Original Title');
-```
-
-### 10.2 全局辅助函数
-
-```php
-// 注册钩子
-hook('user.registered', function ($user) {
-    // ...
-}, priority: 10, acceptedArgs: 1);
-
-// 触发事件
-fire('user.registered', $user);
-
-// 过滤值
-$title = filter('title', 'Original', $context);
-```
-
----
-
-## 11. 会话与 Cookie
-
-### 11.1 Session
-
-```php
-use Framework\Http\Session;
-
-// 启动会话
-$session = app(Session::class);
-$session->start();
-
-// 读写数据
-$session->set('user_id', 123);
-$userId = $session->get('user_id');
-$userId = $session->get('user_id', 0);  // 默认值
-
-// 检查
-if ($session->has('user_id')) {
-    // ...
-}
-
-// 删除
-$session->remove('user_id');
-$session->flush();  // 清空所有
-
-// CSRF Token
-$token = $session->csrfToken();
-$session->regenerateToken();  // 刷新
-$session->regenerate();  // 刷新并生成新 ID
-```
-
-### 11.2 Cookie
-
-```php
-use Framework\Http\Cookie;
-
-// 设置 Cookie
-Cookie::set('theme', 'dark', minutes: 360);  // 1 小时
-Cookie::forever('remember_token', $token);   // 永久
-
-// 获取 Cookie
-$value = Cookie::get('theme', 'light');  // 默认值
-
-// 删除
-Cookie::forget('theme');
-```
-
----
-
-## 12. 日志系统
-
-### 12.1 基础使用
-
-```php
-use Framework\Log\LogManager;
-
-$log = app(LogManager::class);
-
-$log->info('User logged in', ['user_id' => 123]);
-$log->error('Database connection failed', ['error' => $e->getMessage()]);
-$log->warning('High memory usage', ['memory' => '80%']);
-$log->debug('Query executed', ['sql' => $sql]);
-```
-
-### 12.2 PSR-3 兼容
-
-```php
-// 符合 PSR-3 日志接口
-$log->emergency('System down');
-$log->alert('Database down');
-$log->critical('Critical error');
-$log->notice('Normal but significant');
-```
-
----
-
-## 13. 配置管理
-
-### 13.1 ConfigManager
-
-```php
-use Framework\Config\ConfigManager;
-
-$config = app(ConfigManager::class);
-
-// 读取配置
-$debug = $config->get('app.debug', false);
-$timezone = $config->get('app.timezone', 'UTC');
-
-// 数组路径
-$dbHost = $config->get('database.connections.mysql.host');
-
-// 设置配置
-$config->set('app.debug', true);
-
-// 加载配置数组
-$config->load(['app' => ['name' => 'MyApp']]);
-```
-
-### 13.2 全局函数
-
-```php
-// 在 Support/helpers.php 中定义
-$value = config('app.name');
-$value = config('database.host', 'localhost');  // 默认值
-```
-
----
-
-## 14. 全局辅助函数
-
-### 14.1 Support/helpers.php
-
-```php
-// 获取容器实例
-$container = app();
-
-// 获取配置值
-$value = config('app.name', 'default');
-
-// 生成 URL
-$url = url('/posts/1');
-
-// 视图辅助
-$html = view('posts.index', ['data' => $data]);
-
-// 响应辅助
-return response()->json(['status' => 'ok']);
-return response()->redirect('/dashboard');
-return response()->download('file.pdf');
-```
-
-### 14.2 Lifecycle/helpers.php
-
-```php
-// 事件钩子
-hook('event.name', $callback, $priority = 10, $acceptedArgs = 1);
-fire('event.name', ...$args);
-$filterValue = filter('filter.name', $value, ...$args);
-
-// 路由注册（闭包路由无法被缓存，仅用于快速原型）
-register_route([
-    'get' => '/path',
-    'uses' => function () { return 'hello'; }
-]);
-
-// 组件注册
-register_component([
-    'name' => 'counter',
-    'class' => Counter::class
-]);
-
-// 服务注册
-register_service('cache', CacheManager::class, singleton: true);
-```
-
----
-
-## 15. 中间件
-
-### 15.1 创建中间件
-
-```php
-namespace App\Middleware;
-
-use Framework\Http\Request;
-use Framework\Http\Response;
-
-class AuthMiddleware
-{
-    public function handle(Request $request, Closure $next): Response
-    {
-        if (!auth()->check()) {
-            return response()->redirect('/login');
-        }
-        
-        return $next($request);
-    }
-}
-```
-
-### 15.2 使用中间件
-
-```php
-// Attribute 方式
-#[Middleware(AuthMiddleware::class)]
-class AdminController { }
-
-// 带参数
-#[Middleware(ThrottleMiddleware::class, params: ['max' => 60])]
-
-// 指定优先级
-#[Middleware(LogMiddleware::class, priority: -10)]
-
-// 限制应用范围
-#[Middleware(AuthMiddleware::class, only: ['store', 'update'])]
-#[Middleware(AuthMiddleware::class, except: ['index', 'show'])]
-```
-
----
-
-## 16. 服务提供者
-
-### 16.1 创建服务提供者
-
-```php
-namespace App\Providers;
-
-use Framework\Foundation\ServiceProvider;
-
-class AppServiceProvider extends ServiceProvider
-{
-    /**
-     * 注册服务
-     */
-    public function register(): void
-    {
-        $this->app->bind('mailer', function ($app) {
-            return new SmtpMailer();
-        });
-    }
-
-    /**
-     * 引导服务（所有服务已注册后调用）
-     */
-    public function boot(): void
-    {
-        // 注册视图组件、监听事件等
-    }
-}
-```
-
-### 16.2 注册服务提供者
-
-```php
-// 在 Application 初始化时注册
-$app = new Application(__DIR__);
-$app->register(AppServiceProvider::class);
-$app->register(AuthServiceProvider::class);
-$app->run();
-```
-
----
-
-## 附录
-
-### A. 常用 Class 速查
-
-| Class | 命名空间 | 用途 |
-|-------|----------|------|
-| Application | `Framework\Foundation` | 应用入口 |
-| Container | `Framework\Foundation` | 服务容器 |
-| Kernel | `Framework\Foundation` | HTTP 内核 |
-| Router | `Framework\Routing` | 路由管理 |
-| Model | `Framework\Database` | 数据模型 |
-| QueryBuilder | `Framework\Database` | 查询构造器 |
-| AuthManager | `Framework\Auth` | 认证管理器 |
-| Validator | `Framework\Validation` | 数据验证 |
-| Session | `Framework\Http` | 会话管理 |
-| Cookie | `Framework\Http` | Cookie 管理 |
-| Request | `Framework\Http` | HTTP 请求 |
-| Response | `Framework\Http` | HTTP 响应 |
-| Element | `Framework\View\Base` | HTML 元素 |
-| Document | `Framework\View\Document` | HTML 文档 |
-| LiveComponent | `Framework\Component\Live` | 实时组件 |
-| Hook | `Framework\Events` | 事件钩子 |
-| ConfigManager | `Framework\Config` | 配置管理 |
-| LogManager | `Framework\Log` | 日志管理 |
-
-### B. Attribute 速查
-
-| Attribute | 目标 | 用途 |
-|-----------|------|------|
-| `#[Route]` | 类/方法 | 定义路由 |
-| `#[RouteGroup]` | 类 | 路由分组 |
-| `#[Middleware]` | 类/方法 | 注册中间件 |
-| `#[State]` | LiveComponent 属性 | 暴露为响应式状态，前端可修改，跳过 checksum |
-| `#[Prop]` | LiveComponent 属性 | 从父组件传值，前端只读，参与 checksum |
-| `#[Session]` | LiveComponent 属性 | 自动持久化到 Session，参与 checksum |
-| `#[Cookie]` | LiveComponent 属性 | 自动持久化到 Cookie，参与 checksum |
-| `#[Computed]` | LiveComponent 方法 | 缓存计算结果 |
-| `#[LiveAction]` | LiveComponent 方法 | 暴露为前端可调用的动作 |
-| `#[LiveListener]` | LiveComponent 方法 | 监听浏览器事件 |
-
-### C. 最佳实践
-
-1. **路由优先**：使用 Attribute 路由，将路由定义与控制器紧耦合
-2. **组件驱动**：优先使用 Element 和 LiveComponent 构建 UI
-3. **依赖注入**：通过构造函数注入服务，避免全局状态
-4. **XSS 防护**：使用 `text()` 自动转义，避免使用 `raw()`
-5. **会话安全**：登录时调用 `regenerate()` 防止会话固定攻击
-6. **配置管理**：敏感配置使用环境变量，通过 `.env` 文件管理
+**LiveComponent Trait 拆分**：
+
+| Trait | 职责 |
+|-------|------|
+| `HasState` | 状态序列化/反序列化、checksum 校验、签名 |
+| `HasProperties` | 属性注入、反射过滤、前端数据填充 |
+| `HasActions` | Action 注册、调用、参数类型转换、事件监听 |
+| `HasOperations` | 操作队列、redirect/toast/modal/loading 等 |
 
 ---
 

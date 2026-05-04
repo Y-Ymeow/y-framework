@@ -711,48 +711,61 @@ class Element
     }
 
     /**
-     * LiveComponent Action 绑定（data-action）
+     * LiveComponent Action 绑定（data-live-action / data-action）
      *
-     * 触发事件时调用 LiveComponent 的指定方法
+     * 触发事件时调用 LiveComponent 的指定方法。
+     * 支持三种格式：
+     * 1. ->liveAction('save')                    → data-live-action:click="save"
+     * 2. ->liveAction('save', 'input')           → data-live-action:input="save"
+     * 3. ->liveAction('search', 'input', true)   → 兼容旧格式 data-action + data-action-event
      *
-     * @view-since 1.0.0
      * @param string $action 方法名
      * @param string $event 事件类型（默认 click）
+     * @param bool $legacyAttrs 使用旧的 data-action / data-action-event 属性名
      * @return static
-     *
-     * @view-example
-     * Element::make('button')
-     *     ->liveAction('save')
-     *     ->text('保存');
-     * // 点击按钮调用 LiveComponent::save()
-     *
-     * Element::make('input')
-     *     ->liveAction('search', 'input')
-     *     ->attr('type', 'text');
-     * // 输入时实时调用 search()
-     * @view-example-end
      */
-    public function liveAction(string $action, string $event = 'click'): static
+    public function liveAction(string $action, string $event = 'click', bool $legacyAttrs = false): static
     {
-        $this->attrs['data-action'] = $action;
-        if ($event !== 'click') {
-            $this->attrs['data-action-event'] = $event;
+        if ($legacyAttrs) {
+            $this->attrs['data-action'] = $action;
+            if ($event !== 'click') {
+                $this->attrs['data-action-event'] = $event;
+            }
+        } elseif ($event === 'click') {
+            $this->attrs['data-live-action'] = $action;
+        } else {
+            $this->attrs['data-live-action:' . $event] = $action;
         }
         return $this;
     }
 
     /**
-     * LiveComponent Action 参数（data-action-params）
+     * LiveComponent Action 参数（data-live-action-params / data-action-params）
      *
-     * 传递额外参数给 Action 方法
+     * 传递额外参数给 Action 方法。支持 JSON 或表达式字符串。
      *
-     * @view-since 1.0.0
-     * @param string|array $params 参数值或参数数组
+     * @param string|array $params 参数值、参数数组、或表达式字符串（如 '{count: count + 1}'）
+     * @param bool $legacyAttrs 使用旧的 data-action-params 属性名
      * @return static
      */
-    public function liveParams(string|array $params): static
+    public function liveParams(string|array $params, bool $legacyAttrs = false): static
     {
-        $this->attrs['data-action-params'] = is_array($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
+        $attr = $legacyAttrs ? 'data-action-params' : 'data-live-action-params';
+        $this->attrs[$attr] = is_array($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
+        return $this;
+    }
+
+    /**
+     * LiveComponent Action 禁用条件（data-live-disabled）
+     *
+     * 当表达式求值为真时，阻止 Action 触发。
+     *
+     * @param string $expr 表达式（如 'count === 0'）
+     * @return static
+     */
+    public function liveDisabled(string $expr): static
+    {
+        $this->attrs['data-live-disabled'] = $expr;
         return $this;
     }
 
