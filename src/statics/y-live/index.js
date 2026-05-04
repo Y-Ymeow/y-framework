@@ -7,6 +7,7 @@ import { bindNavigateLinks, navigate } from './navigate.js';
 import { executeOperation, executeOperations } from './operations.js';
 import { initBadge } from './badge.js';
 import { initIntl, switchLocale, getLocale, getTranslation } from './intl.js';
+import { initPersistent } from './persistent.js';
 import Poll from './poll.js';
 import './sse-live.js';
 
@@ -91,6 +92,14 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
             if (update.patches && targetEl._y_state) {
                 targetEl.setAttribute('data-state', JSON.stringify(update.patches));
                 targetEl._y_state.merge(update.patches);
+
+                // 触发持久化保存事件
+                window.dispatchEvent(new CustomEvent('y:component-updated', {
+                    detail: {
+                        componentId: update.componentId,
+                        patches: update.patches,
+                    }
+                }));
             }
 
             if (update.fragments && update.fragments.length > 0) {
@@ -190,6 +199,7 @@ function boot(root = document) {
     }
 
     initIntl();
+    initPersistent();
 
     Poll.autoInit(root);
 }

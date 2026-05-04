@@ -75,7 +75,7 @@ abstract class LiveComponent
     }
 
     /**
-     * 同步具有 #[Session] 或 #[Cookie] 属性的字段
+     * 同步具有 #[Session]、#[Cookie] 或 #[Persistent] 属性的字段
      */
     protected function syncPersistentAttributes(): void
     {
@@ -102,6 +102,16 @@ abstract class LiveComponent
                 if ($value !== null) {
                     // 尝试反序列化（简单处理标量）
                     $prop->setValue($this, $this->castParam($value, $prop->getType()));
+                }
+            }
+
+            // 处理 Persistent（仅后端驱动：database/cache/redis）
+            $persistentAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
+            if (!empty($persistentAttrs)) {
+                $config = $persistentAttrs[0]->newInstance();
+                // 前端驱动（local/session）由 JS 处理，不在服务端恢复
+                if (in_array($config->driver, ['database', 'cache', 'redis'], true)) {
+                    \Framework\Component\Live\Persistent\PersistentStateManager::restorePersistentProperty($this, $prop->getName());
                 }
             }
         }
@@ -200,6 +210,16 @@ abstract class LiveComponent
             // Cookie 的实际设置需要通过 Response，这里我们先简单模拟或通过 header 设置
             // 注意：这在 AJAX 请求中可能需要特殊处理
             setcookie($key, (string)$value, time() + ($attr->minutes * 60), $attr->path ?? '/', $attr->domain ?? '', $attr->secure ?? false, $attr->httpOnly);
+        }
+
+        // 处理 Persistent 保存（仅后端驱动：database/cache/redis）
+        $persistentAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
+        if (!empty($persistentAttrs)) {
+            $config = $persistentAttrs[0]->newInstance();
+            // 前端驱动（local/session）由 JS 处理，不在服务端保存
+            if (in_array($config->driver, ['database', 'cache', 'redis'], true)) {
+                \Framework\Component\Live\Persistent\PersistentStateManager::syncPersistentProperty($this, $name);
+            }
         }
     }
 
@@ -308,6 +328,12 @@ abstract class LiveComponent
             $content->attr('data-poll', json_encode($polls, JSON_UNESCAPED_UNICODE));
         }
 
+        // 注入持久化属性元数据
+        $persistentMeta = $this->getPersistentMeta();
+        if (!empty($persistentMeta)) {
+            $content->attr('data-persistent', json_encode($persistentMeta, JSON_UNESCAPED_UNICODE));
+        }
+
         return $content->render($onlyFragment);
     }
 
@@ -373,6 +399,32 @@ abstract class LiveComponent
             }
         }
         return $polls;
+    }
+
+    /**
+     * 获取具有 #[Persistent] 属性的元数据
+     *
+     * 用于前端 JS 知道哪些属性需要持久化
+     *
+     * @return array<string, array{driver: string, ttl: int|null}>
+     */
+    public function getPersistentMeta(): array
+    {
+        $meta = [];
+        $ref = new \ReflectionClass($this);
+
+        foreach ($ref->getProperties() as $prop) {
+            $attrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
+            if (!empty($attrs)) {
+                $config = $attrs[0]->newInstance();
+                $meta[$prop->getName()] = [
+                    'driver' => $config->driver,
+                    'ttl' => $config->ttl,
+                ];
+            }
+        }
+
+        return $meta;
     }
 
     public function __toString(): string
