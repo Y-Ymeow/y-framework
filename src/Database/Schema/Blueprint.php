@@ -36,6 +36,18 @@ class Blueprint
         return $this->id($column);
     }
 
+    public function increments(string $column): self
+    {
+        $this->columns[$column] = [
+            'type' => 'int',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'nullable' => false,
+        ];
+        $this->primaryKey = $column;
+        return $this;
+    }
+
     public function uuid(string $column): self
     {
         $this->columns[$column] = [
@@ -65,10 +77,28 @@ class Blueprint
         return $this;
     }
 
+    public function mediumText(string $column): self
+    {
+        $this->columns[$column] = [
+            'type' => 'mediumtext',
+            'nullable' => true,
+        ];
+        return $this;
+    }
+
     public function longText(string $column): self
     {
         $this->columns[$column] = [
             'type' => 'longtext',
+            'nullable' => true,
+        ];
+        return $this;
+    }
+
+    public function binary(string $column): self
+    {
+        $this->columns[$column] = [
+            'type' => 'blob',
             'nullable' => true,
         ];
         return $this;
@@ -84,6 +114,11 @@ class Blueprint
         return $this;
     }
 
+    public function unsignedInteger(string $column): self
+    {
+        return $this->integer($column, true);
+    }
+
     public function bigInteger(string $column, bool $unsigned = false): self
     {
         $this->columns[$column] = [
@@ -94,6 +129,11 @@ class Blueprint
         return $this;
     }
 
+    public function unsignedBigInteger(string $column): self
+    {
+        return $this->bigInteger($column, true);
+    }
+
     public function tinyInteger(string $column, bool $unsigned = false): self
     {
         $this->columns[$column] = [
@@ -102,6 +142,41 @@ class Blueprint
             'nullable' => false,
         ];
         return $this;
+    }
+
+    public function unsignedTinyInteger(string $column): self
+    {
+        return $this->tinyInteger($column, true);
+    }
+
+    public function smallInteger(string $column, bool $unsigned = false): self
+    {
+        $this->columns[$column] = [
+            'type' => 'smallint',
+            'unsigned' => $unsigned,
+            'nullable' => false,
+        ];
+        return $this;
+    }
+
+    public function unsignedSmallInteger(string $column): self
+    {
+        return $this->smallInteger($column, true);
+    }
+
+    public function mediumInteger(string $column, bool $unsigned = false): self
+    {
+        $this->columns[$column] = [
+            'type' => 'mediumint',
+            'unsigned' => $unsigned,
+            'nullable' => false,
+        ];
+        return $this;
+    }
+
+    public function unsignedMediumInteger(string $column): self
+    {
+        return $this->mediumInteger($column, true);
     }
 
     public function boolean(string $column): self
@@ -144,6 +219,34 @@ class Blueprint
             'precision' => $precision,
             'scale' => $scale,
             'nullable' => false,
+        ];
+        return $this;
+    }
+
+    public function char(string $column, int $length = 255): self
+    {
+        $this->columns[$column] = [
+            'type' => 'char',
+            'length' => $length,
+            'nullable' => false,
+        ];
+        return $this;
+    }
+
+    public function time(string $column): self
+    {
+        $this->columns[$column] = [
+            'type' => 'time',
+            'nullable' => true,
+        ];
+        return $this;
+    }
+
+    public function year(string $column): self
+    {
+        $this->columns[$column] = [
+            'type' => 'year',
+            'nullable' => true,
         ];
         return $this;
     }
@@ -244,35 +347,82 @@ class Blueprint
         return $this;
     }
 
-    public function unique(string $column = ''): self
+    public function comment(string $value): self
     {
-        $column = $column ?: array_key_last($this->columns);
-        if ($column) {
-            $this->indexes[] = [
-                'type' => 'unique',
-                'columns' => [$column],
-                'name' => "idx_{$this->table}_{$column}_unique",
-            ];
+        $lastColumn = array_key_last($this->columns);
+        if ($lastColumn) {
+            $this->columns[$lastColumn]['comment'] = $value;
         }
         return $this;
     }
 
-    public function index(string $column = ''): self
+    public function after(string $column): self
     {
-        $column = $column ?: array_key_last($this->columns);
-        if ($column) {
-            $this->indexes[] = [
-                'type' => 'index',
-                'columns' => [$column],
-                'name' => "idx_{$this->table}_{$column}",
-            ];
+        $lastColumn = array_key_last($this->columns);
+        if ($lastColumn) {
+            $this->columns[$lastColumn]['after'] = $column;
         }
+        return $this;
+    }
+
+    public function useCurrent(): self
+    {
+        $lastColumn = array_key_last($this->columns);
+        if ($lastColumn) {
+            $this->columns[$lastColumn]['default'] = 'CURRENT_TIMESTAMP';
+        }
+        return $this;
+    }
+
+    public function unique(string|array $columns = '', ?string $name = null): self
+    {
+        if (is_string($columns) && $columns === '') {
+            $columns = [array_key_last($this->columns)];
+        } elseif (is_string($columns)) {
+            $columns = [$columns];
+        }
+        $name ??= "idx_{$this->table}_" . implode('_', $columns) . '_unique';
+        $this->indexes[] = [
+            'type' => 'unique',
+            'columns' => $columns,
+            'name' => $name,
+        ];
+        return $this;
+    }
+
+    public function index(string|array $columns = '', ?string $name = null): self
+    {
+        if (is_string($columns) && $columns === '') {
+            $columns = [array_key_last($this->columns)];
+        } elseif (is_string($columns)) {
+            $columns = [$columns];
+        }
+        $name ??= "idx_{$this->table}_" . implode('_', $columns);
+        $this->indexes[] = [
+            'type' => 'index',
+            'columns' => $columns,
+            'name' => $name,
+        ];
         return $this;
     }
 
     public function foreign(string $column): ForeignKeyBuilder
     {
         return new ForeignKeyBuilder($this, $column);
+    }
+
+    public function foreignId(string $column): ForeignIdColumnDefinition
+    {
+        $this->unsignedBigInteger($column);
+        return new ForeignIdColumnDefinition($this, $column);
+    }
+
+    public function morphs(string $name): self
+    {
+        $this->string("{$name}_type");
+        $this->unsignedBigInteger("{$name}_id");
+        $this->index(["{$name}_type", "{$name}_id"]);
+        return $this;
     }
 
     public function addForeignKey(string $column, string $references, string $on, string $onDelete = 'CASCADE', string $onUpdate = 'CASCADE'): self
@@ -290,6 +440,44 @@ class Blueprint
     public function rememberToken(): self
     {
         $this->string('remember_token', 100)->nullable();
+        return $this;
+    }
+
+    public function primary(array|string $columns = []): self
+    {
+        if (is_string($columns)) {
+            $columns = [$columns];
+        }
+        $this->primaryKey = $columns[0] ?? null;
+        return $this;
+    }
+
+    public function dropColumn(string|array $columns): self
+    {
+        foreach ((array) $columns as $col) {
+            unset($this->columns[$col]);
+        }
+        return $this;
+    }
+
+    public function dropIndex(string|array $columns): self
+    {
+        $names = is_array($columns) ? $columns : [$columns];
+        $this->indexes = array_filter($this->indexes, fn ($idx) => !in_array($idx['name'], $names));
+        return $this;
+    }
+
+    public function dropUnique(string|array $columns): self
+    {
+        $names = is_array($columns) ? $columns : [$columns];
+        $this->indexes = array_filter($this->indexes, fn ($idx) => !in_array($idx['name'], $names));
+        return $this;
+    }
+
+    public function dropForeign(string|array $columns): self
+    {
+        $cols = is_array($columns) ? $columns : [$columns];
+        $this->foreignKeys = array_filter($this->foreignKeys, fn ($fk) => !in_array($fk['column'], $cols));
         return $this;
     }
 
@@ -319,8 +507,8 @@ class Blueprint
         if ($this->driver === 'sqlite') {
             foreach ($this->indexes as $index) {
                 if ($index['type'] === 'unique') {
-                    $col = $index['columns'][0];
-                    $parts[] = "  UNIQUE (\"{$col}\")";
+                    $cols = implode('", "', $index['columns']);
+                    $parts[] = "  UNIQUE (\"{$cols}\")";
                 }
             }
 
@@ -361,14 +549,14 @@ class Blueprint
             $sql .= match ($column['type']) {
                 'varchar' => "VARCHAR({$column['length']})",
                 'char' => "CHAR({$column['length']})",
-                'text', 'longtext' => 'TEXT',
-                'int', 'tinyint', 'bigint' => 'INTEGER',
+                'text', 'longtext', 'mediumtext' => 'TEXT',
+                'int', 'tinyint', 'bigint', 'smallint', 'mediumint' => 'INTEGER',
                 'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
                 'float' => "FLOAT({$column['precision']}, {$column['scale']})",
                 'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
-                'date' => 'TEXT',
+                'date', 'time', 'year' => 'TEXT',
                 'datetime', 'timestamp' => 'TEXT',
-                'json' => 'TEXT',
+                'json', 'blob' => 'BLOB',
                 'enum', 'set' => "TEXT",
                 default => strtoupper($column['type']),
             };
@@ -377,17 +565,23 @@ class Blueprint
                 'varchar' => "VARCHAR({$column['length']})",
                 'char' => "CHAR({$column['length']})",
                 'text' => 'TEXT',
+                'mediumtext' => 'MEDIUMTEXT',
                 'longtext' => 'LONGTEXT',
                 'int' => ($column['unsigned'] ?? false) ? 'INT UNSIGNED' : 'INT',
                 'tinyint' => ($column['unsigned'] ?? false) ? 'TINYINT UNSIGNED' : 'TINYINT',
+                'smallint' => ($column['unsigned'] ?? false) ? 'SMALLINT UNSIGNED' : 'SMALLINT',
+                'mediumint' => ($column['unsigned'] ?? false) ? 'MEDIUMINT UNSIGNED' : 'MEDIUMINT',
                 'bigint' => ($column['unsigned'] ?? false) ? 'BIGINT UNSIGNED' : 'BIGINT',
                 'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
                 'float' => "FLOAT({$column['precision']}, {$column['scale']})",
                 'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
                 'date' => 'DATE',
+                'time' => 'TIME',
+                'year' => 'YEAR',
                 'datetime' => 'DATETIME',
                 'timestamp' => 'TIMESTAMP',
                 'json' => 'JSON',
+                'blob' => 'BLOB',
                 'enum' => "ENUM('" . implode("', '", $column['values']) . "')",
                 'set' => "SET('" . implode("', '", $column['values']) . "')",
                 default => strtoupper($column['type']),
@@ -414,11 +608,15 @@ class Blueprint
                 $sql .= ' DEFAULT ' . ($default ? 1 : 0);
             } elseif (is_int($default) || is_float($default)) {
                 $sql .= " DEFAULT {$default}";
-            } elseif (strtoupper($default) === 'CURRENT_TIMESTAMP') {
+            } elseif (strtoupper((string)$default) === 'CURRENT_TIMESTAMP') {
                 $sql .= ' DEFAULT CURRENT_TIMESTAMP';
             } else {
                 $sql .= " DEFAULT '{$default}'";
             }
+        }
+
+        if (isset($column['comment']) && $this->driver !== 'sqlite') {
+            $sql .= " COMMENT '" . addslashes($column['comment']) . "'";
         }
 
         return $sql;
