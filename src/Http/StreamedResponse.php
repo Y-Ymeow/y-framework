@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Framework\Http;
 
 use Framework\Foundation\AppEnvironment;
+use Framework\Http\Response\Response;
+use Framework\Http\Response\ResponseSender;
 
 /**
  * StreamedResponse 回调式流式响应
@@ -57,6 +59,8 @@ class StreamedResponse extends Response
 
         $this->streamed = true;
 
+        (new ResponseSender())->sendHeaders($this->statusCode, $this->statusText, $this->headers);
+
         if (AppEnvironment::isWasm()) {
             ob_start();
             call_user_func($this->callback);
@@ -64,8 +68,6 @@ class StreamedResponse extends Response
             echo $this->content;
             return;
         }
-
-        $this->sendHeaders();
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Framework\Foundation;
 
 use Framework\Events\Hook;
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\Http\StreamedResponse;
 use Framework\Routing\Router;
 use Framework\Routing\SystemRoutesProvider;

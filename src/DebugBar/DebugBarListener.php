@@ -6,8 +6,8 @@ namespace Framework\DebugBar;
 
 use Framework\Component\Live\LiveEventBus;
 use Framework\Events\Hook;
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\Http\StreamedResponse;
 use Framework\Http\StreamResponse;
 use Framework\Http\SseResponse;

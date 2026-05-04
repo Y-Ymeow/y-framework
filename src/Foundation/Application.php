@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Foundation;
 
+use Framework\Http\Request\Request;
+
 class Application
 {
     private string $basePath;
@@ -30,8 +32,8 @@ class Application
         $this->container->alias(self::class, 'app');
         $this->container->instance('base_path', $this->basePath);
         $this->container->singleton(
-            \Framework\Http\Request::class,
-            fn() => \Framework\Http\Request::createFromGlobals()
+            Request::class,
+            fn() => Request::createFromGlobals()
         );
 
         // 立即加载配置，确保 Provider 注册前 config() 可用

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Framework\Component\Live;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Request;
-use Framework\Http\Response;
-use Framework\Http\Session;
+use Framework\Http\Middleware\VerifyCsrfToken;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
+use Framework\Http\Session\Session;
+use Framework\Http\Session\SessionStoreInterface;
 use Framework\Http\StreamResponse;
 use Framework\Http\SseResponse;
 use Framework\Routing\Attribute\Route;
@@ -17,12 +19,9 @@ use Framework\View\FragmentRegistry;
 #[RouteGroup('/live', name: 'live')]
 class LiveRequestHandler
 {
-    #[Route('/update', ['POST'], name: 'live.update')]
+    #[Route('/update', ['POST'], name: 'live.update', middleware: [VerifyCsrfToken::class])]
     public function handle(Request $request): Response
     {
-        $error = $this->guardCsrf($request);
-        if ($error) return $error;
-
         $params = $this->extractParams($request);
         if ($params === null) {
             return Response::json(['success' => false, 'error' => 'Missing component or action'], 400);
@@ -221,7 +220,7 @@ class LiveRequestHandler
             return null;
         }
 
-        $session = new Session();
+        $session = app()->make(Session::class);
         $csrfToken = $request->header('x-csrf-token')
             ?? $request->input('_token', '');
 

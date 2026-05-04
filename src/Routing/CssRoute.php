@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\CSS\CSSReset;
 use Framework\CSS\CSSEngine;
 use Framework\CSS\LayoutRules;
@@ -40,8 +40,8 @@ class CssRoute
 
         return new Response($css, 200, [
             'Content-Type' => 'text/css; charset=utf-8',
-            'Cache-Control' => $this->debug 
-                ? 'no-cache, no-store, must-revalidate' 
+            'Cache-Control' => $this->debug
+                ? 'no-cache, no-store, must-revalidate'
                 : 'public, max-age=31536000',
             'X-Content-Type-Options' => 'nosniff',
         ]);
@@ -166,10 +166,10 @@ class CssRoute
         $depth = 0;
         $current = '';
         $length = strlen($expr);
-        
+
         for ($i = 0; $i < $length; $i++) {
             $char = $expr[$i];
-            
+
             if ($char === '[') {
                 if ($depth > 0) {
                     $current .= $char;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar;
 
-use Framework\Http\Request;
+use Framework\Http\Request\Request;
 
 class RouteCollector implements CollectorInterface
 {
@@ -32,7 +32,7 @@ class RouteCollector implements CollectorInterface
     public function collect(): void
     {
         $request = \Framework\Foundation\Application::getInstance()?->make(Request::class);
-        
+
         if ($request) {
             $route = $request->route();
             $this->data = [

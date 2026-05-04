@@ -5,24 +5,28 @@ declare(strict_types=1);
 namespace Framework\Http\Middleware;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Request;
-use Framework\Http\Response;
-use Framework\Http\Session;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
+use Framework\Http\Session\Session;
 
-class VerifyCsrfToken
+class VerifyCsrfToken implements MiddlewareInterface
 {
-    public function handle(Request $request, callable $next): Response
+    /**
+     * 无需 CSRF 保护的 HTTP 方法
+     */
+    private const INSECURE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+
+    public function handle(Request $request, callable $next, mixed ...$params): Response
     {
         if (AppEnvironment::isWasm()) {
             return $next($request);
         }
 
-        $insecureMethods = ['GET', 'HEAD', 'OPTIONS'];
-        if (in_array($request->method(), $insecureMethods, true)) {
+        if (in_array($request->method(), self::INSECURE_METHODS, true)) {
             return $next($request);
         }
 
-        $session = new Session();
+        $session = app()->make(Session::class);
         $token = $request->input('_token') ?? $request->header('X-CSRF-TOKEN', '');
 
         if (!$session->verifyToken((string) $token)) {

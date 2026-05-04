@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Framework\View\Document;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Session;
+use Framework\Http\Session\Session;
 use Framework\View\Base\Element;
 
 /**
@@ -277,7 +277,7 @@ class Document
     private function renderFull(): string
     {
         $this->assets->core();
-        $session = new Session();
+        $session = session();
         $csrfToken = $session->token();
 
         $html = '<!DOCTYPE html>';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Framework\Http;
 
 use Framework\Foundation\AppEnvironment;
+use Framework\Http\Response\ResponseSender;
 
 /**
  * SseResponse 长连接 SSE 响应
@@ -147,7 +148,7 @@ class SseResponse extends Response
             return;
         }
 
-        $this->sendHeaders();
+        (new ResponseSender())->sendHeaders($this->statusCode, $this->statusText, $this->headers);
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();

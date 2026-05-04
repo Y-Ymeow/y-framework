@@ -125,9 +125,9 @@ function dist_css(string $entry): array
     return \Framework\Support\Asset::distCss($entry);
 }
 
-function redirect(string $url, int $status = 302): \Framework\Http\Response
+function redirect(string $url, int $status = 302): \Framework\Http\Response\Response
 {
-    return \Framework\Http\Response::redirect($url, $status);
+    return \Framework\Http\Response\Response::redirect($url, $status);
 }
 
 function route(string $name, array $parameters = [], bool $absolute = false): string
@@ -154,12 +154,12 @@ function route(string $name, array $parameters = [], bool $absolute = false): st
     throw new \RuntimeException("Route [{$name}] not found");
 }
 
-function session(): \Framework\Http\Session
+function session(): \Framework\Http\Session\Session
 {
-    return app()->make(\Framework\Http\Session::class);
+    return app()->make(\Framework\Http\Session\Session::class);
 }
 
-function back(): \Framework\Http\Response
+function back(): \Framework\Http\Response\Response
 {
     $referer = $_SERVER['HTTP_REFERER'] ?? '/';
     return redirect($referer);
@@ -238,9 +238,24 @@ function auth(): \Framework\Auth\AuthManager
     return $instance;
 }
 
-function app(): \Framework\Foundation\Application
+/**
+ * 获取应用实例
+ *
+ * @param string|null $name 实例名称（默认使用配置中的默认实例）
+ *
+ * @return \Framework\Foundation\Application|mixed
+ */
+function app(?string $name = null): mixed
 {
-    return $GLOBALS['app'] ?? throw new \RuntimeException('Application not initialized');
+    $app = \Framework\Foundation\Application::getInstance();
+    if ($app === null) {
+        throw new \RuntimeException("Application [{$name}] not initialized");
+    }
+
+    if ($name) {
+        return $app->make($name);
+    }
+    return $app;
 }
 
 /**

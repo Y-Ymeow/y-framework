@@ -8,7 +8,7 @@ use Framework\Component\Live\Attribute\Session as SessionAttribute;
 use Framework\Component\Live\Attribute\Cookie as CookieAttribute;
 use Framework\Component\Live\Attribute\Persistent as PersistentAttribute;
 use Framework\Component\Live\Persistent\PersistentStateManager;
-use Framework\Http\Session;
+use Framework\Http\Session\Session;
 
 /**
  * @mixin \Framework\Component\Live\LiveComponent
@@ -234,3 +234,4 @@ trait HasState
         return $meta;
     }
 }
+

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
+
 class StaticFile
 {
     private array $dirs = [];
@@ -79,7 +82,7 @@ class StaticFile
             return new Response('', 304, $headers);
         }
 
-        $stream = new StreamedResponse(function() use ($filePath) {
+        $stream = new StreamedResponse(function () use ($filePath) {
             $stream = fopen($filePath, 'rb');
 
             while (!feof($stream)) {

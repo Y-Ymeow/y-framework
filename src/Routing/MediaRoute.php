@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 
 class MediaRoute
 {

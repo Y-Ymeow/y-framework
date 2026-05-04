@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Framework\Http;
 
 use Framework\Foundation\AppEnvironment;
+use Framework\Http\Response\Response;
+use Framework\Http\Response\ResponseSender;
 use Generator;
 
 /**
@@ -164,7 +166,7 @@ class StreamResponse extends Response
             return;
         }
 
-        $this->sendHeaders();
+        (new ResponseSender())->sendHeaders($this->statusCode, $this->statusText, $this->headers);
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();

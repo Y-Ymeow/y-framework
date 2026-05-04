@@ -4,15 +4,24 @@ declare(strict_types=1);
 
 namespace Framework\Http\Middleware;
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 
-class ThrottleRequests
+class ThrottleRequests implements MiddlewareInterface
 {
     private static array $requests = [];
 
-    public function handle(Request $request, callable $next, int $maxAttempts = 60, int $decayMinutes = 1): Response
+    /**
+     * 默认限流配置：每分钟 60 次
+     */
+    private const DEFAULT_MAX_ATTEMPTS = 60;
+    private const DEFAULT_DECAY_MINUTES = 1;
+
+    public function handle(Request $request, callable $next, mixed ...$params): Response
     {
+        $maxAttempts = (int) ($params[0] ?? self::DEFAULT_MAX_ATTEMPTS);
+        $decayMinutes = (int) ($params[1] ?? self::DEFAULT_DECAY_MINUTES);
+
         $key = $request->ip();
         $now = time();
         $decaySeconds = $decayMinutes * 60;
@@ -49,3 +58,4 @@ class ThrottleRequests
         return $response;
     }
 }
+

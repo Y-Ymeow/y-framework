@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Routing;
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\Http\StreamedResponse;
 use Framework\View\Base\Element;
 
@@ -115,8 +115,7 @@ class FileDownloadRoute
         $ranges = $this->parseRangeHeader($range, $fileSize);
 
         if (empty($ranges)) {
-            return new StreamedResponse(function () {
-            }, 416, ['Content-Range' => 'bytes */' . $fileSize]);
+            return new StreamedResponse(function () {}, 416, ['Content-Range' => 'bytes */' . $fileSize]);
         }
 
         if (count($ranges) === 1) {

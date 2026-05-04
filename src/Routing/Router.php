@@ -7,8 +7,8 @@ namespace Framework\Routing;
 use Framework\Component\Live\LiveComponent;
 use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\Http\StreamedResponse;
 use Framework\Routing\Attribute as Attr;
 use Framework\Support\File;
@@ -160,7 +160,7 @@ class Router
         $attrs = $method->getAttributes(Attr\Route::class);
         foreach ($attrs as $attrRef) {
             $attr = $attrRef->newInstance();
-            
+
             $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
 
             // 应用类级别中间件的 only/except 过滤
@@ -383,7 +383,8 @@ class Router
         return $args;
     }
 
-    private function sendContent(mixed $content, int $statusCode): Response {
+    private function sendContent(mixed $content, int $statusCode): Response
+    {
         if (AppEnvironment::isWasm()) {
             return Response::wasm($content, status: $statusCode);
         }

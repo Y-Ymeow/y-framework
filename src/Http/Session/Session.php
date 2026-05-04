@@ -2,19 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Framework\Http;
+namespace Framework\Http\Session;
 
+/**
+ * Session 管理类
+ *
+ * 直接操作 PHP 原生 session，使用 $_SESSION 存储数据。
+ * 保持与旧系统 Framework\Http\Session 完全兼容的行为。
+ */
 class Session
 {
     private bool $started = false;
 
-    public function start(): void
+    private function ensureSession(): void
     {
-        if ($this->started || session_status() === PHP_SESSION_ACTIVE) return;
+        if ($this->started || session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
 
         $sessionPath = getenv('SESSION_PATH') ?: $_ENV['SESSION_PATH'] ?? null;
         if (!$sessionPath) {
-            $sessionPath = '/computer/Project/frameworks/php/storage/sessions';
+            $sessionPath = base_path('storage/sessions');
         }
         ini_set('session.save_path', $sessionPath);
 
@@ -22,39 +30,47 @@ class Session
         $this->started = true;
     }
 
+    public function start(): void
+    {
+        $this->ensureSession();
+    }
+
     public function get(string $key, mixed $default = null): mixed
     {
-        $this->start();
+        $this->ensureSession();
         return $_SESSION[$key] ?? $default;
     }
 
     public function set(string $key, mixed $value): void
     {
-        $this->start();
+        $this->ensureSession();
         $_SESSION[$key] = $value;
     }
 
     public function has(string $key): bool
     {
-        $this->start();
-        return $_SESSION ? array_key_exists($key, $_SESSION) : false;
+        $this->ensureSession();
+        if (!isset($_SESSION)) {
+            return false;
+        }
+        return array_key_exists($key, $_SESSION);
     }
 
     public function remove(string $key): void
     {
-        $this->start();
+        $this->ensureSession();
         unset($_SESSION[$key]);
     }
 
     public function flash(string $key, mixed $value): void
     {
-        $this->start();
+        $this->ensureSession();
         $_SESSION['_flash'][$key] = $value;
     }
 
     public function getFlash(string $key, mixed $default = null): mixed
     {
-        $this->start();
+        $this->ensureSession();
         $value = $_SESSION['_flash'][$key] ?? $default;
         unset($_SESSION['_flash'][$key]);
         return $value;
@@ -62,25 +78,25 @@ class Session
 
     public function hasFlash(string $key): bool
     {
-        $this->start();
+        $this->ensureSession();
         return isset($_SESSION['_flash'][$key]);
     }
 
     public function all(): array
     {
-        $this->start();
-        return $_SESSION;
+        $this->ensureSession();
+        return $_SESSION ?? [];
     }
 
     public function clear(): void
     {
-        $this->start();
+        $this->ensureSession();
         $_SESSION = [];
     }
 
     public function destroy(): void
     {
-        $this->start();
+        $this->ensureSession();
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
@@ -100,13 +116,13 @@ class Session
 
     public function regenerate(): void
     {
-        $this->start();
+        $this->ensureSession();
         session_regenerate_id(true);
     }
 
     public function getId(): string
     {
-        $this->start();
+        $this->ensureSession();
         return session_id();
     }
 
@@ -123,33 +139,19 @@ class Session
         return hash_equals($this->get('_token', ''), $token);
     }
 
-    /**
-     * 关闭 Session（释放锁）
-     *
-     * 用于长连接场景（如 SSE），避免阻塞其他请求
-     * 数据仍然保存在 $_SESSION 中可读，但不能再写入
-     */
     public function close(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
+        $this->started = false;
     }
 
-    /**
-     * 检查 Session 是否活跃
-     */
     public function isActive(): bool
     {
         return session_status() === PHP_SESSION_ACTIVE;
     }
 
-    /**
-     * 清理过期 Session 文件
-     *
-     * 建议通过定时任务调用，或在应用启动时调用
-     * 配合 cron: 0 * * * * php artisan session:gc
-     */
     public static function gc(?int $maxLifetime = null): int
     {
         $savePath = ini_get('session.save_path');
@@ -157,11 +159,14 @@ class Session
             return 0;
         }
 
-        $maxLifetime = $maxLifetime ?? (int)ini_get('session.gc_maxlifetime') ?? 1440;
+        $maxLifetime ??= (int)ini_get('session.gc_maxlifetime') ?: 1440;
         $now = time();
         $count = 0;
 
-        $files = glob($savePath . '/sess_*') ?: glob($savePath . '/*');
+        $files = glob($savePath . '/sess_*');
+        if ($files === false) {
+            $files = glob($savePath . '/*') ?: [];
+        }
         foreach ($files as $file) {
             if (is_file($file) && ($now - filemtime($file) > $maxLifetime)) {
                 @unlink($file);
