@@ -144,7 +144,7 @@ abstract class UXComponent
         }
         self::$initializedComponents[$key] = true;
 
-        AssetRegistry::getInstance()->inlineStyle($cssCode);
+        AssetRegistry::getInstance()->inlineStyle('ux:' . $this->getComponentName(), $cssCode);
     }
 
     /**

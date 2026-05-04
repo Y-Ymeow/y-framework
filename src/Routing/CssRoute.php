@@ -20,6 +20,7 @@ use Framework\CSS\TransformRules;
 use Framework\CSS\AnimationRules;
 use Framework\CSS\GradientRules;
 use Framework\CSS\UtilityRules;
+use Framework\View\Document\CssCollector;
 
 class CssRoute
 {
@@ -50,18 +51,24 @@ class CssRoute
     private function generate(): string
     {
         if (!$this->debug && is_file($this->outputPath)) {
-            return file_get_contents($this->outputPath);
+            $css = file_get_contents($this->outputPath);
+        } else {
+            $classes = $this->scanForUsedClasses();
+            $css = $this->buildCss($classes);
+
+            if (!$this->debug) {
+                $dir = dirname($this->outputPath);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                file_put_contents($this->outputPath, $css);
+            }
         }
 
-        $classes = $this->scanForUsedClasses();
-        $css = $this->buildCss($classes);
-
-        if (!$this->debug) {
-            $dir = dirname($this->outputPath);
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
-            file_put_contents($this->outputPath, $css);
+        $snippets = CssCollector::getInstance()->collect();
+        if (!empty($snippets)) {
+            $css .= "\n/* === Component CSS Snippets === */\n\n";
+            $css .= $snippets;
         }
 
         return $css;

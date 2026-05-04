@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Framework\View\Base;
 
+use Framework\View\Concerns\HasLiveDirectives;
+use Framework\View\Concerns\HasBindDirectives;
+use Framework\View\Concerns\HasVisibility;
+
 /**
  * Element — HTML 元素基类
  *
@@ -103,6 +107,10 @@ namespace Framework\View\Base;
  */
 class Element
 {
+    use HasLiveDirectives;
+    use HasBindDirectives;
+    use HasVisibility;
+
     protected string $tag;
     protected array $attrs = [];
     protected array $children = [];
@@ -222,7 +230,6 @@ class Element
      */
     public function attrs(array $attrs): static
     {
-
         $this->attrs = array_merge($this->attrs, $attrs);
         return $this;
     }
@@ -243,37 +250,6 @@ class Element
     public function data(string $key, string $value): static
     {
         $this->attrs["data-{$key}"] = $value;
-        return $this;
-    }
-
-    /**
-     * 订阅 SSE 频道（data-live-sse）
-     *
-     * 元素将自动订阅指定的 SSE 频道，接收服务器推送的消息。
-     * 当收到 `live:action` 事件时，会自动调用对应的 LiveAction。
-     *
-     * @view-since 2.0
-     * @param string ...$channels 频道名称列表
-     * @return static
-     *
-     * @view-example
-     * // 订阅单个频道
-     * Element::make('div')
-     *     ->id('dashboard')
-     *     ->dataLiveSse('dashboard')
-     *
-     * // 订阅多个频道
-     * Element::make('div')
-     *     ->dataLiveSse('notifications', 'orders', 'system')
-     *
-     * // 后端推送更新
-     * SseHub::liveAction('dashboard', 'refreshData');
-     * // 前端自动调用 dashboard 组件的 refreshData() 方法
-     * @view-example-end
-     */
-    public function dataLiveSse(string ...$channels): static
-    {
-        $this->attrs['data-live-sse'] = implode(',', $channels);
         return $this;
     }
 
@@ -368,50 +344,6 @@ class Element
     }
 
     /**
-     * 设置 data-state 状态数据（JSON 编码）
-     *
-     * 用于在元素上存储结构化状态信息
-     *
-     * @view-since 1.0.0
-     * @param array $data 状态数据
-     * @return static
-     */
-    public function state(array $data): static
-    {
-        $this->attrs['data-state'] = json_encode($data, JSON_UNESCAPED_UNICODE);
-        return $this;
-    }
-
-    /**
-     * 快捷设置元素可见性
-     *
-     * @param bool $visible 是否可见
-     * @return static
-     */
-    public function visible(bool $visible = true): static
-    {
-        if ($visible) {
-            unset($this->attrs['style']);
-            $this->attrs['data-visible'] = 'true';
-        } else {
-            $this->hidden();
-        }
-        return $this;
-    }
-
-    /**
-     * 快捷设置元素隐藏
-     *
-     * @return static
-     */
-    public function hidden(): static
-    {
-        $this->attrs['hidden'] = '';
-        $this->attrs['data-visible'] = 'false';
-        return $this;
-    }
-
-    /**
      * 声明式模型绑定（data-model）
      *
      * 将表单元素与 LiveComponent 的属性双向绑定
@@ -423,220 +355,6 @@ class Element
     public function model(string $name): static
     {
         $this->attrs['data-model'] = $name;
-        return $this;
-    }
-
-    /**
-     * LiveComponent 双向绑定（增强版）
-     *
-     * 同时设置 data-live-model 和 data-model，启用实时同步
-     *
-     * @view-since 1.0.0
-     * @param string $name LiveComponent 属性名
-     * @return static
-     *
-     * @view-example
-     * // 在 LiveComponent 中使用
-     * public string $username = '';
-     *
-     * public function render(): Element
-     * {
-     *     return Element::make('input')
-     *         ->liveModel('username')
-     *         ->attr('type', 'text');
-     * }
-     * // 输入框的值会自动同步到 $this->username
-     * @view-example-end
-     */
-    public function liveModel(string $name): static
-    {
-        $this->attrs['data-live-model'] = $name;
-        $this->model($name);
-        return $this;
-    }
-
-    /**
-     * 文本绑定指令（data-text）
-     *
-     * 响应式显示文本内容
-     *
-     * @view-since 1.0.0
-     * @param string $expr 表达式（如 'user.name'）
-     * @return static
-     */
-    public function bindText(string $expr): static
-    {
-        $this->attrs['data-text'] = $expr;
-        return $this;
-    }
-
-    /**
-     * HTML 绑定指令（data-html）
-     *
-     * 响应式显示 HTML 内容（经过安全过滤）
-     *
-     * @view-since 1.0.0
-     * @param string $expr 表达式
-     * @return static
-     */
-    public function bindHtml(string $expr): static
-    {
-        $this->attrs['data-html'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 模型绑定指令（data-model）— 别名方法
-     *
-     * @view-since 1.0.0
-     * @param string $key 属性键名
-     * @return static
-     */
-    public function bindModel(string $key): static
-    {
-        $this->attrs['data-model'] = $key;
-        return $this;
-    }
-
-    /**
-     * 显示/隐藏绑定（data-show）
-     *
-     * 根据表达式控制元素可见性（display: none）
-     *
-     * @view-since 1.0.0
-     * @param string $expr 条件表达式
-     * @return static
-     */
-    public function bindShow(string $expr): static
-    {
-        $this->attrs['data-show'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 过渡动画绑定（data-transition）
-     *
-     * 元素显示/隐藏时应用过渡效果
-     *
-     * @view-since 1.0.0
-     * @param string $expr 过渡名称或配置
-     * @return static
-     */
-    public function bindTransition(string $expr): static
-    {
-        $this->attrs['data-transition'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 条件渲染绑定（data-if）
-     *
-     * 根据条件决定是否渲染元素到 DOM
-     *
-     * @view-since 1.0.0
-     * @param string $expr 条件表达式
-     * @return static
-     */
-    public function bindIf(string $expr): static
-    {
-        $this->attrs['data-if'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 循环渲染绑定（data-for）
-     *
-     * 遍历数组生成多个子元素
-     *
-     * @view-since 1.0.0
-     * @param string $expr 循环表达式（如 'item in items'）
-     * @return static
-     */
-    public function bindFor(string $expr): static
-    {
-        $this->attrs['data-for'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 事件绑定指令（data-on:event）
-     *
-     * 绑定 DOM 事件到 LiveComponent 方法
-     *
-     * @view-since 1.0.0
-     * @param string $event 事件名（click, input, change 等）
-     * @param string $expr 要调用的方法名或表达式
-     * @return static
-     *
-     * @view-example
-     * Element::make('button')->bindOn('click', 'submitForm');
-     * // 点击按钮时调用 LiveComponent 的 submitForm() 方法
-     * @view-example-end
-     */
-    public function bindOn(string $event, string $expr): static
-    {
-        $this->attrs["data-on:{$event}"] = $expr;
-        return $this;
-    }
-
-    /**
-     * 属性绑定指令（data-bind:attr）
-     *
-     * 动态设置 HTML 属性值
-     *
-     * @view-since 1.0.0
-     * @param string $attr 要绑定的属性名
-     * @param string|array $expr 表达式或值
-     * @return static
-     */
-    public function bindAttr(string $attr, string|array $expr): static
-    {
-        $this->attrs["data-bind:{$attr}"] = is_array($expr) ? json_encode($expr) : $expr;
-        return $this;
-    }
-
-    /**
-     * CSS 类绑定（data-bind:class）
-     *
-     * 根据条件动态切换 CSS 类
-     *
-     * @view-since 1.0.0
-     * @param string $expr 类绑定表达式
-     * @return static
-     */
-    public function dataClass(string $expr): static
-    {
-        $this->attrs['data-bind:class'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 副作用绑定（data-effect）
-     *
-     * 当依赖数据变化时执行副作用
-     *
-     * @view-since 1.0.0
-     * @param string $expr 效果表达式
-     * @return static
-     */
-    public function bindEffect(string $expr): static
-    {
-        $this->attrs['data-effect'] = $expr;
-        return $this;
-    }
-
-    /**
-     * 引用绑定（data-ref）
-     *
-     * 注册 DOM 引用，可在 JS 中通过 ref 访问
-     *
-     * @view-since 1.0.0
-     * @param string $name 引用名称
-     * @return static
-     */
-    public function bindRef(string $name): static
-    {
-        $this->attrs['data-ref'] = $name;
         return $this;
     }
 
@@ -657,115 +375,6 @@ class Element
     public function intl(string $key): static
     {
         $this->attrs['data-intl'] = $key;
-        return $this;
-    }
-
-    /**
-     * 隐藏未渲染内容（data-cloak）
-     *
-     * 在 JS 加载完成前隐藏元素，防止闪烁
-     *
-     * @view-since 1.0.0
-     * @return static
-     */
-    public function cloak(): static
-    {
-        $this->attrs['data-cloak'] = '';
-        return $this;
-    }
-
-    /**
-     * 声明 LiveComponent 分片更新区域（data-live-fragment）
-     *
-     * 标记该区域可独立更新，无需刷新整个组件
-     *
-     * @view-since 1.0.0
-     * @param string $name 分片名称（唯一标识）
-     * @return static
-     */
-    public function liveFragment(string $name): static
-    {
-        $this->attrs['data-live-fragment'] = $name;
-        \Framework\View\FragmentRegistry::getInstance()->record($this->attrs['data-live-fragment'], $this);
-        return $this;
-    }
-
-    /**
-     * LiveComponent 数据绑定（data-bind / data-bind-type）
-     *
-     * 将元素绑定到 LiveComponent 属性，支持多种绑定类型
-     *
-     * @view-since 1.0.0
-     * @param string $key 属性键名
-     * @param string $type 绑定类型：text（默认）, value, checked 等
-     * @return static
-     */
-    public function liveBind(string $key, string $type = 'text'): static
-    {
-        if ($type === 'text') {
-            $this->attrs['data-bind'] = $key;
-        } else {
-            $this->attrs["data-bind-{$type}"] = $key;
-        }
-        return $this;
-    }
-
-    /**
-     * LiveComponent Action 绑定（data-live-action / data-action）
-     *
-     * 触发事件时调用 LiveComponent 的指定方法。
-     * 支持三种格式：
-     * 1. ->liveAction('save')                    → data-live-action:click="save"
-     * 2. ->liveAction('save', 'input')           → data-live-action:input="save"
-     * 3. ->liveAction('search', 'input', true)   → 兼容旧格式 data-action + data-action-event
-     *
-     * @param string $action 方法名
-     * @param string $event 事件类型（默认 click）
-     * @param bool $legacyAttrs 使用旧的 data-action / data-action-event 属性名
-     * @return static
-     */
-    public function liveAction(string $action, string $event = 'click', bool $legacyAttrs = false): static
-    {
-        if ($legacyAttrs) {
-            $this->attrs['data-action'] = $action;
-            if ($event !== 'click') {
-                $this->attrs['data-action-event'] = $event;
-            }
-        } elseif ($event === 'click') {
-            $this->attrs['data-live-action'] = $action;
-        } else {
-            $this->attrs['data-live-action:' . $event] = $action;
-        }
-        return $this;
-    }
-
-    /**
-     * LiveComponent Action 参数（data-live-action-params / data-action-params）
-     *
-     * 传递额外参数给 Action 方法。支持 JSON 或表达式字符串。
-     *
-     * @param string|array $params 参数值、参数数组、或表达式字符串（如 '{count: count + 1}'）
-     * @param bool $legacyAttrs 使用旧的 data-action-params 属性名
-     * @return static
-     */
-    public function liveParams(string|array $params, bool $legacyAttrs = false): static
-    {
-        $attr = $legacyAttrs ? 'data-action-params' : 'data-live-action-params';
-        $this->attrs[$attr] = is_array($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
-        return $this;
-    }
-
-    /**
-     * LiveComponent Action 禁用条件（data-live-disabled）
-     *
-     * 当表达式求值为真时，阻止 Action 触发。
-     *
-     * @param string $expr 表达式（如 'count === 0'）
-     * @return static
-     */
-    public function liveDisabled(string $expr): static
-    {
-        $this->attrs['data-live-disabled'] = $expr;
         return $this;
     }
 
@@ -823,6 +432,7 @@ class Element
      * - 过滤 javascript:/data: 协议
      * - 自动转义特殊字符
      *
+     * @view-internal
      * @param array $attrs 属性键值对
      * @return string HTML 属性字符串（如 ' id="main" class="btn"'）
      */
@@ -830,12 +440,10 @@ class Element
     {
         $attrStr = '';
         foreach ($attrs as $name => $value) {
-            // if like onclick onkey
             if (preg_match('/^on/', $name)) {
                 continue;
             }
 
-            // if name has space
             if (str_contains($name, ' ')) {
                 $name = str_replace(' ', '-', $name);
             }
@@ -868,81 +476,31 @@ class Element
      * - 移除危险标签（script, style, iframe, object 等）
      * - 清除 javascript:/data:/vbscript: 协议链接
      *
+     * @view-internal
      * @param string $html 原始 HTML 字符串
      * @return string 经过安全过滤的 HTML
      */
     private function sanitizeHtml(string $html): string
     {
-        // 对未知/危险的标签直接进行 HTML 编码，防止 XSS
         $allowedTags = [
-            'a',
-            'abbr',
-            'b',
-            'blockquote',
-            'br',
-            'cite',
-            'code',
-            'dd',
-            'del',
-            'details',
-            'dfn',
-            'div',
-            'dl',
-            'dt',
-            'em',
-            'figcaption',
-            'figure',
-            'h1',
-            'h2',
-            'h3',
-            'h4',
-            'h5',
-            'h6',
-            'hr',
-            'i',
-            'img',
-            'ins',
-            'kbd',
-            'li',
-            'mark',
-            'ol',
-            'p',
-            'pre',
-            'q',
-            's',
-            'samp',
-            'small',
-            'span',
-            'strong',
-            'sub',
-            'summary',
-            'sup',
-            'table',
-            'tbody',
-            'td',
-            'tfoot',
-            'th',
-            'thead',
-            'time',
-            'tr',
-            'u',
-            'ul',
-            'var',
+            'a', 'abbr', 'b', 'blockquote', 'br', 'cite', 'code', 'dd', 'del',
+            'details', 'dfn', 'div', 'dl', 'dt', 'em', 'figcaption', 'figure',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'ins', 'kbd',
+            'li', 'mark', 'ol', 'p', 'pre', 'q', 's', 'samp', 'small', 'span',
+            'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'tfoot',
+            'th', 'thead', 'time', 'tr', 'u', 'ul', 'var',
         ];
 
-        // 移除所有事件处理器属性 (on*)
         $html = preg_replace('/\s+on\w+\s*=\s*"[^"]*"/i', '', $html);
         $html = preg_replace("/\s+on\w+\s*=\s*'[^']*'/i", '', $html);
         $html = preg_replace('/\s+on\w+\s*=\s*[^\s>]+/i', '', $html);
 
-        // 移除 script, style, iframe, object, embed, applet 等危险标签
         $dangerousTags = ['script', 'style', 'iframe', 'object', 'embed', 'applet', 'meta', 'link', 'base'];
         foreach ($dangerousTags as $tag) {
             $html = preg_replace('/<' . $tag . '\b[^>]*>.*?<\/' . $tag . '>/is', '', $html);
             $html = preg_replace('/<' . $tag . '\b[^>]*\/?>/i', '', $html);
         }
 
-        // 移除 data: 和 javascript: 协议
         $html = preg_replace('/href\s*=\s*"(?:javascript|data|vbscript):/i', 'href="#"', $html);
         $html = preg_replace("/href\s*=\s*'(?:javascript|data|vbscript):/i", "href='#'", $html);
         $html = preg_replace('/src\s*=\s*"(?:javascript|data|vbscript):/i', 'src="#"', $html);
@@ -950,8 +508,6 @@ class Element
 
         return $html;
     }
-
-
 
     /**
      * 渲染元素为 HTML 字符串
@@ -976,7 +532,6 @@ class Element
      */
     public function render(): string
     {
-        // 注释模式：输出 HTML 注释，不渲染实际标签
         if ($this->isComment) {
             $comment = $this->textContent ?? '';
             return $comment !== '' ? "<!-- {$comment} -->" : '<!-- -->';
@@ -996,14 +551,12 @@ class Element
             unset($this->attrs['onclick']);
         }
 
-        // 处理 data-intl 自动翻译
         if (isset($this->attrs['data-intl'])) {
             $intlKey = $this->attrs['data-intl'];
             $translated = \Framework\Intl\Translator::get($intlKey);
             $this->textContent = $translated;
             $this->htmlContent = null;
             $this->children = [];
-            debug('has node');
         }
 
         $attrs = $this->attrString($this->attrs);

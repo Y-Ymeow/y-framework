@@ -43,7 +43,7 @@ class RichEditor extends FormField
     public function __construct()
     {
         parent::__construct();
-        AssetRegistry::getInstance()->inlineStyle(RichEditorRules::getStyles());
+        AssetRegistry::getInstance()->inlineStyle('ux:rich-editor', RichEditorRules::getStyles());
     }
 
     protected function init(): void

@@ -9,7 +9,6 @@ class AssetRegistry
     private static ?self $instance = null;
     private array $cssFiles = [];
     private array $jsFiles = [];
-    private array $inlineStyles = [];
     private array $namedScripts = [];
     private array $requestedScripts = [];
     private array $loaded = [];
@@ -74,9 +73,15 @@ class AssetRegistry
         return $this;
     }
 
-    public function inlineStyle(string $style): self
+    public function inlineStyle(string $id, string $css): self
     {
-        $this->inlineStyles[] = $style;
+        CssCollector::getInstance()->add($id, $css);
+        return $this;
+    }
+
+    public function addCssSnippet(string $id, string $css): self
+    {
+        CssCollector::getInstance()->add($id, $css);
         return $this;
     }
 
@@ -113,9 +118,6 @@ class AssetRegistry
         foreach ($this->cssFiles as $css) {
             $id = $css['id'] ? ' id="' . htmlspecialchars($css['id']) . '"' : '';
             $html .= '<link rel="stylesheet" href="' . htmlspecialchars($css['href']) . '"' . $id . '>';
-        }
-        if (!empty($this->inlineStyles)) {
-            $html .= '<style>' . implode("\n", $this->inlineStyles) . '</style>';
         }
         return $html;
     }
