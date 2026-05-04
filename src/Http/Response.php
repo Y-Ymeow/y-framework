@@ -32,6 +32,7 @@ class Response
     protected int $statusCode = 200;
     protected array $headers = [];
     protected string $statusText = '';
+    protected array $flashData = [];
 
     private static array $statusTexts = [
         200 => 'OK',
@@ -139,6 +140,23 @@ class Response
         }
 
         return new self('', $status, ['Location' => $url]);
+    }
+
+    public function with(string|array $key, mixed $value = null): self
+    {
+        if (is_array($key)) {
+            foreach ($key as $k => $v) {
+                $this->flashData[$k] = $v;
+            }
+        } else {
+            $this->flashData[$key] = $value;
+        }
+
+        if (!empty($this->flashData)) {
+            \Framework\Http\Session::flash('_flash', $this->flashData);
+        }
+
+        return $this;
     }
 
     /**

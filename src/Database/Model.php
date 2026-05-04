@@ -23,8 +23,41 @@ abstract class Model implements \ArrayAccess
     protected static ?Connection $connection = null;
     protected ?string $connectionName = null;
 
+    private static array $bootedClasses = [];
+
+    private static array $observers = [];
+    private static array $globalObservers = [];
+    private array $eventListeners = [];
+
+    public static function boot(): void {}
+
+    public static function booted(): void {}
+
+    public static function observe(string|array $classes): void
+    {
+        foreach ((array) $classes as $class) {
+            self::$observers[static::class][] = $class;
+        }
+    }
+
+    public static function getObservers(): array
+    {
+        return self::$observers[static::class] ?? [];
+    }
+
+    protected static function ensureBooted(): void
+    {
+        if (isset(self::$bootedClasses[static::class])) {
+            return;
+        }
+        static::boot();
+        self::$bootedClasses[static::class] = true;
+        static::booted();
+    }
+
     public function __construct(array $attributes = [])
     {
+        static::ensureBooted();
         $this->fill($attributes);
     }
 
@@ -239,8 +272,20 @@ abstract class Model implements \ArrayAccess
 
     public function newQuery(): QueryBuilder
     {
-        return static::getConnection()->table($this->getTable());
+        $query = static::getConnection()->table($this->getTable());
+
+        if (in_array(\Framework\Database\Traits\HasSoftDeletes::class, class_uses(static::class) ?: [], true)) {
+            if ($this->softDeleteMode === 'only') {
+                $query->whereNotNull('deleted_at');
+            } elseif ($this->softDeleteMode !== 'all') {
+                $query->whereNull('deleted_at');
+            }
+        }
+
+        return $query;
     }
+
+    protected string $softDeleteMode = 'exclude';
 
     public static function all(): array
     {
@@ -273,6 +318,20 @@ abstract class Model implements \ArrayAccess
         return static::query()->where($column, $operator, $value);
     }
 
+    public static function withTrashed(): QueryBuilder
+    {
+        $instance = new static();
+        $instance->softDeleteMode = 'all';
+        return $instance->newQuery();
+    }
+
+    public static function onlyTrashed(): QueryBuilder
+    {
+        $instance = new static();
+        $instance->softDeleteMode = 'only';
+        return $instance->newQuery();
+    }
+
     public static function destroy(mixed $id): int
     {
         $instance = new static();
@@ -288,14 +347,64 @@ abstract class Model implements \ArrayAccess
 
     public function save(): bool
     {
-        if ($this->exists) {
-            return $this->performUpdate();
+        if ($this->fireModelEvent('saving', true) === false) {
+            return false;
         }
-        return $this->performInsert();
+
+        $result = $this->exists ? $this->performUpdate() : $this->performInsert();
+
+        if ($result) {
+            $this->fireModelEvent('saved', false);
+        }
+
+        return $result;
+    }
+
+    protected function fireModelEvent(string $event, bool $halt = false): mixed
+    {
+        if (!empty($this->eventListeners[$event])) {
+            foreach ($this->eventListeners[$event] as $listener) {
+                if ($halt) {
+                    $result = $listener($this);
+                    if ($result === false) {
+                        return false;
+                    }
+                } else {
+                    $listener($this);
+                }
+            }
+        }
+
+        $method = $event;
+        if (method_exists($this, $method)) {
+            $result = $this->$method();
+            if ($halt && $result === false) {
+                return false;
+            }
+        }
+
+        foreach (static::getObservers() as $observerClass) {
+            if (class_exists($observerClass)) {
+                $observer = new $observerClass();
+                $methodName = $event;
+                if (method_exists($observer, $methodName)) {
+                    $result = $observer->$methodName($this);
+                    if ($halt && $result === false) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     protected function performInsert(): bool
     {
+        if ($this->fireModelEvent('creating', true) === false) {
+            return false;
+        }
+
         if ($this->usesTimestamps()) {
             $now = date('Y-m-d H:i:s');
             $this->attributes['created_at'] = $now;
@@ -307,11 +416,17 @@ abstract class Model implements \ArrayAccess
         $this->exists = true;
         $this->original = $this->attributes;
 
+        $this->fireModelEvent('created', false);
+
         return true;
     }
 
     protected function performUpdate(): bool
     {
+        if ($this->fireModelEvent('updating', true) === false) {
+            return false;
+        }
+
         $dirty = $this->getDirty();
 
         if (empty($dirty)) {
@@ -322,7 +437,6 @@ abstract class Model implements \ArrayAccess
             $dirty['updated_at'] = date('Y-m-d H:i:s');
         }
 
-        // Apply casts to dirty attributes
         $attributesToSave = $this->getAttributesToSave();
         $dirtyToSave = [];
         foreach ($dirty as $key => $value) {
@@ -335,6 +449,8 @@ abstract class Model implements \ArrayAccess
 
         $this->original = $this->attributes;
 
+        $this->fireModelEvent('updated', false);
+
         return true;
     }
 
@@ -344,11 +460,17 @@ abstract class Model implements \ArrayAccess
             return false;
         }
 
+        if ($this->fireModelEvent('deleting', true) === false) {
+            return false;
+        }
+
         $this->newQuery()
             ->where($this->primaryKey, $this->getKey())
             ->delete();
 
         $this->exists = false;
+
+        $this->fireModelEvent('deleted', false);
 
         return true;
     }
@@ -364,13 +486,63 @@ abstract class Model implements \ArrayAccess
         return $dirty;
     }
 
+    public function isDirty(?string $attribute = null): bool
+    {
+        $dirty = $this->getDirty();
+        if ($attribute === null) {
+            return count($dirty) > 0;
+        }
+        return array_key_exists($attribute, $dirty);
+    }
+
+    public function isClean(?string $attribute = null): bool
+    {
+        return !$this->isDirty($attribute);
+    }
+
+    public function wasChanged(?string $attribute = null): bool
+    {
+        return false;
+    }
+
     public function newFromBuilder(array $attributes): static
     {
         $instance = new static();
         $instance->attributes = $attributes;
         $instance->original = $attributes;
         $instance->exists = true;
+        $instance->fireModelEvent('retrieved', false);
         return $instance;
+    }
+
+    public function on(string $event, callable $callback): self
+    {
+        if (!isset($this->eventListeners[$event])) {
+            $this->eventListeners[$event] = [];
+        }
+        $this->eventListeners[$event][] = $callback;
+        return $this;
+    }
+
+    public function fresh(): ?static
+    {
+        if (!$this->exists) {
+            return null;
+        }
+        return static::find($this->getKey());
+    }
+
+    public function refresh(): static
+    {
+        if (!$this->exists) {
+            return $this;
+        }
+        $fresh = static::find($this->getKey());
+        if ($fresh) {
+            $this->attributes = $fresh->attributes;
+            $this->original = $fresh->attributes;
+        }
+        return $this;
     }
 
     protected function usesTimestamps(): bool

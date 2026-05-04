@@ -11,13 +11,31 @@ class AuthServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AuthManager::class, function () {
-            $app = \Framework\Foundation\Application::getInstance();
             return new AuthManager(
-                $app->make(\Framework\Http\Session::class),
-                $app->make(\Framework\Database\Connection::class)
+                $this->app->make(\Framework\Http\Session::class)
             );
         });
 
         $this->app->alias(AuthManager::class, 'auth');
+        $this->app->singleton(Gate::class, fn () => Gate::getInstance());
+    }
+
+    public function boot(): void
+    {
+        if (config('auth.gates')) {
+            foreach (config('auth.gates', []) as $ability => $callback) {
+                if ($callback instanceof \Closure) {
+                    Gate::defineStatic($ability, $callback);
+                } elseif (is_string($callback) && class_exists($callback)) {
+                    Gate::defineStatic($ability, fn (...$args) => (new $callback)(...$args));
+                }
+            }
+        }
+
+        if (config('auth.policies')) {
+            foreach (config('auth.policies', []) as $model => $policy) {
+                Gate::policyStatic($model, $policy);
+            }
+        }
     }
 }

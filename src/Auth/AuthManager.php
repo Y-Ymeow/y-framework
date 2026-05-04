@@ -4,38 +4,59 @@ declare(strict_types=1);
 
 namespace Framework\Auth;
 
-use Framework\Database\Connection;
 use Framework\Http\Session;
 use Framework\Http\Cookie;
 
 class AuthManager
 {
     private Session $session;
-    private Connection $connection;
-    private ?User $user = null;
-    private string $userModel = User::class;
+    private ?UserProvider $provider = null;
+    private string $providerName = 'eloquent';
+    private ?Authenticatable $user = null;
+    private array $customCreators = [];
 
-    public function __construct(Session $session, Connection $connection)
+    public function __construct(Session $session)
     {
         $this->session = $session;
-        $this->connection = $connection;
     }
 
-    public function setUserModel(string $model): self
+    public function extend(string $driver, callable $callback): self
     {
-        $this->userModel = $model;
+        $this->customCreators[$driver] = $callback;
+        return $this;
+    }
+
+    public function provider(?string $name = null): UserProvider
+    {
+        $name ??= $this->providerName;
+
+        if ($this->provider === null) {
+            $this->provider = $this->resolveProvider($name);
+        }
+
+        return $this->provider;
+    }
+
+    public function setProvider(UserProvider $provider): self
+    {
+        $this->provider = $provider;
+        return $this;
+    }
+
+    public function guard(): self
+    {
         return $this;
     }
 
     public function attempt(array $credentials, bool $remember = false): bool
     {
-        $user = $this->retrieveByCredentials($credentials);
+        $user = $this->provider()->retrieveByCredentials($credentials);
 
         if (!$user) {
             return false;
         }
 
-        if (!$this->validateCredentials($user, $credentials)) {
+        if (!$this->provider()->validateCredentials($user, $credentials)) {
             return false;
         }
 
@@ -43,131 +64,39 @@ class AuthManager
         return true;
     }
 
-    public function login(User $user, bool $remember = false): void
+    public function login(Authenticatable $user, bool $remember = false): void
     {
-        $this->session->set('auth_user', $user->toArray());
-        $this->session->set('auth_id', $user->getKey());
+        $this->session->set('auth_id', $user->getAuthIdentifier());
+        $this->session->set('auth_type', get_class($user));
         $this->session->regenerate();
 
         if ($remember) {
-            $this->setRememberToken($user);
+            $token = hash('sha256', bin2hex(random_bytes(32)));
+            $this->provider()->updateRememberToken($user, $token);
+            Cookie::forever('remember_token', $token);
+            Cookie::forever('remember_id', (string)$user->getAuthIdentifier());
         }
 
         $this->user = $user;
     }
 
-    public function logout(): void
+    public function loginUsingId(mixed $id, bool $remember = false): ?Authenticatable
     {
-        if ($this->user) {
-            $this->user->clearToken();
-        }
+        $user = $this->provider()->retrieveById($id);
 
-        $this->session->remove('auth_user');
-        $this->session->remove('auth_id');
-        Cookie::forget('remember_token');
-        $this->session->regenerate();
-        $this->user = null;
-    }
-
-    public function check(): bool
-    {
-        return $this->id() !== null;
-    }
-
-    public function guest(): bool
-    {
-        return !$this->check();
-    }
-
-    public function user(): ?User
-    {
-        if ($this->user !== null) {
-            return $this->user;
-        }
-
-        $id = $this->id();
-        if ($id) {
-            $this->user = $this->userModel::find($id);
-            return $this->user;
-        }
-
-        $user = $this->getUserByRememberToken();
-        if ($user) {
-            $this->user = $user;
-            return $this->user;
-        }
-
-        return null;
-    }
-
-    public function id(): mixed
-    {
-        return $this->session->get('auth_id');
-    }
-
-    public function hasRole(string $role): bool
-    {
-        $user = $this->user();
-        if (!$user) return false;
-        $roles = $user->roles ?? [];
-        return in_array($role, (array)$roles, true);
-    }
-
-    public function hasPermission(string $permission): bool
-    {
-        $user = $this->user();
-        if (!$user) return false;
-        $permissions = $user->permissions ?? [];
-        return in_array($permission, (array)$permissions, true);
-    }
-
-    protected function retrieveByCredentials(array $credentials): ?User
-    {
-        if (isset($credentials['email'])) {
-            return $this->userModel::findByEmail($credentials['email']);
-        }
-
-        return null;
-    }
-
-    protected function validateCredentials(User $user, array $credentials): bool
-    {
-        if (isset($credentials['password'])) {
-            return $user->verifyPassword($credentials['password']);
-        }
-
-        return false;
-    }
-
-    protected function setRememberToken(User $user): void
-    {
-        $token = $user->generateToken();
-        Cookie::forever('remember_token', $token);
-    }
-
-    protected function getUserByRememberToken(): ?User
-    {
-        $token = $_COOKIE['remember_token'] ?? null;
-        
-        if (!$token) {
+        if (!$user) {
             return null;
         }
 
-        $user = $this->userModel::findByToken($token);
-
-        if ($user) {
-            $this->session->set('auth_user', $user->toArray());
-            $this->session->set('auth_id', $user->getKey());
-        }
-
+        $this->login($user, $remember);
         return $user;
     }
 
     public function once(array $credentials): bool
     {
-        $user = $this->retrieveByCredentials($credentials);
+        $user = $this->provider()->retrieveByCredentials($credentials);
 
-        if (!$user || !$this->validateCredentials($user, $credentials)) {
+        if (!$user || !$this->provider()->validateCredentials($user, $credentials)) {
             return false;
         }
 
@@ -175,15 +104,147 @@ class AuthManager
         return true;
     }
 
-    public function loginUsingId(mixed $id): ?User
+    public function onceUsingId(mixed $id): ?Authenticatable
     {
-        $user = $this->userModel::find($id);
+        $user = $this->provider()->retrieveById($id);
 
-        if (!$user) {
+        if ($user) {
+            $this->user = $user;
+        }
+
+        return $user;
+    }
+
+    public function logout(): void
+    {
+        $user = $this->user();
+
+        if ($user && method_exists($user, 'setRememberToken')) {
+            $this->provider()->updateRememberToken($user, '');
+        }
+
+        $this->session->remove('auth_id');
+        $this->session->remove('auth_type');
+        Cookie::forget('remember_token');
+        Cookie::forget('remember_id');
+        $this->session->regenerate();
+        $this->user = null;
+    }
+
+    public function logoutCurrentDevice(): void
+    {
+        $this->session->remove('auth_id');
+        $this->session->remove('auth_type');
+        $this->session->regenerate();
+        $this->user = null;
+    }
+
+    public function check(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function guest(): bool
+    {
+        return !$this->check();
+    }
+
+    public function user(): ?Authenticatable
+    {
+        if ($this->user !== null) {
+            return $this->user;
+        }
+
+        $id = $this->id();
+        if ($id !== null) {
+            $user = $this->provider()->retrieveById($id);
+            if ($user) {
+                $this->user = $user;
+                return $user;
+            }
+        }
+
+        $user = $this->getUserByRememberToken();
+        if ($user) {
+            $this->user = $user;
+            return $user;
+        }
+
+        return null;
+    }
+
+    public function id(): mixed
+    {
+        if ($this->user !== null) {
+            return $this->user->getAuthIdentifier();
+        }
+
+        return $this->session->get('auth_id');
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        $user = $this->user();
+        if (!$user) return false;
+
+        $userRoles = [];
+        if (method_exists($user, 'getRoles')) {
+            $userRoles = $user->getRoles();
+        } elseif (isset($user->roles)) {
+            $userRoles = (array)$user->roles;
+        }
+
+        foreach ((array)$roles as $role) {
+            if (in_array($role, $userRoles, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function hasPermission(string|array $permissions): bool
+    {
+        $user = $this->user();
+        if (!$user) return false;
+
+        $userPerms = [];
+        if (method_exists($user, 'getPermissions')) {
+            $userPerms = $user->getPermissions();
+        } elseif (isset($user->permissions)) {
+            $userPerms = (array)$user->permissions;
+        }
+
+        foreach ((array)$permissions as $perm) {
+            if (!in_array($perm, $userPerms, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected function getUserByRememberToken(): ?Authenticatable
+    {
+        $token = $_COOKIE['remember_token'] ?? null;
+        $identifier = $_COOKIE['remember_id'] ?? null;
+
+        if (!$token || !$identifier) {
             return null;
         }
 
-        $this->login($user);
-        return $user;
+        return $this->provider()->retrieveByToken((string)$identifier, $token);
+    }
+
+    protected function resolveProvider(string $name): UserProvider
+    {
+        if (isset($this->customCreators[$name])) {
+            return $this->customCreators[$name]($this);
+        }
+
+        return match ($name) {
+            'eloquent' => new EloquentUserProvider(
+                config('auth.model', config('auth.providers.users.model', 'App\\Models\\User'))
+            ),
+            default => throw new \RuntimeException("Auth driver [{$name}] is not supported."),
+        };
     }
 }

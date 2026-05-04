@@ -20,6 +20,8 @@ class QueryBuilder
     private array $havingBindings = [];
     private bool $distinct = false;
     private ?string $lock = null;
+    private string $softDeleteMode = 'exclude';
+    private string $softDeleteColumn = 'deleted_at';
 
     public function __construct(Connection $connection, string $table)
     {
@@ -633,6 +635,23 @@ class QueryBuilder
         }
 
         return [implode(' ', $clauses), $bindings];
+    }
+
+    public function withTrashed(): self
+    {
+        $this->softDeleteMode = 'all';
+        return $this;
+    }
+
+    public function onlyTrashed(): self
+    {
+        $this->softDeleteMode = 'only';
+        return $this;
+    }
+
+    public function getSoftDeleteMode(): string
+    {
+        return $this->softDeleteMode;
     }
 
     private function __clone() {}

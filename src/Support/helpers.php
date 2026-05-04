@@ -130,7 +130,7 @@ function dist_css(string $entry): array
 
 function redirect(string $url, int $status = 302): \Framework\Http\Response
 {
-    return new \Framework\Http\Response('', $status, ['Location' => $url]);
+    return \Framework\Http\Response::redirect($url, $status);
 }
 
 function route(string $name, array $parameters = [], bool $absolute = false): string
@@ -238,9 +238,14 @@ function cache(?string $store = null): \Psr\SimpleCache\CacheInterface
     return app()->make(\Framework\Cache\CacheManager::class)->store($store);
 }
 
-function user(): ?\Framework\Auth\User
+function user(): ?\Framework\Auth\Authenticatable
 {
     return auth()->user();
+}
+
+function gate(): \Framework\Auth\Gate
+{
+    return \Framework\Auth\Gate::getInstance();
 }
 
 
