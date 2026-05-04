@@ -181,7 +181,18 @@ class Schema
         }
 
         if (isset($options['default'])) {
-            $sql .= " DEFAULT '{$options['default']}'";
+            $default = $options['default'];
+            if ($default === null) {
+                $sql .= ' DEFAULT NULL';
+            } elseif (is_bool($default)) {
+                $sql .= ' DEFAULT ' . ($default ? 1 : 0);
+            } elseif (is_int($default) || is_float($default)) {
+                $sql .= " DEFAULT {$default}";
+            } elseif (strtoupper((string)$default) === 'CURRENT_TIMESTAMP') {
+                $sql .= ' DEFAULT CURRENT_TIMESTAMP';
+            } else {
+                $sql .= " DEFAULT '{$default}'";
+            }
         }
 
         if (($options['after'] ?? null) && $this->connection->getDriverName() !== 'sqlite') {

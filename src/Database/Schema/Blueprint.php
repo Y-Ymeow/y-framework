@@ -291,6 +291,27 @@ class Blueprint
         return $this;
     }
 
+    public function softDeletesBoolean(string $column = 'is_delete'): self
+    {
+        $this->boolean($column)->default(false);
+        return $this;
+    }
+
+    public function dropSoftDeletes(string $column = 'deleted_at'): self
+    {
+        return $this->dropColumn($column);
+    }
+
+    public function dropSoftDeletesBoolean(string $column = 'is_delete'): self
+    {
+        return $this->dropColumn($column);
+    }
+
+    public function softDeletesTz(string $column = 'deleted_at'): self
+    {
+        return $this->softDeletes($column);
+    }
+
     public function json(string $column): self
     {
         $this->columns[$column] = [
