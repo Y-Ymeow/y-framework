@@ -4,49 +4,96 @@ declare(strict_types=1);
 
 namespace Framework\Log;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Level;
-use Monolog\Logger as MonologLogger;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
+use Psr\Log\LogLevel;
+use Stringable;
 
 class LogManager implements LoggerInterface
 {
     use LoggerTrait;
 
-    private MonologLogger $logger;
+    private array $config;
+    private array $levelMap = [
+        LogLevel::EMERGENCY => 7,
+        LogLevel::ALERT     => 6,
+        LogLevel::CRITICAL  => 5,
+        LogLevel::ERROR     => 4,
+        LogLevel::WARNING   => 3,
+        LogLevel::NOTICE    => 2,
+        LogLevel::INFO      => 1,
+        LogLevel::DEBUG     => 0,
+    ];
 
     public function __construct(array $config = [])
     {
-        $name = $config['name'] ?? 'app';
-        $this->logger = new MonologLogger($name);
+        $this->config = $config;
+    }
 
-        $default = $config['default'] ?? 'single';
-        $channelConfig = $config['channels'][$default] ?? [];
+    /**
+     * @param mixed $level
+     * @param string|Stringable $message
+     * @param array $context
+     */
+    public function log($level, string|Stringable $message, array $context = []): void
+    {
+        $default = $this->config['default'] ?? 'single';
+        $channelConfig = $this->config['channels'][$default] ?? [];
         
-        $level = $channelConfig['level'] ?? 'debug';
-        $logPath = $channelConfig['path'] ?? dirname(__DIR__, 2) . '/storage/logs/app.log';
+        $minLevel = $channelConfig['level'] ?? 'debug';
+        if (($this->levelMap[$level] ?? 0) < ($this->levelMap[$minLevel] ?? 0)) {
+            return;
+        }
+
+        $formatted = $this->format($level, (string) $message, $context);
+        $driver = $channelConfig['driver'] ?? 'single';
+
+        switch ($driver) {
+            case 'daily':
+                $this->writeToDaily($channelConfig['path'] ?? base_path('storage/logs/app.log'), $formatted);
+                break;
+            case 'stderr':
+                $this->writeToStderr($formatted);
+                break;
+            case 'single':
+            default:
+                $this->writeToSingle($channelConfig['path'] ?? base_path('storage/logs/app.log'), $formatted);
+                break;
+        }
+    }
+
+    private function format(string $level, string $message, array $context): string
+    {
+        $time = date('Y-m-d H:i:s');
+        $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
         
-        $dir = dirname($logPath);
+        return sprintf("[%s] %s: %s%s%s", $time, strtoupper($level), $message, $contextStr, PHP_EOL);
+    }
+
+    private function writeToSingle(string $path, string $content): void
+    {
+        $this->ensureDirectoryExists(dirname($path));
+        file_put_contents($path, $content, FILE_APPEND | LOCK_EX);
+    }
+
+    private function writeToDaily(string $path, string $content): void
+    {
+        $info = pathinfo($path);
+        $datedPath = $info['dirname'] . '/' . $info['filename'] . '-' . date('Y-m-d') . (isset($info['extension']) ? '.' . $info['extension'] : '');
+        
+        $this->writeToSingle($datedPath, $content);
+    }
+
+    private function writeToStderr(string $content): void
+    {
+        file_put_contents('php://stderr', $content);
+    }
+
+    private function ensureDirectoryExists(string $dir): void
+    {
         if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+            mkdir($dir, 0755, true);
         }
-
-        if (($channelConfig['driver'] ?? 'single') === 'daily') {
-            $this->logger->pushHandler(new \Monolog\Handler\RotatingFileHandler($logPath, $channelConfig['days'] ?? 14, $level));
-        } else {
-            $this->logger->pushHandler(new StreamHandler($logPath, $level));
-        }
-    }
-
-    public function log($level, \Stringable|string $message, array $context = []): void
-    {
-        $this->logger->log($level, $message, $context);
-    }
-
-    public function getLogger(): MonologLogger
-    {
-        return $this->logger;
     }
 
     /**
@@ -66,14 +113,10 @@ class LogManager implements LoggerInterface
         $maxAgeSeconds = $maxAge * 86400;
         $count = 0;
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($logDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::LEAVES_ONLY
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isFile() && ($now - $file->getMTime() > $maxAgeSeconds)) {
-                @unlink($file->getPathname());
+        $files = glob($logDir . '/*');
+        foreach ($files as $file) {
+            if (is_file($file) && ($now - filemtime($file) > $maxAgeSeconds)) {
+                @unlink($file);
                 $count++;
             }
         }
