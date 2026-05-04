@@ -71,8 +71,8 @@ class CssRoute
     {
         $classes = [];
         $scanDirs = [
-            $this->basePath . '/src/Admin',
-            $this->basePath . '/src/UX',
+            __DIR__ . '/../../src/Admin',
+            __DIR__ . '/../../src/UX',
             $this->basePath . '/admin',
             $this->basePath . '/app',
         ];
