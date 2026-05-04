@@ -2,16 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Framework\View;
+namespace Framework\View\Element;
 
 use Framework\View\Base\Element;
 
-/**
- * Link — 链接
- *
- *   Link::make('/users')->text('用户列表')
- *   Link::make('#')->text('锚点')->class('text-blue-600')
- */
 class Link extends Element
 {
     public function __construct(string $href = '#')

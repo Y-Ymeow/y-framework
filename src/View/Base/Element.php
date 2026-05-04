@@ -686,7 +686,7 @@ class Element
     public function liveFragment(string $name): static
     {
         $this->attrs['data-live-fragment'] = $name;
-        \Framework\View\FragmentRegistry::record($this->attrs['data-live-fragment'], $this);
+        \Framework\View\FragmentRegistry::getInstance()->record($this->attrs['data-live-fragment'], $this);
         return $this;
     }
 

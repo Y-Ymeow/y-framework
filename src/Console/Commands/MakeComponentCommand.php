@@ -90,10 +90,10 @@ namespace {$namespace};
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
-use Framework\View\LiveResponse;
+use Framework\Component\Live\LiveResponse;
 use Framework\View\Base\Element;
-use Framework\View\Container;
-use Framework\View\Text;
+use Framework\View\Element\Container;
+use Framework\View\Element\Text;
 
 class {$className} extends LiveComponent
 {

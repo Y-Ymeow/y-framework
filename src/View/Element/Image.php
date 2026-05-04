@@ -2,23 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Framework\View;
+namespace Framework\View\Element;
 
 use Framework\View\Base\Element;
+use Framework\View\Concerns\HasTailwindAppearance;
 
-/**
- * Image — 图片
- *
- *   Image::make('/photo.jpg')->alt('照片')->class('w-full')
- */
 class Image extends Element
 {
+    use HasTailwindAppearance;
+
     public function __construct(string $src = '')
     {
         parent::__construct('img');
         if ($src) $this->attrs['src'] = $src;
     }
-    
+
     public function src(string $src): static
     {
         $this->attrs['src'] = $src;
@@ -51,10 +49,5 @@ class Image extends Element
     public function objectContain(): static
     {
         return $this->class('object-contain');
-    }
-
-    public function rounded(string $size = 'lg'): static
-    {
-        return $this->class("rounded-{$size}");
     }
 }

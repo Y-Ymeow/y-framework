@@ -7,8 +7,8 @@ namespace Framework\UX\Dialog;
 use Framework\UX\UXComponent;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
-use Framework\View\Container;
-use Framework\View\Text;
+use Framework\View\Element\Container;
+use Framework\View\Element\Text;
 
 /**
  * 抽屉

@@ -341,11 +341,11 @@ class LiveRequestHandler
             return;
         }
 
-        FragmentRegistry::reset();
-        FragmentRegistry::setTargets($refreshTargets);
+        FragmentRegistry::getInstance()->reset();
+        FragmentRegistry::getInstance()->setTargets($refreshTargets);
         $component->render();
 
-        foreach (FragmentRegistry::getFragments() as $name => $data) {
+        foreach (FragmentRegistry::getInstance()->getFragments() as $name => $data) {
             $response['fragments'][] = [
                 'name' => $name,
                 'html' => $data['element']->render(),
@@ -356,7 +356,7 @@ class LiveRequestHandler
 
     private function collectActionResult(array &$response, mixed $result): void
     {
-        if ($result instanceof \Framework\View\LiveResponse) {
+        if ($result instanceof LiveResponse) {
             $lr = $result->toArray();
             if (!empty($lr['domPatches'])) $response['domPatches'] = $lr['domPatches'];
             if (!empty($lr['fragments'])) $response['fragments'] = array_merge($response['fragments'], $lr['fragments']);
@@ -395,10 +395,10 @@ class LiveRequestHandler
         $fragments = [];
         $refreshTargets = $comp->getRefreshFragments();
         if (!empty($refreshTargets)) {
-            FragmentRegistry::reset();
-            FragmentRegistry::setTargets($refreshTargets);
+            FragmentRegistry::getInstance()->reset();
+            FragmentRegistry::getInstance()->setTargets($refreshTargets);
             $comp->render();
-            foreach (FragmentRegistry::getFragments() as $name => $data) {
+            foreach (FragmentRegistry::getInstance()->getFragments() as $name => $data) {
                 $fragments[] = [
                     'name' => $name,
                     'html' => $data['element']->render(),

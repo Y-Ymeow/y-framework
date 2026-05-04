@@ -143,12 +143,12 @@ abstract class LiveComponent
 
     public function getFragments(): array
     {
-        return app()->make(FragmentRegistry::class)->getFragments($this->componentId);
+        return FragmentRegistry::getInstance()->getFragments();
     }
 
-    public function getFragment(string $name): string
+    public function getFragment(string $name): ?array
     {
-        return app()->make(FragmentRegistry::class)->getFragment($this->componentId, $name);
+        return FragmentRegistry::getInstance()->getFragment($name);
     }
 
     /**

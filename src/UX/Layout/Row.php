@@ -6,7 +6,7 @@ namespace Framework\UX\Layout;
 
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
-use Framework\View\Container;
+use Framework\View\Element\Container;
 
 /**
  * 行布局

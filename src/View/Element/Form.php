@@ -2,20 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Framework\View;
+namespace Framework\View\Element;
 
 use Framework\View\Base\Element;
 
-/**
- * Form — 表单及表单元素
- *
- *   Form::make()->action('/save')->method('POST')
- *       ->child(Form::input('email')->label('邮箱')->required())
- *       ->child(Form::password('pass')->label('密码'))
- *       ->child(Form::select('role')->options(['admin' => '管理员', 'user' => '用户']))
- *       ->child(Form::textarea('bio')->label('简介'))
- *       ->child(Form::button('提交')->primary())
- */
 class Form extends Element
 {
     public function __construct()
@@ -40,8 +30,6 @@ class Form extends Element
         $this->attrs['enctype'] = 'multipart/form-data';
         return $this;
     }
-
-    // ========== 表单元素工厂 ==========
 
     public static function input(string $name = ''): FormInput
     {
@@ -92,6 +80,7 @@ class Form extends Element
     {
         return FormButton::make($label)->type('submit');
     }
+
     public static function label(string $text = ''): Element
     {
         return Element::make('label')->text($text);
@@ -111,7 +100,7 @@ class FormInput extends Element
     public function name(string $name): static { $this->attrs['name'] = $name; return $this; }
     public function type(string $type): static { $this->attrs['type'] = $type; return $this; }
     public function value(string $value): static { $this->attrs['value'] = $value; return $this; }
-    public function placeholder(string $text): static { $this->attrs['placeholder'] = $value ?? $text; return $this; }
+    public function placeholder(string $text): static { $this->attrs['placeholder'] = $text; return $this; }
     public function required(): static { $this->attrs['required'] = ''; return $this; }
     public function disabled(): static { $this->attrs['disabled'] = ''; return $this; }
     public function readonly(): static { $this->attrs['readonly'] = ''; return $this; }
@@ -191,10 +180,7 @@ class FormSelect extends Element
     public function render(): string
     {
         foreach ($this->options as $value => $label) {
-            $opt = new Element('option');
-            $opt->attr('value', (string)$value);
-            $opt->text((string)$label);
-            $this->child($opt);
+            $this->child((new Element('option'))->attr('value', (string)$value)->text((string)$label));
         }
         $this->class('w-full border rounded-md px-3 py-2 text-sm');
         return parent::render();

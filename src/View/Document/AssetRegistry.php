@@ -6,12 +6,12 @@ namespace Framework\View\Document;
 
 class AssetRegistry
 {
-    private static ?AssetRegistry $instance = null;
+    private static ?self $instance = null;
     private array $cssFiles = [];
     private array $jsFiles = [];
     private array $inlineStyles = [];
-    private array $namedScripts = []; // [id => code]
-    private array $requestedScripts = []; // [id => true]
+    private array $namedScripts = [];
+    private array $requestedScripts = [];
     private array $loaded = [];
 
     public static function getInstance(): self
@@ -22,19 +22,19 @@ class AssetRegistry
         return self::$instance;
     }
 
+    public static function setInstance(self $instance): void
+    {
+        self::$instance = $instance;
+    }
+
     public static function reset(): void
     {
         self::$instance = null;
     }
 
-    /**
-     * 注册命名的 JS 代码块（持久化到缓存）
-     */
     public function registerScript(string $id, string $js): self
     {
         $this->namedScripts[$id] = $js;
-        
-        // 自动将注册的脚本标记为“待加载”，这样就不需要手动调用 requireScript 了
         $this->requireScript($id);
 
         if (function_exists('\\cache')) {
@@ -43,9 +43,6 @@ class AssetRegistry
         return $this;
     }
 
-    /**
-     * 请求加载特定的脚本 ID
-     */
     public function requireScript(string $id): self
     {
         $this->requestedScripts[$id] = true;
@@ -83,15 +80,9 @@ class AssetRegistry
         return $this;
     }
 
-    /**
-     * 核心资源注册
-     */
     public function core(): self
     {
-        // 显式注册 CSS 路由
         $this->css('/_css', 'generated-css');
-        
-        // 我们不需要在这里显式 add js，因为 renderJs 会自动根据收集到的 ID 生成链接
         return $this;
     }
 
@@ -139,8 +130,6 @@ class AssetRegistry
             $html .= '<script src="' . htmlspecialchars($js['src']) . '"' . $defer . $module . $id . '></script>';
         }
 
-        // 核心改动：如果 requestedScripts 为空，但 namedScripts 有内容（比如 DebugBar 刚刚注册的）
-        // 或者显式合并所有 ID
         $idsToLoad = array_unique(array_merge(
             array_keys($this->requestedScripts),
             array_keys($this->namedScripts)
@@ -155,23 +144,23 @@ class AssetRegistry
         return $html;
     }
 
-    /**
-     * 获取已注册的 CSS 文件列表（用于 WASM JSON 输出）
-     *
-     * @return array<int, array{href: string, id: string|null}>
-     */
     public function getCssList(): array
     {
         return $this->cssFiles;
     }
 
-    /**
-     * 获取已注册的 JS 文件列表（用于 WASM JSON 输出）
-     *
-     * @return array<int, array{src: string, defer: bool, id: string|null, module: bool}>
-     */
     public function getJsList(): array
     {
         return $this->jsFiles;
+    }
+
+    public function getLoadedAssets(): array
+    {
+        return array_keys($this->loaded);
+    }
+
+    public function isLoaded(string $key): bool
+    {
+        return isset($this->loaded[$key]);
     }
 }

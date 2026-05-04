@@ -95,8 +95,8 @@ namespace {$namespace};
 
 use Framework\Routing\Attribute\Route;
 use Framework\Http\Response\Response;
-use Framework\View\Container;
-use Framework\View\Text;
+use Framework\View\Element\Container;
+use Framework\View\Element\Text;
 
 class {$className}
 {

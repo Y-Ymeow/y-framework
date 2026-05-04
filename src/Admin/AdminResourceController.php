@@ -11,10 +11,10 @@ use Framework\Admin\Live\AdminListPage;
 use Framework\Admin\Live\AdminFormPage;
 use Framework\Admin\Live\AdminLayout;
 use Framework\Routing\Attribute\RouteGroup;
-use Framework\View\Container;
-use Framework\View\Link;
-use Framework\View\Listing;
-use Framework\View\Text;
+use Framework\View\Element\Container;
+use Framework\View\Element\Link;
+use Framework\View\Element\Listing;
+use Framework\View\Element\Text;
 
 class AdminResourceController
 {

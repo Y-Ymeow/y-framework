@@ -2,22 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Framework\View;
+namespace Framework\View\Element;
 
 use Framework\View\Base\Element;
 
-/**
- * Table — 表格
- *
- *   Table::make()
- *       ->headers(['姓名', '邮箱', '状态'])
- *       ->rows([
- *           ['张三', 'z@test.com', '启用'],
- *           ['李四', 'l@test.com', '禁用'],
- *       ])
- *       ->striped()
- *       ->hoverable()
- */
 class Table extends Element
 {
     private array $headers = [];
@@ -68,41 +56,33 @@ class Table extends Element
         if ($this->striped) $trCls .= ' odd:bg-white even:bg-gray-50';
         if ($this->hoverable) $trCls .= ' hover:bg-gray-100';
 
-        // thead
         $thead = new Element('thead');
         $headTr = new Element('tr');
         foreach ($this->headers as $h) {
-            $th = new Element('th');
-            $th->class($thCls)->text((string)$h);
-            $headTr->child($th);
+            $headTr->child((new Element('th'))->class($thCls)->text((string)$h));
         }
         $thead->child($headTr);
         $this->child($thead);
 
-        // tbody
         $tbody = new Element('tbody');
         if (empty($this->rows)) {
-            $tr = new Element('tr')->class($trCls);
-            $td = new Element('td')->class("{$tdCls} text-center text-gray-500 py-8")
+            $tr = (new Element('tr'))->class($trCls);
+            $tr->child((new Element('td'))->class("{$tdCls} text-center text-gray-500 py-8")
                 ->attr('colspan', (string)count($this->headers))
-                ->text($this->emptyText);
-            $tr->child($td);
+                ->text($this->emptyText));
             $tbody->child($tr);
         } else {
             foreach ($this->rows as $row) {
-                $tr = new Element('tr')->class($trCls);
+                $tr = (new Element('tr'))->class($trCls);
                 foreach ($row as $cell) {
-                    $td = new Element('td')->class($tdCls);
-                    $td->child($cell);
-                    $tr->child($td);
+                    $tr->child((new Element('td'))->class($tdCls)->child($cell));
                 }
                 $tbody->child($tr);
             }
         }
         $this->child($tbody);
 
-        $wrapper = new Element('div');
-        $wrapper->class('overflow-x-auto');
+        $wrapper = (new Element('div'))->class('overflow-x-auto');
         $wrapper->child($this);
 
         return $wrapper->render();

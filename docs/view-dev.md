@@ -46,7 +46,7 @@
 - `getCssList(): array` — 获取已注册的 CSS 文件列表（用于 WASM JSON 输出）
 - `getJsList(): array` — 获取已注册的 JS 文件列表（用于 WASM JSON 输出）
 
-### `Framework\View\Container`
+### `Framework\View\Element\Container`
 
 - **文件:** `php/src/View/Container.php`
 - **继承:** `Framework\View\Base\Element`
@@ -150,7 +150,7 @@
 - `requireScript(string $ids): static` — 声明依赖的 JS 脚本
 - `render(): string` — 渲染元素为 HTML 字符串
 
-### `Framework\View\Form`
+### `Framework\View\Element\Form`
 
 - **文件:** `php/src/View/Form.php`
 - **继承:** `Framework\View\Base\Element`
@@ -160,16 +160,16 @@
 - `action(string $url): static`
 - `method(string $method): static`
 - `multipart(): static`
-- `input(string $name = ''): Framework\View\FormInput`
-- `password(string $name = ''): Framework\View\FormInput`
-- `email(string $name = ''): Framework\View\FormInput`
-- `number(string $name = ''): Framework\View\FormInput`
-- `hiddenField(string $name = ''): Framework\View\FormInput`
-- `textarea(string $name = ''): Framework\View\FormTextarea`
-- `select(string $name = ''): Framework\View\FormSelect`
-- `checkbox(string $name = ''): Framework\View\FormInput`
-- `button(string $label = ''): Framework\View\FormButton`
-- `submit(string $label = '提交'): Framework\View\FormButton`
+- `input(string $name = ''): Framework\View\Element\FormInput`
+- `password(string $name = ''): Framework\View\Element\FormInput`
+- `email(string $name = ''): Framework\View\Element\FormInput`
+- `number(string $name = ''): Framework\View\Element\FormInput`
+- `hiddenField(string $name = ''): Framework\View\Element\FormInput`
+- `textarea(string $name = ''): Framework\View\Element\FormTextarea`
+- `select(string $name = ''): Framework\View\Element\FormSelect`
+- `checkbox(string $name = ''): Framework\View\Element\FormInput`
+- `button(string $label = ''): Framework\View\Element\FormButton`
+- `submit(string $label = '提交'): Framework\View\Element\FormButton`
 - `label(string $text = ''): Framework\View\Base\Element`
 
 ### `Framework\View\Fragment`
@@ -207,7 +207,7 @@
 - `objectContain(): static`
 - `rounded(string $size = 'lg'): static`
 
-### `Framework\View\Link`
+### `Framework\View\Element\Link`
 
 - **文件:** `php/src/View/Link.php`
 - **继承:** `Framework\View\Base\Element`
@@ -219,7 +219,7 @@
 - `blank(): static`
 - `download(?string $filename = null): static`
 
-### `Framework\View\Listing`
+### `Framework\View\Element\Listing`
 
 - **文件:** `php/src/View/Listing.php`
 - **继承:** `Framework\View\Base\Element`
@@ -239,31 +239,31 @@
 - `listDecimal(): static`
 - `listNone(): static`
 
-### `Framework\View\LiveResponse`
+### `Framework\Component\Live\LiveResponse`
 
 - **文件:** `php/src/View/LiveResponse.php`
 
 **公开方法 (20)：**
 
-- `make(): Framework\View\LiveResponse`
-- `update(string $field, mixed $value): Framework\View\LiveResponse`
-- `html(string $selector, string $html): Framework\View\LiveResponse`
-- `domPatch(string $selector, string $html): Framework\View\LiveResponse`
-- `append(string $selector, string $html): Framework\View\LiveResponse`
-- `appendHtml(string $selector, string $html): Framework\View\LiveResponse`
-- `remove(string $selector): Framework\View\LiveResponse`
-- `addClass(string $selector, string $class): Framework\View\LiveResponse`
-- `removeClass(string $selector, string $class): Framework\View\LiveResponse`
-- `toast(string $message, string $type = 'success', int $duration = 3000): Framework\View\LiveResponse`
-- `notify(string $title, string $message, string $type = 'info', int $duration = 5000): Framework\View\LiveResponse`
-- `openModal(string $id): Framework\View\LiveResponse`
-- `closeModal(string $id): Framework\View\LiveResponse`
-- `redirect(string $url): Framework\View\LiveResponse`
-- `reload(): Framework\View\LiveResponse`
-- `js(string $code): Framework\View\LiveResponse`
-- `dispatch(string $event, ?string $target = null, mixed $detail = null): Framework\View\LiveResponse`
-- `fragment(string $name, string $html, string $mode = 'replace'): Framework\View\LiveResponse`
-- `fragments(array $fragments): Framework\View\LiveResponse`
+- `make(): Framework\Component\Live\LiveResponse`
+- `update(string $field, mixed $value): Framework\Component\Live\LiveResponse`
+- `html(string $selector, string $html): Framework\Component\Live\LiveResponse`
+- `domPatch(string $selector, string $html): Framework\Component\Live\LiveResponse`
+- `append(string $selector, string $html): Framework\Component\Live\LiveResponse`
+- `appendHtml(string $selector, string $html): Framework\Component\Live\LiveResponse`
+- `remove(string $selector): Framework\Component\Live\LiveResponse`
+- `addClass(string $selector, string $class): Framework\Component\Live\LiveResponse`
+- `removeClass(string $selector, string $class): Framework\Component\Live\LiveResponse`
+- `toast(string $message, string $type = 'success', int $duration = 3000): Framework\Component\Live\LiveResponse`
+- `notify(string $title, string $message, string $type = 'info', int $duration = 5000): Framework\Component\Live\LiveResponse`
+- `openModal(string $id): Framework\Component\Live\LiveResponse`
+- `closeModal(string $id): Framework\Component\Live\LiveResponse`
+- `redirect(string $url): Framework\Component\Live\LiveResponse`
+- `reload(): Framework\Component\Live\LiveResponse`
+- `js(string $code): Framework\Component\Live\LiveResponse`
+- `dispatch(string $event, ?string $target = null, mixed $detail = null): Framework\Component\Live\LiveResponse`
+- `fragment(string $name, string $html, string $mode = 'replace'): Framework\Component\Live\LiveResponse`
+- `fragments(array $fragments): Framework\Component\Live\LiveResponse`
 - `toArray(): array`
 
 ### `Framework\View\Table`
@@ -283,7 +283,7 @@
 - `emptyText(string $text): static`
 - `render(): string`
 
-### `Framework\View\Text`
+### `Framework\View\Element\Text`
 
 - **文件:** `php/src/View/Text.php`
 - **继承:** `Framework\View\Base\Element`

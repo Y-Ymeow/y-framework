@@ -166,10 +166,10 @@ class DebugBarListener
             $fragments = [];
             $refreshTargets = method_exists($comp, 'getRefreshFragments') ? $comp->getRefreshFragments() : [];
             if (!empty($refreshTargets)) {
-                \Framework\View\FragmentRegistry::reset();
-                \Framework\View\FragmentRegistry::setTargets($refreshTargets);
+                \Framework\View\FragmentRegistry::getInstance()->reset();
+                \Framework\View\FragmentRegistry::getInstance()->setTargets($refreshTargets);
                 $comp->render();
-                foreach (\Framework\View\FragmentRegistry::getFragments() as $name => $data) {
+                foreach (\Framework\View\FragmentRegistry::getInstance()->getFragments() as $name => $data) {
                     $fragments[] = [
                         'name' => $name,
                         'html' => $data['element']->render(),
