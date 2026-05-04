@@ -23,7 +23,11 @@ class DatabaseServiceProvider extends ServiceProvider
             Connection::register($name, $connConfig);
         }
 
-        $conn = Connection::get($default);
+        $this->app->singleton(Connection::class, function () use ($default) {
+            return Connection::get($default);
+        });
+
+        $conn = $this->app->make(Connection::class);
 
         try {
             $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
