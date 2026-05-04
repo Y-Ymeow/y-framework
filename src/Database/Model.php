@@ -274,11 +274,14 @@ abstract class Model implements \ArrayAccess
     {
         $query = static::getConnection()->table($this->getTable());
 
-        if (in_array(\Framework\Database\Traits\HasSoftDeletes::class, class_uses(static::class) ?: [], true)) {
+        $traits = class_uses_recursive(static::class);
+        if (isset($traits[\Framework\Database\Traits\HasSoftDeletes::class])) {
+            $column = method_exists($this, 'getDeletedAtColumn') ? $this->getDeletedAtColumn() : 'deleted_at';
+            
             if ($this->softDeleteMode === 'only') {
-                $query->whereNotNull('deleted_at');
+                $query->whereNotNull($column);
             } elseif ($this->softDeleteMode !== 'all') {
-                $query->whereNull('deleted_at');
+                $query->whereNull($column);
             }
         }
 
