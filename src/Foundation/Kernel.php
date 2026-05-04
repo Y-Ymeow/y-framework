@@ -9,7 +9,6 @@ use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
 use Framework\Http\Response\StreamedResponse;
 use Framework\Routing\Router;
-use Framework\Routing\SystemRoutesProvider;
 
 class Kernel
 {

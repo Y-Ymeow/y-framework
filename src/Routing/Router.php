@@ -18,45 +18,60 @@ use Framework\View\Base\Element;
 
 class Router
 {
-    private array $routes = [];
+    private RouteCollection $routes;
     private Application $app;
-    private ?MiddlewareManager $middlewareManager = null;
+    private MiddlewareManager $middlewareManager;
+    private array $groupStack = [];
 
     public function __construct(Application $app)
     {
         $this->app = $app;
-        $this->middlewareManager = MiddlewareManager::getInstance();
+        $this->routes = new RouteCollection();
+        $this->middlewareManager = new MiddlewareManager();
     }
 
-    public function addRoute(string $method, string $path, mixed $handler, string $name = ''): void
+    public function addRoute(string $method, string $path, mixed $handler, string $name = ''): Route
     {
-        $this->routes[] = [
-            'method' => $method,
-            'path' => $path,
-            'name' => $name ?: ($method . ':' . $path),
-            'handler' => $handler,
-            'middleware' => [],
-        ];
+        $middleware = $this->resolveGroupMiddleware();
+        $prefix = $this->resolveGroupPrefix();
+        $groupName = $this->resolveGroupName();
+
+        $fullPath = rtrim($prefix . '/' . ltrim($path, '/'), '/') ?: '/';
+        $fullName = $groupName ? ($name ? $groupName . '.' . $name : $groupName) : $name;
+
+        $route = new Route($method, $fullPath, $handler, $fullName, $middleware, $groupName ?: null);
+        $this->routes->add($route);
+        return $route;
     }
 
-    public function get(string $path, mixed $handler, string $name = ''): void
+    public function get(string $path, mixed $handler, string $name = ''): Route
     {
-        $this->addRoute('GET', $path, $handler, $name);
+        return $this->addRoute('GET', $path, $handler, $name);
     }
 
-    public function post(string $path, mixed $handler, string $name = ''): void
+    public function post(string $path, mixed $handler, string $name = ''): Route
     {
-        $this->addRoute('POST', $path, $handler, $name);
+        return $this->addRoute('POST', $path, $handler, $name);
     }
 
-    public function put(string $path, mixed $handler, string $name = ''): void
+    public function put(string $path, mixed $handler, string $name = ''): Route
     {
-        $this->addRoute('PUT', $path, $handler, $name);
+        return $this->addRoute('PUT', $path, $handler, $name);
     }
 
-    public function delete(string $path, mixed $handler, string $name = ''): void
+    public function patch(string $path, mixed $handler, string $name = ''): Route
     {
-        $this->addRoute('DELETE', $path, $handler, $name);
+        return $this->addRoute('PATCH', $path, $handler, $name);
+    }
+
+    public function delete(string $path, mixed $handler, string $name = ''): Route
+    {
+        return $this->addRoute('DELETE', $path, $handler, $name);
+    }
+
+    public function options(string $path, mixed $handler, string $name = ''): Route
+    {
+        return $this->addRoute('OPTIONS', $path, $handler, $name);
     }
 
     public function any(string $path, mixed $handler, string $name = ''): void
@@ -66,10 +81,30 @@ class Router
         }
     }
 
+    public function match(array $methods, string $path, mixed $handler, string $name = ''): Route
+    {
+        $first = null;
+        foreach ($methods as $method) {
+            $route = $this->addRoute($method, $path, $handler, $name);
+            if ($first === null) $first = $route;
+        }
+        return $first;
+    }
+
+    public function group(array $attributes, callable $callback): void
+    {
+        $this->groupStack[] = $attributes;
+
+        $callback($this);
+
+        array_pop($this->groupStack);
+    }
+
     public function loadCache(string $cacheFile): bool
     {
         if (file_exists($cacheFile)) {
-            $this->routes = require $cacheFile;
+            $data = require $cacheFile;
+            $this->routes = RouteCollection::fromArray($data);
             return true;
         }
         return false;
@@ -103,7 +138,6 @@ class Router
 
     public function registerClass(\ReflectionClass $reflection): void
     {
-        // 处理 RouteGroup 属性
         $groupAttrs = $reflection->getAttributes(Attr\RouteGroup::class);
         $prefix = '';
         $classMiddleware = [];
@@ -116,14 +150,12 @@ class Router
             $groupName = $groupAttr->name;
         }
 
-        // 处理 Middleware 属性
         $middlewareAttrs = $reflection->getAttributes(Attr\Middleware::class);
         foreach ($middlewareAttrs as $ma) {
             $m = $ma->newInstance();
             $classMiddleware = array_merge($classMiddleware, (array)$m->middleware);
         }
 
-        // 处理类级别的 Route 属性
         $classRouteAttrs = $reflection->getAttributes(Attr\Route::class);
         foreach ($classRouteAttrs as $ra) {
             $routeAttr = $ra->newInstance();
@@ -138,18 +170,17 @@ class Router
             }
 
             foreach ($methods as $method) {
-                $this->routes[] = [
-                    'method' => strtoupper($method),
-                    'path' => $path,
-                    'name' => $name,
-                    'handler' => [$reflection->getName(), $handlerMethod],
-                    'middleware' => $middleware,
-                    'group' => $groupName ?: null,
-                ];
+                $this->routes->add(new Route(
+                    $method,
+                    $path,
+                    [$reflection->getName(), $handlerMethod],
+                    $name,
+                    $middleware,
+                    $groupName ?: null,
+                ));
             }
         }
 
-        // 处理方法级别的路由属性
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             $this->registerMethod($reflection->getName(), $method, $prefix, $classMiddleware, $groupName);
         }
@@ -163,7 +194,6 @@ class Router
 
             $path = rtrim($prefix . '/' . ltrim($attr->path, '/'), '/') ?: '/';
 
-            // 应用类级别中间件的 only/except 过滤
             $filteredClassMiddleware = [];
             foreach ($classMiddleware as $mw) {
                 if (is_string($mw)) {
@@ -171,7 +201,6 @@ class Router
                 }
             }
 
-            // 检查类 Middleware 属性的 only/except
             $refClass = new \ReflectionClass($className);
             $classMiddlewareAttrs = $refClass->getAttributes(Attr\Middleware::class);
             foreach ($classMiddlewareAttrs as $ma) {
@@ -193,14 +222,14 @@ class Router
             $name = $attr->name ?: ($groupName ? $groupName . '.' : '') . $method->getName();
 
             foreach ($methods as $httpMethod) {
-                $this->routes[] = [
-                    'method' => strtoupper($httpMethod),
-                    'path' => $path,
-                    'name' => $name,
-                    'handler' => [$className, $method->getName()],
-                    'middleware' => $middleware,
-                    'group' => $groupName ?: null,
-                ];
+                $this->routes->add(new Route(
+                    $httpMethod,
+                    $path,
+                    [$className, $method->getName()],
+                    $name,
+                    $middleware,
+                    $groupName ?: null,
+                ));
             }
         }
     }
@@ -210,25 +239,51 @@ class Router
         $method = $request->method();
         $path = $request->path();
 
-        foreach ($this->routes as $route) {
-            if ($route['method'] !== $method) continue;
+        foreach ($this->routes->getByMethod($method) as $route) {
+            $params = $route->match($path);
+            if ($params !== false) {
+                return $this->invokeWithMiddleware($route, $request, $params);
+            }
+        }
 
-            $params = $this->matchPath($route['path'], $path);
-            if ($params === false) continue;
+        if ($method === 'OPTIONS') {
+            return new Response('', 204, ['Allow' => implode(', ', $this->getAllowedMethods($path))]);
+        }
 
-            return $this->invokeWithMiddleware($route, $request, $params);
+        if ($method !== 'HEAD') {
+            $allowed = $this->getAllowedMethods($path);
+            if (!empty($allowed)) {
+                return new Response('Method Not Allowed', 405, ['Allow' => implode(', ', $allowed)]);
+            }
         }
 
         return $this->sendContent(Element::make('h1')->text('404 Not Found'), 404);
     }
 
-    /**
-     * 带中间件执行的路由调用
-     */
-    private function invokeWithMiddleware(array $route, Request $request, array $params): Response|StreamedResponse
+    public function getRouteByName(string $name): ?Route
     {
-        $middleware = $route['middleware'] ?? [];
-        $groupName = $route['group'] ?? null;
+        return $this->routes->getByName($name);
+    }
+
+    public function getRoutes(): array
+    {
+        return $this->routes->toArray();
+    }
+
+    public function getRouteCollection(): RouteCollection
+    {
+        return $this->routes;
+    }
+
+    public function getMiddlewareManager(): MiddlewareManager
+    {
+        return $this->middlewareManager;
+    }
+
+    private function invokeWithMiddleware(Route $route, Request $request, array $params): Response|StreamedResponse
+    {
+        $middleware = $route->getMiddleware();
+        $groupName = $route->getGroup();
 
         $destination = function (Request $req) use ($route, $params): Response|StreamedResponse {
             return $this->invoke($route, $req, $params);
@@ -237,87 +292,17 @@ class Router
         return $this->middlewareManager->pipe($request, $destination, $middleware, $groupName);
     }
 
-    private function matchPath(string $routePath, string $requestPath): array|false
-    {
-        $routeParts = explode('/', trim($routePath, '/'));
-        $requestParts = explode('/', trim($requestPath, '/'));
-
-        $params = [];
-        $wildcardIndex = null;
-        $wildcardName = null;
-        $consumedMultipleParts = false;
-
-        for ($i = 0; $i < count($routeParts); $i++) {
-            $routePart = $routeParts[$i];
-
-            if (str_starts_with($routePart, '{') && str_ends_with($routePart, '}')) {
-                if (str_contains($routePart, '...')) {
-                    $wildcardIndex = $i;
-                    $wildcardName = trim($routePart, '{}.');
-                    break;
-                }
-
-                $inner = trim($routePart, '{}');
-                $paramName = $inner;
-                $pattern = null;
-
-                if (str_contains($inner, ':')) {
-                    [$paramName, $pattern] = explode(':', $inner, 2);
-                }
-
-                $isLastRoutePart = $i === count($routeParts) - 1;
-                $hasMoreRequestParts = isset($requestParts[$i]);
-
-                if (!$hasMoreRequestParts) {
-                    return false;
-                }
-
-                if ($isLastRoutePart && count($requestParts) > count($routeParts)) {
-                    $remainingParts = array_slice($requestParts, $i);
-                    $value = implode('/', $remainingParts);
-                    $consumedMultipleParts = true;
-                } else {
-                    $value = $requestParts[$i];
-                }
-
-                if ($pattern !== null) {
-                    if (!preg_match('/^' . $pattern . '$/', $value)) {
-                        return false;
-                    }
-                }
-
-                $params[$paramName] = $value;
-            } else {
-                if (!isset($requestParts[$i]) || $requestParts[$i] !== $routePart) {
-                    return false;
-                }
-            }
-        }
-
-        if ($wildcardIndex !== null) {
-            $remainingParts = array_slice($requestParts, $wildcardIndex);
-            $params[$wildcardName] = implode('/', $remainingParts);
-            return $params;
-        }
-
-        if (!$consumedMultipleParts && count($routeParts) !== count($requestParts)) {
-            return false;
-        }
-
-        return $params;
-    }
-
-    private function invoke(array $route, Request $request, array $params): Response|StreamedResponse
+    private function invoke(Route $route, Request $request, array $params): Response|StreamedResponse
     {
         $request->setRoute(
-            $route['name'] ?? '',
-            is_array($route['handler'])
-                ? ((is_object($route['handler'][0]) ? get_class($route['handler'][0]) : $route['handler'][0]) . '::' . $route['handler'][1])
+            $route->getName(),
+            is_array($route->getHandler())
+                ? ((is_object($route->getHandler()[0]) ? get_class($route->getHandler()[0]) : $route->getHandler()[0]) . '::' . $route->getHandler()[1])
                 : 'closure',
             $params
         );
 
-        $handler = $route['handler'];
+        $handler = $route->getHandler();
 
         if ($handler instanceof \Closure) {
             return $this->invokeCallable($handler, $request, $params);
@@ -326,8 +311,6 @@ class Router
         if (is_array($handler)) {
             [$classOrInstance, $methodName] = $handler;
             $instance = is_object($classOrInstance) ? $classOrInstance : $this->app->make($classOrInstance);
-
-
 
             $ref = new \ReflectionMethod($instance, $methodName);
             $args = $this->resolveArguments($ref, $request, $params);
@@ -338,7 +321,6 @@ class Router
                 if ($result instanceof Response) {
                     return $result;
                 }
-
                 return $this->normalizeResponse($instance);
             }
 
@@ -357,7 +339,6 @@ class Router
         $ref = new \ReflectionFunction($handler);
         $args = $this->resolveArguments($ref, $request, $params);
         $result = $handler(...$args);
-
         return $this->normalizeResponse($result);
     }
 
@@ -383,12 +364,25 @@ class Router
         return $args;
     }
 
+    private function getAllowedMethods(string $path): array
+    {
+        $methods = [];
+        foreach (['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'] as $method) {
+            foreach ($this->routes->getByMethod($method) as $route) {
+                if ($route->match($path) !== false) {
+                    $methods[] = $method;
+                    break;
+                }
+            }
+        }
+        return $methods;
+    }
+
     private function sendContent(mixed $content, int $statusCode): Response
     {
         if (AppEnvironment::isWasm()) {
             return Response::wasm($content, status: $statusCode);
         }
-
         return Response::html($content, $statusCode);
     }
 
@@ -397,25 +391,49 @@ class Router
         if ($result instanceof Response) {
             return $result;
         }
-
         if (is_array($result)) {
             return Response::json($result);
         }
-
         if (is_string($result)) {
             return $this->sendContent($result, 200);
         }
-
         if ($result instanceof LiveComponent || $result instanceof Element || $result instanceof UXComponent) {
             return $this->sendContent($result, 200);
         }
-
         return $this->sendContent(Element::make('div')->text('No content'), 204);
     }
 
-    public function getRoutes(): array
+    private function resolveGroupPrefix(): string
     {
-        return $this->routes;
+        $prefix = '';
+        foreach ($this->groupStack as $group) {
+            if (isset($group['prefix'])) {
+                $prefix .= '/' . trim($group['prefix'], '/');
+            }
+        }
+        return $prefix;
+    }
+
+    private function resolveGroupMiddleware(): array
+    {
+        $middleware = [];
+        foreach ($this->groupStack as $group) {
+            if (isset($group['middleware'])) {
+                $middleware = array_merge($middleware, (array)$group['middleware']);
+            }
+        }
+        return $middleware;
+    }
+
+    private function resolveGroupName(): string
+    {
+        $name = '';
+        foreach ($this->groupStack as $group) {
+            if (isset($group['name'])) {
+                $name .= ($name ? '.' : '') . trim($group['name'], '.');
+            }
+        }
+        return $name;
     }
 
     private function getClassFromFile(string $filePath): ?string

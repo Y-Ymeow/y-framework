@@ -144,23 +144,19 @@ function route(string $name, array $parameters = [], bool $absolute = false): st
     $app = \Framework\Foundation\Application::getInstance();
     $router = $app->make(\Framework\Routing\Router::class);
 
-    foreach ($router->getRoutes() as $route) {
-        if (($route['name'] ?? '') === $name) {
-            $path = $route['path'];
-            foreach ($parameters as $key => $value) {
-                $path = str_replace('{' . $key . '}', (string) $value, $path);
-                $path = str_replace('{' . $key . ':...}', (string) $value, $path);
-            }
-            $path = preg_replace('/\{[^}]+\}/', '', $path);
-            if ($absolute) {
-                $appUrl = config('app.url', '');
-                return rtrim($appUrl, '/') . '/' . ltrim($path, '/');
-            }
-            return '/' . ltrim($path, '/');
-        }
+    $route = $router->getRouteByName($name);
+    if ($route === null) {
+        throw new \Framework\Exception\RouteNotFoundException($name);
     }
 
-    throw new \Framework\Exception\RouteNotFoundException($name);
+    $path = $route->generateUrl($parameters);
+
+    if ($absolute) {
+        $appUrl = config('app.url', '');
+        return rtrim($appUrl, '/') . $path;
+    }
+
+    return $path;
 }
 
 function session(): \Framework\Http\Session\Session
