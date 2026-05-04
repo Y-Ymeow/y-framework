@@ -38,31 +38,90 @@ class Schema
     {
         $blueprint = new Blueprint($table, $this->connection->getDriverName());
         $callback($blueprint);
-
-        foreach ($blueprint->getColumns() as $name => $column) {
-            if ($column['change'] ?? false) {
-                $this->modifyColumn($table, $name, $this->compileColumnType($column), $column);
-            } elseif (!$this->hasColumn($table, $name)) {
-                $this->addColumn($table, $name, $this->compileColumnType($column), $column);
-            }
+        
+        // Generate ALTER TABLE statements for column/index/foreign key changes
+        $sqls = $this->compileAlterSql($blueprint);
+        foreach ($sqls as $sql) {
+            $this->connection->execute($sql);
         }
     }
 
-    public function modifyColumn(string $table, string $column, string $type, array $options = []): void
+    /**
+     * Compile ALTER TABLE statements from Blueprint
+     */
+    private function compileAlterSql(Blueprint $blueprint): array
     {
-        if ($this->connection->getDriverName() === 'sqlite') {
-            // SQLite doesn't support MODIFY COLUMN.
-            return;
+        $driver = $blueprint->getDriver();
+        $q = $driver === 'sqlite' ? '"' : '`';
+        $table = $blueprint->getTable();
+        $sqls = [];
+
+        // Add columns
+        foreach ($blueprint->getColumns() as $column => $definition) {
+            $colSql = $this->compileColumnDefinition($column, $definition, $driver, $q);
+            $sqls[] = "ALTER TABLE {$q}{$table}{$q} ADD COLUMN {$colSql}";
         }
 
-        $sql = "ALTER TABLE `{$table}` MODIFY COLUMN `{$column}` {$type}";
+        // Add indexes
+        foreach ($blueprint->getIndexes() as $index) {
+            $cols = implode($q . ', ' . $q, $index['columns']);
+            if ($index['type'] === 'unique') {
+                $sqls[] = "CREATE UNIQUE INDEX {$q}{$index['name']}{$q} ON {$q}{$table}{$q} ({$q}{$cols}{$q})";
+            } else {
+                $sqls[] = "CREATE INDEX {$q}{$index['name']}{$q} ON {$q}{$table}{$q} ({$q}{$cols}{$q})";
+            }
+        }
 
-        if (!($options['nullable'] ?? true)) {
+        // Add foreign keys (SQLite requires them in CREATE TABLE, but we can try ALTER)
+        foreach ($blueprint->getForeignKeys() as $fk) {
+            if ($driver === 'sqlite') {
+                // SQLite: foreign keys must be in CREATE TABLE, skip for ALTER
+                // Framework will handle this in migration design
+                continue;
+            }
+            $sqls[] = "ALTER TABLE {$q}{$table}{$q} ADD CONSTRAINT {$q}fk_{$table}_{$fk['column']}{$q} " .
+                "FOREIGN KEY ({$q}{$fk['column']}{$q}) REFERENCES {$q}{$fk['on']}{$q} ({$q}{$fk['references']}{$q})";
+        }
+
+        return $sqls;
+    }
+
+    /**
+     * Compile column definition for ALTER TABLE
+     */
+    private function compileColumnDefinition(string $column, array $def, string $driver, string $q): string
+    {
+        $type = match ($def['type']) {
+            'varchar' => "VARCHAR({$def['length']})",
+            'char' => "CHAR({$def['length']})",
+            'text', 'longtext', 'mediumtext' => 'TEXT',
+            'int', 'tinyint', 'bigint', 'smallint', 'mediumint' => 'INTEGER',
+            'decimal' => "DECIMAL({$def['precision']}, {$def['scale']})",
+            'float' => "FLOAT({$def['precision']}, {$def['scale']})",
+            'double' => "DOUBLE({$def['precision']}, {$def['scale']})",
+            'date', 'time', 'year' => 'TEXT',
+            'datetime', 'timestamp' => 'TEXT',
+            'json', 'blob' => 'BLOB',
+            'enum', 'set' => "TEXT",
+            default => strtoupper($def['type']),
+        };
+
+        $sql = "{$q}{$column}{$q} {$type}";
+
+        if (isset($def['auto_increment']) && $def['auto_increment']) {
+            // Auto-increment columns can't be added via ALTER TABLE in SQLite
+            // Skip for ALTER, should be handled in CREATE TABLE
+            if ($driver !== 'sqlite') {
+                $sql .= ' AUTO_INCREMENT';
+            }
+        }
+
+        if (!($def['nullable'] ?? true)) {
             $sql .= ' NOT NULL';
         }
 
-        if (isset($options['default'])) {
-            $default = $options['default'];
+        if (isset($def['default'])) {
+            $default = $def['default'];
             if ($default === null) {
                 $sql .= ' DEFAULT NULL';
             } elseif (is_bool($default)) {
@@ -76,59 +135,7 @@ class Schema
             }
         }
 
-        if (($options['after'] ?? null)) {
-            $sql .= " AFTER `{$options['after']}`";
-        }
-
-        $this->connection->execute($sql);
-    }
-
-    private function compileColumnType(array $column): string
-    {
-        $driver = $this->connection->getDriverName();
-        if ($driver === 'sqlite') {
-            return match ($column['type']) {
-                'varchar' => "VARCHAR({$column['length']})",
-                'char' => "CHAR({$column['length']})",
-                'text', 'longtext', 'mediumtext' => 'TEXT',
-                'int', 'tinyint', 'bigint', 'smallint', 'mediumint' => 'INTEGER',
-                'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
-                'float' => "FLOAT({$column['precision']}, {$column['scale']})",
-                'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
-                'date', 'time', 'year' => 'TEXT',
-                'datetime', 'timestamp' => 'TEXT',
-                'json', 'blob' => 'BLOB',
-                'enum', 'set' => "TEXT",
-                default => strtoupper($column['type']),
-            };
-        } else {
-            $sql = match ($column['type']) {
-                'varchar' => "VARCHAR({$column['length']})",
-                'char' => "CHAR({$column['length']})",
-                'text' => 'TEXT',
-                'mediumtext' => 'MEDIUMTEXT',
-                'longtext' => 'LONGTEXT',
-                'int' => ($column['unsigned'] ?? false) ? 'INT UNSIGNED' : 'INT',
-                'tinyint' => ($column['unsigned'] ?? false) ? 'TINYINT UNSIGNED' : 'TINYINT',
-                'smallint' => ($column['unsigned'] ?? false) ? 'SMALLINT UNSIGNED' : 'SMALLINT',
-                'mediumint' => ($column['unsigned'] ?? false) ? 'MEDIUMINT UNSIGNED' : 'MEDIUMINT',
-                'bigint' => ($column['unsigned'] ?? false) ? 'BIGINT UNSIGNED' : 'BIGINT',
-                'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
-                'float' => "FLOAT({$column['precision']}, {$column['scale']})",
-                'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
-                'date' => 'DATE',
-                'time' => 'TIME',
-                'year' => 'YEAR',
-                'datetime' => 'DATETIME',
-                'timestamp' => 'TIMESTAMP',
-                'json' => 'JSON',
-                'blob' => 'BLOB',
-                'enum' => "ENUM('" . implode("', '", $column['values']) . "')",
-                'set' => "SET('" . implode("', '", $column['values']) . "')",
-                default => strtoupper($column['type']),
-            };
-            return $sql;
-        }
+        return $sql;
     }
 
     public function hasTable(string $table): bool
@@ -181,18 +188,7 @@ class Schema
         }
 
         if (isset($options['default'])) {
-            $default = $options['default'];
-            if ($default === null) {
-                $sql .= ' DEFAULT NULL';
-            } elseif (is_bool($default)) {
-                $sql .= ' DEFAULT ' . ($default ? 1 : 0);
-            } elseif (is_int($default) || is_float($default)) {
-                $sql .= " DEFAULT {$default}";
-            } elseif (strtoupper((string)$default) === 'CURRENT_TIMESTAMP') {
-                $sql .= ' DEFAULT CURRENT_TIMESTAMP';
-            } else {
-                $sql .= " DEFAULT '{$default}'";
-            }
+            $sql .= " DEFAULT '{$options['default']}'";
         }
 
         if (($options['after'] ?? null) && $this->connection->getDriverName() !== 'sqlite') {
