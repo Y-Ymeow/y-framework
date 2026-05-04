@@ -99,8 +99,7 @@ class LifecycleManager
     public function registerSchedule(array $schedule): void
     {
         Hook::fire('schedules.registering', $schedule);
-        
-        // 我们可以直接让 Scheduler 处理，或者先存起来
+
         $scheduler = app()->make(\Framework\Scheduler\Scheduler::class);
         if ($scheduler) {
             $scheduler->call(function() use ($schedule) {
@@ -148,12 +147,12 @@ class LifecycleManager
 
     public function bindHook(string $hook, callable $callback, int $priority = 10): void
     {
-        Hook::bind($hook, $callback, $priority);
+        Hook::getInstance()->on($hook, $callback, $priority);
     }
 
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
-        Hook::addFilter($hook, $callback, $priority);
+        Hook::getInstance()->on($hook, $callback, $priority);
     }
 
     public function getSummary(): array
@@ -197,6 +196,6 @@ class LifecycleManager
 
     public function filter(string $hook, mixed $value, mixed ...$args): mixed
     {
-        return Hook::filter($hook, $value, ...$args);
+        return Hook::applyFilter($hook, $value, ...$args);
     }
 }

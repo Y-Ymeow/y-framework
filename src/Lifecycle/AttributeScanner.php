@@ -90,43 +90,29 @@ class AttributeScanner
 
     private function scanHookAttributes(ReflectionClass $reflection): void
     {
-        $className = $reflection->getName();
+        $attributeClasses = [
+            \Framework\Events\Attribute\Listen::class,
+            \Framework\Events\Attribute\HookListener::class,
+            \Framework\Events\Attribute\HookFilter::class,
+        ];
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
-            foreach ($method->getAttributes(\Framework\Events\Attribute\HookListener::class) as $attr) {
-                $listener = $attr->newInstance();
-                $instance = $this->resolveInstance($reflection);
-                if ($instance === null) continue;
+            foreach ($attributeClasses as $attrClass) {
+                foreach ($method->getAttributes($attrClass) as $attr) {
+                    $instance = $attr->newInstance();
+                    $resolved = $this->resolveInstance($reflection);
+                    if ($resolved === null) continue;
 
-                $methodName = $method->getName();
-                $callback = function (...$args) use ($instance, $methodName) {
-                    return $instance->{$methodName}(...$args);
-                };
+                    $methodName = $method->getName();
+                    $callback = function (...$args) use ($resolved, $methodName) {
+                        return $resolved->{$methodName}(...$args);
+                    };
 
-                \Framework\Events\Hook::addAction(
-                    $listener->hook,
-                    $callback,
-                    $listener->priority,
-                    $listener->acceptedArgs
-                );
-            }
+                    $eventName = $instance->event ?? $instance->hook ?? '';
+                    $priority = $instance->priority ?? 0;
 
-            foreach ($method->getAttributes(\Framework\Events\Attribute\HookFilter::class) as $attr) {
-                $filter = $attr->newInstance();
-                $instance = $this->resolveInstance($reflection);
-                if ($instance === null) continue;
-
-                $methodName = $method->getName();
-                $callback = function (...$args) use ($instance, $methodName) {
-                    return $instance->{$methodName}(...$args);
-                };
-
-                \Framework\Events\Hook::addFilter(
-                    $filter->hook,
-                    $callback,
-                    $filter->priority,
-                    $filter->acceptedArgs
-                );
+                    \Framework\Events\Hook::getInstance()->on($eventName, $callback, $priority);
+                }
             }
         }
     }

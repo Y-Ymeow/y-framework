@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Framework\Foundation;
 
 use Framework\Events\Hook;
+use Framework\Events\BootEvent;
+use Framework\Events\RequestEvent;
+use Framework\Events\ResponseEvent;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
 use Framework\Http\Response\StreamedResponse;
@@ -29,11 +32,10 @@ class Kernel
 
         $this->app->bootstrapProviders();
 
-        Hook::fire('app.booting');
+        Hook::getInstance()->dispatch(new BootEvent('app.booting'));
 
         $basePath = $this->app->basePath();
 
-        // 尝试从缓存加载路由
         if (!$this->router->loadCache(paths()->cache('routes.php'))) {
             $scanDirs = config('routes.routes', []);
             $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
@@ -51,11 +53,9 @@ class Kernel
             if (!empty($dirs)) {
                 $this->router->scan($dirs, $files);
             }
-
-            //SystemRoutesProvider::register($this->router, $basePath);
         }
 
-        Hook::fire('app.booted');
+        Hook::getInstance()->dispatch(new BootEvent('app.booted'));
 
         $this->bootstrapped = true;
     }
@@ -65,20 +65,20 @@ class Kernel
         $this->bootstrap();
         $this->app->instance(Request::class, $request);
 
-        Hook::fire('request.received', $request);
+        Hook::getInstance()->dispatch(new RequestEvent($request));
 
         $response = $this->router->dispatch($request);
 
-        Hook::fire('response.created', $response, $request);
+        Hook::getInstance()->emit('response.created', [$response, $request]);
 
-        $response = Hook::filter('response.sending', $response, $request);
+        $response = Hook::getInstance()->filter('response.sending', $response, [$request]);
 
         return $response;
     }
 
     public function terminate(Request $request, Response|StreamedResponse $response): void
     {
-        Hook::fire('response.sent', $response, $request);
+        Hook::getInstance()->emit('response.sent', [$response, $request]);
     }
 
     public function getRouter(): Router

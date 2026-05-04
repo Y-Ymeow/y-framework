@@ -222,6 +222,26 @@ function trait_uses_recursive(string $trait): array
     return $traits;
 }
 
+function event(\Framework\Events\Event $event): \Framework\Events\Event
+{
+    return \Framework\Events\Hook::getInstance()->dispatch($event);
+}
+
+function emit(string $eventName, array $args = []): void
+{
+    \Framework\Events\Hook::getInstance()->emit($eventName, $args);
+}
+
+function listen(string $eventName, callable $listener, int $priority = 0): void
+{
+    \Framework\Events\Hook::getInstance()->on($eventName, $listener, $priority);
+}
+
+function filter(string $eventName, mixed $value, array $args = []): mixed
+{
+    return \Framework\Events\Hook::getInstance()->filter($eventName, $value, $args);
+}
+
 function today(): \DateTimeImmutable
 {
     return new \DateTimeImmutable('today');

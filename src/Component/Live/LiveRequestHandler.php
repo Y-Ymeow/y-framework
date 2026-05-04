@@ -87,7 +87,7 @@ class LiveRequestHandler
             $this->collectActionResult($response, $result);
             $this->collectComponentOperations($response, $component);
 
-            $response = \Framework\Events\Hook::filter('live.action.completed', $response, $component, app()->make(Request::class));
+            $response = \Framework\Events\Hook::getInstance()->filter('live.action.completed', $response, [$component, app()->make(Request::class)]);
 
             return Response::json($response);
         } catch (\Throwable $e) {

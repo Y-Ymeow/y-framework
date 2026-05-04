@@ -24,9 +24,9 @@ class DebugBarListener
 
     public function register(): void
     {
-        Hook::addAction('response.created', [$this, 'onResponseCreated'], 10, 2);
-        Hook::addFilter('response.sending', [$this, 'onResponseSending'], 10, 2);
-        Hook::addFilter('live.action.completed', [$this, 'onLiveActionCompleted'], 10, 3);
+        Hook::getInstance()->on('response.created', [$this, 'onResponseCreated'], 10);
+        Hook::getInstance()->on('response.sending', [$this, 'onResponseSending'], 10);
+        Hook::getInstance()->on('live.action.completed', [$this, 'onLiveActionCompleted'], 10);
     }
 
     public function onResponseCreated(Response|StreamedResponse $response, Request $request): void

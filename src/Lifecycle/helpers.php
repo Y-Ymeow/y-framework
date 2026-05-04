@@ -3,23 +3,23 @@
 declare(strict_types=1);
 
 if (!function_exists('hook')) {
-    function hook(string $name, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
+    function hook(string $name, callable $callback, int $priority = 0): void
     {
-        \Framework\Events\Hook::addAction($name, $callback, $priority, $acceptedArgs);
+        \Framework\Events\Hook::getInstance()->on($name, $callback, $priority);
     }
 }
 
 if (!function_exists('fire')) {
     function fire(string $name, mixed ...$args): void
     {
-        \Framework\Events\Hook::fire($name, ...$args);
+        \Framework\Events\Hook::getInstance()->emit($name, $args);
     }
 }
 
-if (!function_exists('filter')) {
-    function filter(string $name, mixed $value, mixed ...$args): mixed
+if (!function_exists('apply_filter')) {
+    function apply_filter(string $name, mixed $value, mixed ...$args): mixed
     {
-        return \Framework\Events\Hook::filter($name, $value, ...$args);
+        return \Framework\Events\Hook::getInstance()->filter($name, $value, $args);
     }
 }
 

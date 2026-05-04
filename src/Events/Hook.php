@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Framework\Events;
 
-use Closure;
-
-class Hook
+class Hook implements EventDispatcherInterface
 {
     private static ?self $instance = null;
-    private array $actions = [];
-    private array $filters = [];
+    private array $listeners = [];
+    private array $wildcardPatterns = [];
     private array $fired = [];
 
     public static function getInstance(): self
@@ -26,116 +24,239 @@ class Hook
         self::$instance = $instance;
     }
 
-    /**
-     * Add an action (Hook)
-     */
-    public static function addAction(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
+    public function on(string $eventName, callable $listener, int $priority = 0): void
     {
-        self::getInstance()->addInstanceAction($hook, $callback, $priority, $acceptedArgs);
-    }
+        $this->listeners[$eventName][$priority][] = $listener;
 
-    /**
-     * Add a filter
-     */
-    public static function addFilter(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
-    {
-        self::getInstance()->addInstanceFilter($hook, $callback, $priority, $acceptedArgs);
-    }
-
-    /**
-     * Alias for addAction
-     */
-    public static function bind(string $hook, callable $callback, int $priority = 10): void
-    {
-        self::addAction($hook, $callback, $priority);
-    }
-
-    /**
-     * Fire an action
-     */
-    public static function fire(string $hook, mixed ...$args): void
-    {
-        self::getInstance()->fireInstanceAction($hook, ...$args);
-    }
-
-    /**
-     * Apply filters to a value
-     */
-    public static function filter(string $hook, mixed $value, mixed ...$args): mixed
-    {
-        return self::getInstance()->applyInstanceFilters($hook, $value, ...$args);
-    }
-
-    // Instance Methods
-
-    public function addInstanceAction(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
-    {
-        $this->actions[$hook][$priority][] = [
-            'callback' => $callback,
-            'accepted_args' => $acceptedArgs,
-        ];
-        uksort($this->actions[$hook], fn($a, $b) => $a <=> $b);
-    }
-
-    public function addInstanceFilter(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
-    {
-        $this->filters[$hook][$priority][] = [
-            'callback' => $callback,
-            'accepted_args' => $acceptedArgs,
-        ];
-        uksort($this->filters[$hook], fn($a, $b) => $a <=> $b);
-    }
-
-    public function fireInstanceAction(string $hook, mixed ...$args): void
-    {
-        $this->fired[$hook] = true;
-        if (empty($this->actions[$hook])) return;
-
-        foreach ($this->actions[$hook] as $priority => $listeners) {
-            foreach ($listeners as $listener) {
-                $argsToPass = array_slice($args, 0, $listener['accepted_args']);
-                call_user_func_array($listener['callback'], $argsToPass);
-            }
+        if (str_contains($eventName, '*')) {
+            $this->wildcardPatterns[$eventName] = $this->compileWildcardPattern($eventName);
         }
     }
 
-    public function applyInstanceFilters(string $hook, mixed $value, mixed ...$args): mixed
+    public function off(string $eventName, ?callable $listener = null): void
     {
-        if (empty($this->filters[$hook])) return $value;
+        if ($listener === null) {
+            unset($this->listeners[$eventName], $this->fired[$eventName]);
+            unset($this->wildcardPatterns[$eventName]);
+            return;
+        }
 
-        foreach ($this->filters[$hook] as $priority => $listeners) {
-            foreach ($listeners as $listener) {
-                $argsToPass = array_merge([$value], array_slice($args, 0, max(0, $listener['accepted_args'] - 1)));
-                $value = call_user_func_array($listener['callback'], $argsToPass);
+        if (empty($this->listeners[$eventName])) return;
+
+        foreach ($this->listeners[$eventName] as $priority => $listeners) {
+            foreach ($listeners as $key => $l) {
+                if ($l === $listener) {
+                    unset($this->listeners[$eventName][$priority][$key]);
+                }
             }
+            if (empty($this->listeners[$eventName][$priority])) {
+                unset($this->listeners[$eventName][$priority]);
+            }
+        }
+
+        if (empty($this->listeners[$eventName])) {
+            unset($this->listeners[$eventName]);
+            unset($this->wildcardPatterns[$eventName]);
+        }
+    }
+
+    public function listeners(string $eventName): array
+    {
+        $direct = $this->listeners[$eventName] ?? [];
+        $wildcard = $this->getWildcardListeners($eventName);
+
+        $all = array_merge($direct, $wildcard);
+
+        $sorted = [];
+        foreach ($all as $priority => $listeners) {
+            foreach ($listeners as $listener) {
+                $sorted[$priority][] = $listener;
+            }
+        }
+
+        ksort($sorted);
+
+        $result = [];
+        foreach ($sorted as $listeners) {
+            foreach ($listeners as $listener) {
+                $result[] = $listener;
+            }
+        }
+        return $result;
+    }
+
+    public function hasListeners(string $eventName): bool
+    {
+        if (!empty($this->listeners[$eventName])) return true;
+
+        foreach ($this->wildcardPatterns as $pattern => $regex) {
+            if (preg_match($regex, $eventName)) return true;
+        }
+
+        return false;
+    }
+
+    public function dispatch(Event $event): Event
+    {
+        $eventName = $event->getName() ?: get_class($event);
+        if (empty($event->getName())) {
+            $event->setName($eventName);
+        }
+
+        $this->fired[$eventName] = true;
+
+        $listeners = $this->listeners($eventName);
+
+        foreach ($listeners as $listener) {
+            if ($event->isPropagationStopped()) break;
+            $listener($event);
+        }
+
+        return $event;
+    }
+
+    public function emit(string $eventName, array $args = []): void
+    {
+        $this->fired[$eventName] = true;
+
+        $listeners = $this->listeners($eventName);
+
+        foreach ($listeners as $listener) {
+            $listener(...$args);
+        }
+    }
+
+    public function filter(string $eventName, mixed $value, array $args = []): mixed
+    {
+        $this->fired[$eventName] = true;
+
+        $listeners = $this->listeners($eventName);
+
+        foreach ($listeners as $listener) {
+            $value = $listener($value, ...$args);
         }
 
         return $value;
     }
 
-    public function hasActionInstance(string $hook): bool
+    public function addSubscriber(EventSubscriberInterface $subscriber): void
     {
-        return !empty($this->actions[$hook]);
+        foreach ($subscriber::getSubscribedEvents() as $eventName => $params) {
+            if (is_string($params)) {
+                $this->on($eventName, [$subscriber, $params]);
+            } elseif (is_string($params[0])) {
+                $this->on($eventName, [$subscriber, $params[0]], $params[1] ?? 0);
+            } elseif (is_array($params[0])) {
+                foreach ($params as $listener) {
+                    $this->on($eventName, [$subscriber, is_string($listener) ? $listener : $listener[0]], $listener[1] ?? 0);
+                }
+            }
+        }
+    }
+
+    public function removeSubscriber(EventSubscriberInterface $subscriber): void
+    {
+        foreach ($subscriber::getSubscribedEvents() as $eventName => $params) {
+            if (is_string($params)) {
+                $this->off($eventName, [$subscriber, $params]);
+            } elseif (is_string($params[0])) {
+                $this->off($eventName, [$subscriber, $params[0]]);
+            } elseif (is_array($params[0])) {
+                foreach ($params as $listener) {
+                    $this->off($eventName, [$subscriber, is_string($listener) ? $listener : $listener[0]]);
+                }
+            }
+        }
+    }
+
+    public function isFired(string $eventName): bool
+    {
+        return !empty($this->fired[$eventName]);
+    }
+
+    public function clear(string $eventName): void
+    {
+        $this->off($eventName);
+    }
+
+    public function resetAll(): void
+    {
+        $this->listeners = [];
+        $this->wildcardPatterns = [];
+        $this->fired = [];
+    }
+
+    public function getAllListeners(): array
+    {
+        return $this->listeners;
+    }
+
+    public function getFiredEvents(): array
+    {
+        return array_keys($this->fired);
+    }
+
+    private function compileWildcardPattern(string $pattern): string
+    {
+        $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/';
+        return $regex;
+    }
+
+    private function getWildcardListeners(string $eventName): array
+    {
+        $matched = [];
+
+        foreach ($this->wildcardPatterns as $pattern => $regex) {
+            if (preg_match($regex, $eventName)) {
+                if (isset($this->listeners[$pattern])) {
+                    foreach ($this->listeners[$pattern] as $priority => $listeners) {
+                        if (!isset($matched[$priority])) {
+                            $matched[$priority] = [];
+                        }
+                        foreach ($listeners as $listener) {
+                            $matched[$priority][] = $listener;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    public static function addAction(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
+    {
+        self::getInstance()->on($hook, $callback, $priority);
+    }
+
+    public static function addFilter(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
+    {
+        self::getInstance()->on($hook, $callback, $priority);
+    }
+
+    public static function bind(string $hook, callable $callback, int $priority = 10): void
+    {
+        self::getInstance()->on($hook, $callback, $priority);
+    }
+
+    public static function fire(string $hook, mixed ...$args): void
+    {
+        self::getInstance()->emit($hook, $args);
+    }
+
+    public static function applyFilter(string $hook, mixed $value, mixed ...$args): mixed
+    {
+        return self::getInstance()->filter($hook, $value, $args);
     }
 
     public static function hasAction(string $hook): bool
     {
-        return self::getInstance()->hasActionInstance($hook);
-    }
-
-    public function hasFilterInstance(string $hook): bool
-    {
-        return !empty($this->filters[$hook]);
+        return self::getInstance()->hasListeners($hook);
     }
 
     public static function hasFilter(string $hook): bool
     {
-        return self::getInstance()->hasFilterInstance($hook);
-    }
-
-    public function isFired(string $hook): bool
-    {
-        return !empty($this->fired[$hook]);
+        return self::getInstance()->hasListeners($hook);
     }
 
     public static function fired(string $hook): bool
@@ -143,97 +264,28 @@ class Hook
         return self::getInstance()->isFired($hook);
     }
 
-    public function removeInstanceAction(string $hook, ?callable $callback = null, ?int $priority = null): void
-    {
-        if ($callback === null && $priority === null) {
-            unset($this->actions[$hook]);
-            return;
-        }
-
-        if (empty($this->actions[$hook])) return;
-
-        if ($priority !== null && isset($this->actions[$hook][$priority])) {
-            if ($callback === null) {
-                unset($this->actions[$hook][$priority]);
-            } else {
-                foreach ($this->actions[$hook][$priority] as $key => $listener) {
-                    if ($listener['callback'] === $callback) {
-                        unset($this->actions[$hook][$priority][$key]);
-                        break;
-                    }
-                }
-                if (empty($this->actions[$hook][$priority])) {
-                    unset($this->actions[$hook][$priority]);
-                }
-            }
-        } else {
-            foreach ($this->actions[$hook] as $p => $listeners) {
-                foreach ($listeners as $key => $listener) {
-                    if ($listener['callback'] === $callback) {
-                        unset($this->actions[$hook][$p][$key]);
-                        break;
-                    }
-                }
-                if (empty($this->actions[$hook][$p])) {
-                    unset($this->actions[$hook][$p]);
-                }
-            }
-        }
-
-        if (empty($this->actions[$hook])) {
-            unset($this->actions[$hook]);
-        }
-    }
-
     public static function removeAction(string $hook, ?callable $callback = null, ?int $priority = null): void
     {
-        self::getInstance()->removeInstanceAction($hook, $callback, $priority);
+        self::getInstance()->off($hook, $callback);
     }
 
     public static function removeFilter(string $hook, ?callable $callback = null, ?int $priority = null): void
     {
-        self::getInstance()->removeInstanceAction($hook, $callback, $priority);
-    }
-
-    public function clearHook(string $hook): void
-    {
-        unset($this->actions[$hook], $this->filters[$hook], $this->fired[$hook]);
-    }
-
-    public static function clear(string $hook): void
-    {
-        self::getInstance()->clearHook($hook);
-    }
-
-    public function resetHooks(): void
-    {
-        $this->actions = [];
-        $this->filters = [];
-        $this->fired = [];
+        self::getInstance()->off($hook, $callback);
     }
 
     public static function reset(): void
     {
-        self::getInstance()->resetHooks();
-    }
-
-    public function getActions(): array
-    {
-        return $this->actions;
-    }
-
-    public function getFilters(): array
-    {
-        return $this->filters;
+        self::getInstance()->resetAll();
     }
 
     public static function getAllActions(): array
     {
-        return self::getInstance()->getActions();
+        return self::getInstance()->getAllListeners();
     }
 
     public static function getAllFilters(): array
     {
-        return self::getInstance()->getFilters();
+        return self::getInstance()->getAllListeners();
     }
 }

@@ -110,12 +110,12 @@ abstract class BaseResource implements ResourceInterface
 
     public function configureForm(FormBuilder $form): void
     {
-        Hook::fire(self::LIFECYCLE_FORM_CONFIGURING, $form, $this);
+        $this->fireLifecycle(self::LIFECYCLE_FORM_CONFIGURING, ['form' => $form]);
     }
 
     public function configureTable(DataTable $table): void
     {
-        Hook::fire(self::LIFECYCLE_TABLE_CONFIGURING, $table, $this);
+        $this->fireLifecycle(self::LIFECYCLE_TABLE_CONFIGURING, ['table' => $table]);
     }
 
     public function getHeader(): mixed
@@ -247,7 +247,7 @@ abstract class BaseResource implements ResourceInterface
         Hook::fire($hook, $this, $context);
         Hook::fire($fullHook, $this, $context);
 
-        return Hook::filter($fullHook, Hook::filter($hook, null, $this, $context), $this, $context);
+        return Hook::applyFilter($fullHook, Hook::applyFilter($hook, null, $this, $context), $this, $context);
     }
 
     public function setRecord(?object $record): void
@@ -265,8 +265,8 @@ abstract class BaseResource implements ResourceInterface
         $resourceName = static::getName();
         $fullHook = "{$hook}:{$resourceName}";
 
-        $result1 = Hook::filter($hook, null, $this, $context);
-        $result2 = Hook::filter($fullHook, $result1, $this, $context);
+        $result1 = Hook::applyFilter($hook, null, $this, $context);
+        $result2 = Hook::applyFilter($fullHook, $result1, $this, $context);
 
         return $result2;
     }
