@@ -215,7 +215,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable
     /**
      * 过滤
      */
-    public function filter(callable $callback = null): self
+    public function filter(?callable $callback = null): self
     {
         if ($callback === null) {
             return new self(array_filter($this->items));
