@@ -35,10 +35,10 @@ class ModuleManager
         $this->modules[$name] = $module;
 
         if ($module->getConfigFile() && file_exists($module->getConfigFile())) {
-            $this->app->make(\Framework\Config\ConfigManager::class)->mergeRecursive(
-                basename($module->getConfigFile(), '.php'),
-                require $module->getConfigFile()
-            );
+            $moduleConfig = require $module->getConfigFile();
+            $key = basename($module->getConfigFile(), '.php');
+            $existing = \Framework\Config\ConfigManager::get($key, []);
+            \Framework\Config\ConfigManager::set($key, \Framework\Config\ConfigManager::merge($existing, $moduleConfig));
         }
 
         $providerClass = $module->getServiceProvider();

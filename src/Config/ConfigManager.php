@@ -32,7 +32,7 @@ class ConfigManager
             return self::$cachedConfig;
         }
 
-        self::$cacheEnabled = \Framework\Foundation\Application::isDebug();
+        self::$cacheEnabled = !\Framework\Foundation\Application::isDebug();
 
         $base = self::resolveBasePath();
         $p = new \Framework\Support\Paths($base);
@@ -320,6 +320,11 @@ class ConfigManager
     /**
      * 智能合并配置：关联数组递归合并，索引数组完全替换
      */
+    public static function merge(array $default, array $override): array
+    {
+        return self::mergeConfig($default, $override);
+    }
+
     private static function mergeConfig(array $default, array $user): array
     {
         $result = $default;
