@@ -27,11 +27,68 @@ abstract class Model implements \ArrayAccess
 
     private static array $observers = [];
     private static array $globalObservers = [];
+    private static array $staticEventListeners = [];
     private array $eventListeners = [];
 
     public static function boot(): void {}
 
     public static function booted(): void {}
+
+    protected static function registerStaticEventListener(string $event, callable $callback): void
+    {
+        if (!isset(self::$staticEventListeners[static::class])) {
+            self::$staticEventListeners[static::class] = [];
+        }
+        if (!isset(self::$staticEventListeners[static::class][$event])) {
+            self::$staticEventListeners[static::class][$event] = [];
+        }
+        self::$staticEventListeners[static::class][$event][] = $callback;
+    }
+
+    public static function creating(callable $callback): void
+    {
+        static::registerStaticEventListener('creating', $callback);
+    }
+
+    public static function created(callable $callback): void
+    {
+        static::registerStaticEventListener('created', $callback);
+    }
+
+    public static function updating(callable $callback): void
+    {
+        static::registerStaticEventListener('updating', $callback);
+    }
+
+    public static function updated(callable $callback): void
+    {
+        static::registerStaticEventListener('updated', $callback);
+    }
+
+    public static function deleting(callable $callback): void
+    {
+        static::registerStaticEventListener('deleting', $callback);
+    }
+
+    public static function deleted(callable $callback): void
+    {
+        static::registerStaticEventListener('deleted', $callback);
+    }
+
+    public static function saving(callable $callback): void
+    {
+        static::registerStaticEventListener('saving', $callback);
+    }
+
+    public static function saved(callable $callback): void
+    {
+        static::registerStaticEventListener('saved', $callback);
+    }
+
+    public static function retrieved(callable $callback): void
+    {
+        static::registerStaticEventListener('retrieved', $callback);
+    }
 
     public static function observe(string|array $classes): void
     {
@@ -365,6 +422,20 @@ abstract class Model implements \ArrayAccess
 
     protected function fireModelEvent(string $event, bool $halt = false): mixed
     {
+        $staticListeners = self::$staticEventListeners[static::class][$event] ?? [];
+        if (!empty($staticListeners)) {
+            foreach ($staticListeners as $listener) {
+                if ($halt) {
+                    $result = $listener($this);
+                    if ($result === false) {
+                        return false;
+                    }
+                } else {
+                    $listener($this);
+                }
+            }
+        }
+
         if (!empty($this->eventListeners[$event])) {
             foreach ($this->eventListeners[$event] as $listener) {
                 if ($halt) {
