@@ -78,12 +78,19 @@ abstract class LiveComponent
 
         $stateAttr = htmlspecialchars(json_encode($publicProps, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
+        $listenersAttr = '';
+        $listenerEvents = $this->getListenerEvents();
+        if (!empty($listenerEvents)) {
+            $listenersAttr = sprintf(' data-live-listeners="%s"', htmlspecialchars(implode(',', $listenerEvents), ENT_QUOTES, 'UTF-8'));
+        }
+
         return sprintf(
-            '<div data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s">%s</div>',
+            '<div data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s"%s>%s</div>',
             static::class,
             $this->componentId,
             $stateAttr,
             $state,
+            $listenersAttr,
             $this->render()
         );
     }
@@ -105,6 +112,20 @@ abstract class LiveComponent
     public function __toString(): string
     {
         return $this->toHtml();
+    }
+
+    public function getListenerEvents(): array
+    {
+        $events = [];
+        $ref = new \ReflectionClass($this);
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(\Framework\Component\Live\Attribute\LiveListener::class);
+            foreach ($attrs as $attr) {
+                $listener = $attr->newInstance();
+                $events[] = $listener->event;
+            }
+        }
+        return array_unique($events);
     }
 
     /**

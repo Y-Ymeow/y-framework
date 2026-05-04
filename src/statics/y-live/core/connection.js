@@ -10,10 +10,11 @@ export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-live-id',
     'data-live-state',
     'data-live-fragment',
+    'data-live-listeners',
     'data-live-model',
     'data-live-debounce',
     'data-live-event',
-    'data-ux-model',
+    'data-uxModel',
     'data-ux-action',
     'data-intl',
     'data-navigate',
@@ -243,7 +244,7 @@ function collectAllLiveComponents(currentEl = null) {
         }
     });
 
-    if (!currentEl && components.length === 0) {
+    if (components.length === 0) {
         document.querySelectorAll('[data-live]').forEach(el => {
             const id = el.dataset.liveId;
             if (id && el.dataset.liveState && !seenIds.has(id)) {
