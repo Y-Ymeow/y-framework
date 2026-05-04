@@ -32,6 +32,8 @@ class ConfigManager
             return self::$cachedConfig;
         }
 
+        self::$cacheEnabled = \Framework\Foundation\Application::isDebug();
+
         $base = self::resolveBasePath();
         $p = new \Framework\Support\Paths($base);
 

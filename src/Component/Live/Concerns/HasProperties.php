@@ -170,7 +170,7 @@ trait HasProperties
                     if (isset($this->lockedChecksums[$propName])) {
                         $currentChecksum = $this->generateDataChecksum([$propName => $value]);
                         if (!hash_equals($this->lockedChecksums[$propName], $currentChecksum)) {
-                            if (config('app.debug')) {
+                            if (\Framework\Foundation\Application::isDebug()) {
                                 error_log("Checksum mismatch for property [{$propName}].");
                             }
                             throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');

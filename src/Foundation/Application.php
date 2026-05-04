@@ -17,6 +17,7 @@ class Application
     private array $providers = [];
     private ?ModuleManager $moduleManager = null;
     private static ?Application $instance = null;
+    private static bool $isDebug = false;
 
     public function __construct(string $basePath)
     {
@@ -48,6 +49,16 @@ class Application
     public static function getInstance(): ?self
     {
         return self::$instance;
+    }
+
+    public static function isDebug(): bool
+    {
+        return self::$isDebug;
+    }
+
+    public static function setDebug(bool $isDebug): void
+    {
+        self::$isDebug = $isDebug;
     }
 
     public function singleton(string $abstract, mixed $concrete = null): void
@@ -141,7 +152,7 @@ class Application
             $this->register(new $providerClass($this));
         }
 
-        if (config('app.debug', false)) {
+        if (self::isDebug()) {
             $debugProviders = config('app.debug_providers', []);
             foreach ($debugProviders as $providerClass) {
                 $this->register(new $providerClass($this));

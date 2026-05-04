@@ -12,6 +12,7 @@ use Framework\Http\Response\StreamedResponse;
 use Framework\Http\Response\StreamResponse;
 use Framework\Http\Response\SseResponse;
 use Framework\DebugBar\Components\DebugBarComponent;
+use Framework\Foundation\Application;
 
 class DebugBarListener
 {
@@ -31,7 +32,7 @@ class DebugBarListener
 
     public function onResponseCreated(Response|StreamedResponse $response, Request $request): void
     {
-        if (!config('app.debug', false)) return;
+        if (!Application::isDebug()) return;
 
         SqlCollector::register();
         RouteCollector::register();
@@ -42,7 +43,7 @@ class DebugBarListener
 
     public function onResponseSending(Response|StreamedResponse $response, Request $request): Response|StreamedResponse
     {
-        if (!config('app.debug', false)) return $response;
+        if (!Application::isDebug()) return $response;
         if ($response instanceof StreamedResponse) return $response;
         if ($response instanceof StreamResponse) return $response;
         if ($response instanceof SseResponse) return $response;
@@ -82,7 +83,7 @@ class DebugBarListener
 
     public function onLiveActionCompleted(array $response, \Framework\Component\Live\LiveComponent $component, Request $request): array
     {
-        if (!config('app.debug', false)) return $response;
+        if (!Application::isDebug()) return $response;
 
         $requestBody = [
             '_component' => $request->input('_component'),

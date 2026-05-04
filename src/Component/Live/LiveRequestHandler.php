@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Framework\Component\Live;
 
 use Framework\Foundation\AppEnvironment;
+use Framework\Foundation\Application;
 use Framework\Http\Middleware\VerifyCsrfToken;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
@@ -184,7 +185,7 @@ class LiveRequestHandler
 
             return Response::json([
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+                'trace' => Application::isDebug() ? $e->getTraceAsString() : null,
             ], 500);
         }
     }
@@ -482,7 +483,7 @@ class LiveRequestHandler
         return Response::json([
             'success' => false,
             'error' => $e->getMessage(),
-            'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            'trace' => \Framework\Foundation\Application::isDebug() ? $e->getTraceAsString() : null
         ], 500);
     }
 }

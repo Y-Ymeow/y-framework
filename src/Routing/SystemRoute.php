@@ -57,7 +57,7 @@ class SystemRoute
     #[Route('/_css', methods: ['GET'], name: 'css')]
     public function css(Request $request): Response
     {
-        $debug = config('app.debug', true);
+        $debug = \Framework\Foundation\Application::isDebug();
         $route = new CssRoute($this->basePath, $debug);
         return $route->handle($request);
     }

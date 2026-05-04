@@ -10,7 +10,7 @@ class DebugBarServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $debug = config('app.debug', false);
+        $debug = \Framework\Foundation\Application::isDebug();
         if (!$debug) {
             return;
         }
