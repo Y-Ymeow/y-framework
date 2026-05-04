@@ -4,31 +4,62 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Persistent;
 
-use Framework\Support\Facades\Cache;
-
 class CacheDriver implements PersistentDriverInterface
 {
     public function get(string $key): mixed
     {
-        return Cache::get($key);
+        if (!function_exists('cache')) {
+            return null;
+        }
+
+        try {
+            return cache()->get($key);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function set(string $key, mixed $value, ?int $ttl = null): bool
     {
-        if ($ttl !== null) {
-            return Cache::put($key, $value, $ttl);
+        if (!function_exists('cache')) {
+            return false;
         }
 
-        return Cache::forever($key, $value);
+        try {
+            if ($ttl !== null) {
+                cache()->set($key, $value, new \DateInterval("PT{$ttl}S"));
+            } else {
+                cache()->set($key, $value);
+            }
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function forget(string $key): bool
     {
-        return Cache::forget($key);
+        if (!function_exists('cache')) {
+            return false;
+        }
+
+        try {
+            return cache()->delete($key);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function has(string $key): bool
     {
-        return Cache::has($key);
+        if (!function_exists('cache')) {
+            return false;
+        }
+
+        try {
+            return cache()->has($key);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

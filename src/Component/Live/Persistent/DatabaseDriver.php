@@ -29,8 +29,14 @@ class DatabaseDriver implements PersistentDriverInterface
 {
     public function get(string $key): mixed
     {
-        $record = ComponentStateModel::where('storage_key', $key)->first();
+        /** @var \Framework\Support\Collection|null $collection */
+        $collection = ComponentStateModel::where('storage_key', $key)->first();
 
+        if (!$collection) {
+            return null;
+        }
+
+        $record = $this->collectionToModel($collection);
         if (!$record) {
             return null;
         }
@@ -54,12 +60,16 @@ class DatabaseDriver implements PersistentDriverInterface
         $componentClass = $this->extractComponentClass($key);
         $propertyName = $this->extractPropertyName($key);
 
-        $record = ComponentStateModel::where('storage_key', $key)->first();
+        /** @var \Framework\Support\Collection|null $collection */
+        $collection = ComponentStateModel::where('storage_key', $key)->first();
 
-        if ($record) {
-            $record->value = $serialized;
-            $record->expires_at = $expiresAt;
-            $record->save();
+        if ($collection) {
+            $record = $this->collectionToModel($collection);
+            if ($record) {
+                $record->value = $serialized;
+                $record->expires_at = $expiresAt;
+                $record->save();
+            }
         } else {
             ComponentStateModel::create([
                 'user_id' => $userId,
@@ -77,14 +87,29 @@ class DatabaseDriver implements PersistentDriverInterface
 
     public function forget(string $key): bool
     {
-        ComponentStateModel::where('storage_key', $key)->delete();
+        /** @var \Framework\Support\Collection|null $collection */
+        $collection = ComponentStateModel::where('storage_key', $key)->first();
+
+        if ($collection) {
+            $record = $this->collectionToModel($collection);
+            if ($record) {
+                $record->delete();
+            }
+        }
+
         return true;
     }
 
     public function has(string $key): bool
     {
-        $record = ComponentStateModel::where('storage_key', $key)->first();
+        /** @var \Framework\Support\Collection|null $collection */
+        $collection = ComponentStateModel::where('storage_key', $key)->first();
 
+        if (!$collection) {
+            return false;
+        }
+
+        $record = $this->collectionToModel($collection);
         if (!$record) {
             return false;
         }
@@ -95,6 +120,23 @@ class DatabaseDriver implements PersistentDriverInterface
         }
 
         return true;
+    }
+
+    /**
+     * 将 Collection 转换为 Model 实例
+     */
+    private function collectionToModel(\Framework\Support\Collection $collection): ?ComponentStateModel
+    {
+        $model = new ComponentStateModel();
+        $data = $collection->toArray();
+
+        if (empty($data)) {
+            return null;
+        }
+
+        $model->fill($data);
+        $model->exists = true;
+        return $model;
     }
 
     private function getCurrentUserId(): ?string

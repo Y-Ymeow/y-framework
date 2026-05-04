@@ -63,7 +63,7 @@ class DebugBarListener
 
         $content = $response->getContent();
 
-        $component = new DebugBarComponent();
+        $component = DebugBarComponent::make();
         $injectedHtml = (string)$component;
         if (str_contains($content, '</body>')) {
             $content = str_replace('</body>', $injectedHtml . '</body>', $content);

@@ -55,7 +55,7 @@ class Arr
         return array_filter($array, fn($k) => in_array($k, $keys), ARRAY_FILTER_USE_KEY);
     }
 
-    public static function flatten(array $array, int $depth = INF): array
+    public static function flatten(array $array, int $depth = 1): array
     {
         $result = [];
         foreach ($array as $item) {

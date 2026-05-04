@@ -334,7 +334,7 @@ class Router
             $result = $ref->invoke($instance, ...$args);
 
             if ($instance instanceof LiveComponent) {
-                
+                $instance->_invoke($params);
                 if ($result instanceof Response) {
                     return $result;
                 }

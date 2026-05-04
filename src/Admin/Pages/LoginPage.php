@@ -44,7 +44,7 @@ class LoginPage extends LiveComponent
         $this->redirect('/admin');
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         $wrapper = Grid::make()
             ->cols(1)

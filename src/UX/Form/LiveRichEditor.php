@@ -38,7 +38,7 @@ class LiveRichEditor extends LiveComponent
      * 渲染编辑器
      * @return string|Element
      */
-    public function render(): string|Element
+    public function render(): Element
     {
         $groupEl = Element::make('div')->class('ux-form-group');
 

@@ -71,11 +71,13 @@ class LiveComponentResolver
                 );
             }
 
-            $component = app()->makeWith($componentClass, $params);
+            $component = app()->make($componentClass);
 
             if (!($component instanceof LiveComponent)) {
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
             }
+
+            $component->_invoke();
 
             $requestedComponentId = $request->input('_component_id', '');
             if (!empty($requestedComponentId)) {
@@ -255,11 +257,13 @@ class LiveComponentResolver
                 );
             }
 
-            $component = app()->makeWith($componentClass, $params);
+            $component = app()->make($componentClass);
 
             if (!($component instanceof LiveComponent)) {
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
             }
+
+            $component->_invoke($params);
 
             $requestedComponentId = $request->input('_component_id', '');
             if (!empty($requestedComponentId)) {

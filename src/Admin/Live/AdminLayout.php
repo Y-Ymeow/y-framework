@@ -48,7 +48,7 @@ class AdminLayout extends LiveComponent
         }
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         $el = Element::make('div')->class('admin-layout', 'flex', 'h-screen', 'bg-gray-50');
 

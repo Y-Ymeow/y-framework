@@ -8,6 +8,7 @@ use Framework\Database\Relations\BelongsTo;
 use Framework\Database\Relations\HasMany;
 use Framework\Database\Relations\HasOne;
 use Framework\Database\Relations\BelongsToMany;
+use Framework\Support\Collection;
 
 abstract class Model implements \ArrayAccess
 {
@@ -349,7 +350,14 @@ abstract class Model implements \ArrayAccess
 
     public static function all(): array
     {
-        return static::query()->get();
+        $collections = static::query()->get();
+        $models = [];
+        foreach ($collections as $collection) {
+            if ($collection instanceof Collection) {
+                $models[] = (new static())->newFromBuilder($collection);
+            }
+        }
+        return $models;
     }
 
     public static function find(mixed $id): ?static
@@ -361,7 +369,11 @@ abstract class Model implements \ArrayAccess
             return null;
         }
 
-        return $instance->newFromBuilder($result);
+        if ($result instanceof Collection) {
+            return $instance->newFromBuilder($result);
+        }
+
+        return $instance->newFromBuilder((array)$result);
     }
 
     public static function findOrFail(mixed $id): static
@@ -579,11 +591,11 @@ abstract class Model implements \ArrayAccess
         return false;
     }
 
-    public function newFromBuilder(array $attributes): static
+    public function newFromBuilder(array|Collection $attributes): static
     {
         $instance = new static();
-        $instance->attributes = $attributes;
-        $instance->original = $attributes;
+        $instance->attributes = $attributes instanceof Collection ? $attributes->toArray() : $attributes;
+        $instance->original = $instance->attributes;
         $instance->exists = true;
         $instance->fireModelEvent('retrieved', false);
         return $instance;

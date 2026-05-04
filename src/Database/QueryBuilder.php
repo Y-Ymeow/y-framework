@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Database;
 
+use Framework\Support\Collection;
+
 class QueryBuilder
 {
     private Connection $connection;
@@ -385,17 +387,26 @@ class QueryBuilder
         return $this->increment($column, -$amount);
     }
 
-    public function get(): array
+    public function get(): Collection
     {
-        return $this->connection->query($this->toSql(), $this->getBindings());
+        $rows = $this->connection->query($this->toSql(), $this->getBindings());
+        $collections = [];
+        foreach ($rows as $row) {
+            $collections[] = new Collection($row);
+        }
+        return new Collection($collections);
     }
 
-    public function first(): ?array
+    public function first(): ?Collection
     {
-        return $this->connection->queryOne($this->limit(1)->toSql(), $this->getBindings());
+        $row = $this->connection->queryOne($this->limit(1)->toSql(), $this->getBindings());
+        if ($row === null) {
+            return null;
+        }
+        return new Collection($row);
     }
 
-    public function find(mixed $id, string $column = 'id'): ?array
+    public function find(mixed $id, string $column = 'id'): ?Collection
     {
         return $this->where($column, $id)->first();
     }

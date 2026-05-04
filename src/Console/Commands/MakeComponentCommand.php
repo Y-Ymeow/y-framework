@@ -106,7 +106,7 @@ class {$className} extends LiveComponent
         return LiveResponse::make();
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         return Container::make()
             ->class('p-4 border rounded shadow-sm bg-white')

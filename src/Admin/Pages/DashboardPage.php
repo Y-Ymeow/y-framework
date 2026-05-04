@@ -22,7 +22,7 @@ class DashboardPage extends LiveComponent
         return t('admin.dashboard');
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         $wrapper = Element::make('div')->class('admin-dashboard', 'space-y-6');
 

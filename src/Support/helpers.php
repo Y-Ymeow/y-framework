@@ -51,10 +51,7 @@ function storage_path(string $path = ''): string
 
 function logger(string $message, array $context = []): void
 {
-    static $logManager = null;
-    if ($logManager === null) {
-        $logManager = new \Framework\Log\LogManager(['name' => 'app', 'path' => storage_path('logs/app.log')]);
-    }
+    $logManager = app()->make(\Psr\Log\LoggerInterface::class);
     $logManager->info($message, $context);
 }
 
@@ -155,6 +152,11 @@ function route(string $name, array $parameters = [], bool $absolute = false): st
     }
 
     throw new \RuntimeException("Route [{$name}] not found");
+}
+
+function session(): \Framework\Http\Session
+{
+    return app()->make(\Framework\Http\Session::class);
 }
 
 function back(): \Framework\Http\Response

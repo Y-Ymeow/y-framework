@@ -74,7 +74,7 @@ class LanguageSwitcherLive extends LiveComponent
         if (in_array($locale, $this->locales, true)) {
             $this->locale = $locale;
             Translator::setLocale($locale);
-            $this->refresh();
+            $this->refresh('language-switcher');
         }
     }
 
@@ -106,6 +106,7 @@ class LanguageSwitcherLive extends LiveComponent
 
         return Element::make('div')
             ->class('ux-lang-switcher')
+            ->liveFragment('language-switcher')
             ->children(...$buttons);
     }
 }

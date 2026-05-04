@@ -134,7 +134,7 @@ class AdminListPage extends LiveComponent
         $this->refresh('admin-list-table');
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         $resource = $this->getResource();
         if (!$resource) {

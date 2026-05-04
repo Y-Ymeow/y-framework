@@ -7,6 +7,7 @@ namespace Framework\DebugBar\Components;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Framework\DebugBar\DebugBar;
 use Framework\DebugBar\SqlCollector;
 use Framework\DebugBar\RouteCollector;
@@ -18,8 +19,11 @@ use Framework\View\Document\AssetRegistry;
 
 class DebugBarComponent extends LiveComponent
 {
+    #[State]
     public bool $expanded = false;
+    #[State]
     public string $activeTab = 'php';
+    #[State]
     public array $snapshot = [];
 
     public function mount(): void
@@ -75,7 +79,7 @@ class DebugBarComponent extends LiveComponent
         $this->refresh('db-content');
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         AssetRegistry::getInstance()->ux();
         AssetRegistry::getInstance()->ui();
@@ -197,7 +201,7 @@ CSS);
                 ->class('db-nav-link')
                 ->attr('type', 'button')
                 ->liveAction('selectTab')
-                ->liveParams($this->signedAction('selectTab', ['tab' => $id]));
+                ->liveParams(['tab' => $id]);
 
             $badgeValue = match ($id) {
                 'request' => $this->snapshot['panels']['request']['data']['total'] ?? 0,

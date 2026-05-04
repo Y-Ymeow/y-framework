@@ -77,7 +77,7 @@ class AdminFormPage extends LiveComponent
         $this->refresh('admin-form');
     }
 
-    public function render(): string|Element
+    public function render(): Element
     {
         // 编辑模式且未加载数据时，从数据库加载
         if ($this->recordId && empty($this->formData)) {

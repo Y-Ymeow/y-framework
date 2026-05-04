@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Persistent;
 
-use Framework\Redis\RedisManager;
-
 class RedisDriver implements PersistentDriverInterface
 {
-    private ?\Redis $redis = null;
+    /** @var \Redis|null */
+    private $redis = null;
 
     public function __construct()
     {
         try {
-            if (class_exists(RedisManager::class)) {
-                $this->redis = app()->make(RedisManager::class)->connection();
+            if (class_exists(\Redis::class)) {
+                $redis = new \Redis();
+                $host = config('redis.default.host', '127.0.0.1');
+                $port = (int) config('redis.default.port', 6379);
+                $redis->connect($host, $port);
+                $this->redis = $redis;
             }
         } catch (\Throwable $e) {
             // Redis 不可用
@@ -71,6 +74,7 @@ class RedisDriver implements PersistentDriverInterface
 
     private function prefix(string $key): string
     {
-        return 'live_persistent:' . $key;
+        $prefix = config('redis.default.prefix', '');
+        return $prefix . 'live_persistent:' . $key;
     }
 }

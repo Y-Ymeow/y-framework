@@ -7,10 +7,14 @@ namespace Framework\Component\Live;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\Prop;
 use Framework\Component\Live\Attribute\Computed;
+use Framework\Component\Live\Attribute\State;
+use Framework\Component\Live\Attribute\Session as SessionAttribute;
+use Framework\Component\Live\Attribute\Cookie as CookieAttribute;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Http\Session;
 use Framework\Http\Request;
 use Framework\View\Base\Element;
+use Framework\View\FragmentRegistry;
 
 abstract class LiveComponent
 {
@@ -19,26 +23,16 @@ abstract class LiveComponent
     private array $actionCache = [];
     private static array $globalActionCache = [];
     private array $operations = [];
-    private array $refreshFragments = []; // [name => mode]
-    private array $manualUpdates = []; // [componentId => patches]
+    private array $refreshFragments = [];
+    private array $manualUpdates = [];
     private array $validationErrors = [];
     private ?string $stateChecksum = null;
-    /**
-     * 路由参数（由 LiveComponentResolver 通过容器注入）
-     */
     protected array $routeParams = [];
+    protected array $propValues = [];
+    protected bool $mountCalled = false;
+    private array $computedCache = [];
 
-    /**
-     * 手动注册的 LiveActions
-     * 格式: ['actionName' => 'methodName'] 或 ['actionName' => ['method' => 'methodName', 'event' => 'click']]
-     */
     protected array $liveActions = [];
-
-    /**
-     * 标记 mount() 是否已被调用
-     * 用于防止重复初始化
-     */
-    private bool $mountCalled = false;
 
     public static function setGlobalActionCache(array $cache): void
     {
@@ -46,231 +40,32 @@ abstract class LiveComponent
     }
 
     /**
-     * 构造函数
-     *
-     * @param array $routeParams 路由参数（由 LiveComponentResolver 通过容器注入）
+     * 静态工厂方法：创建组件实例并注入 Props
      */
-    public function __construct(array $routeParams = [])
+    public static function make(array $props = [], array $routeParams = []): static
     {
-        $this->routeParams = $routeParams;
+        $instance = new static();
+        $instance->_invoke($routeParams);
+        $instance->propValues = $props;
+        return $instance;
+    }
 
-        // 初始化组件 ID
+    public function __construct()
+    {
         $shortClass = (new \ReflectionClass($this))->getShortName();
         $key = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $shortClass));
         if (!isset(self::$idCounter[$key])) self::$idCounter[$key] = 0;
         self::$idCounter[$key]++;
         $this->componentId = $key . '-' . self::$idCounter[$key];
-
-        // 执行 boot 周期
-        $this->boot();
-
-        // 处理 Session/Cookie 属性恢复
-        $this->syncPersistentAttributes();
-
-        // 调用 mount() 生命周期钩子（仅在首次实例化时）
-        if (!$this->mountCalled) {
-            $this->mountCalled = true;
-            $this->mount();
-        }
     }
 
     /**
-     * 同步具有 #[Session]、#[Cookie] 或 #[Persistent] 属性的字段
+     * 设置组件名称/ID
      */
-    protected function syncPersistentAttributes(): void
+    public function named(string $name): static
     {
-        $ref = new \ReflectionClass($this);
-        foreach ($ref->getProperties() as $prop) {
-            // 处理 Session
-            $sessionAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Session::class);
-            if (!empty($sessionAttrs)) {
-                $attr = $sessionAttrs[0]->newInstance();
-                $key = $attr->key ?: (static::class . '.' . $prop->getName());
-                $session = new \Framework\Http\Session();
-                if ($session->has($key)) {
-                    $prop->setValue($this, $session->get($key));
-                }
-            }
-
-            // 处理 Cookie
-            $cookieAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Cookie::class);
-            if (!empty($cookieAttrs)) {
-                $attr = $cookieAttrs[0]->newInstance();
-                $key = $attr->key ?: (static::class . '.' . $prop->getName());
-                $request = app()->make(\Framework\Http\Request::class);
-                $value = $request->cookie($key);
-                if ($value !== null) {
-                    // 尝试反序列化（简单处理标量）
-                    $prop->setValue($this, $this->castParam($value, $prop->getType()));
-                }
-            }
-
-            // 处理 Persistent（仅后端驱动：database/cache/redis）
-            $persistentAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
-            if (!empty($persistentAttrs)) {
-                $config = $persistentAttrs[0]->newInstance();
-                // 前端驱动（local/session）由 JS 处理，不在服务端恢复
-                if (in_array($config->driver, ['database', 'cache', 'redis'], true)) {
-                    \Framework\Component\Live\Persistent\PersistentStateManager::restorePersistentProperty($this, $prop->getName());
-                }
-            }
-        }
-    }
-
-    /**
-     * 生命周期：组件实例创建时触发
-     */
-    public function boot(): void {}
-
-    /**
-     * 生命周期：组件初始化时触发（数据加载、默认值设置等）
-     * 在构造函数末尾自动调用，仅调用一次
-     */
-    public function mount(): void {}
-
-    /**
-     * 生命周期：在状态从请求恢复（Hydration）完成后触发
-     */
-    public function hydrate(): void {}
-
-    /**
-     * 生命周期：在状态序列化发往前端（Dehydration）开始前触发
-     */
-    public function dehydrate(): void {}
-
-    /**
-     * 获取路由参数值
-     *
-     * @param string $key 参数名
-     * @param mixed $default 默认值
-     * @return mixed
-     *
-     * @live-example $this->param('id', 0)
-     */
-    public function param(string $key, mixed $default = null): mixed
-    {
-        return $this->routeParams[$key] ?? $default;
-    }
-
-    /**
-     * 获取所有路由参数
-     * @return array
-     * @live-example $this->params()  // → ['id' => '123', 'slug' => 'my-post']
-     */
-    public function params(): array
-    {
-        return $this->routeParams;
-    }
-
-    /**
-     * 判断是否存在指定路由参数
-     * @param string $key 参数名
-     * @return bool
-     */
-    public function hasParam(string $key): bool
-    {
-        return array_key_exists($key, $this->routeParams);
-    }
-
-    /**
-     * 设置路由参数（用于子请求或测试）
-     * @param array $params 参数数组
-     * @return static
-     */
-    public function setRouteParams(array $params): static
-    {
-        $this->routeParams = array_merge($this->routeParams, $params);
+        $this->componentId = $name;
         return $this;
-    }
-
-    /**
-     * 生命周期钩子：当任何公开属性更新后触发
-     */
-    public function updated(string $name, mixed $value): void
-    {
-        // 自动保存到 Session/Cookie
-        $ref = new \ReflectionClass($this);
-        if (!$ref->hasProperty($name)) return;
-        $prop = $ref->getProperty($name);
-
-        // 处理 Session 保存
-        $sessionAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Session::class);
-        if (!empty($sessionAttrs)) {
-            $attr = $sessionAttrs[0]->newInstance();
-            $key = $attr->key ?: (static::class . '.' . $prop->getName());
-            $session = new \Framework\Http\Session();
-            $session->set($key, $value);
-        }
-
-        // 处理 Cookie 保存
-        $cookieAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Cookie::class);
-        if (!empty($cookieAttrs)) {
-            $attr = $cookieAttrs[0]->newInstance();
-            $key = $attr->key ?: (static::class . '.' . $prop->getName());
-            // Cookie 的实际设置需要通过 Response，这里我们先简单模拟或通过 header 设置
-            // 注意：这在 AJAX 请求中可能需要特殊处理
-            setcookie($key, (string)$value, time() + ($attr->minutes * 60), $attr->path ?? '/', $attr->domain ?? '', $attr->secure ?? false, $attr->httpOnly);
-        }
-
-        // 处理 Persistent 保存（仅后端驱动：database/cache/redis）
-        $persistentAttrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
-        if (!empty($persistentAttrs)) {
-            $config = $persistentAttrs[0]->newInstance();
-            // 前端驱动（local/session）由 JS 处理，不在服务端保存
-            if (in_array($config->driver, ['database', 'cache', 'redis'], true)) {
-                \Framework\Component\Live\Persistent\PersistentStateManager::syncPersistentProperty($this, $name);
-            }
-        }
-    }
-
-    abstract public function render();
-
-    /**
-     * 内置属性同步方法，支持 data-live-model
-     */
-    #[LiveAction]
-    public function __updateProperty(array $params): void
-    {
-        $property = $params['property'] ?? null;
-        $value = $params['value'] ?? null;
-
-        if ($property === null) {
-            return;
-        }
-
-        // 检查属性是否存在且允许访问
-        $ref = new \ReflectionClass($this);
-        if (!$ref->hasProperty($property)) {
-            return;
-        }
-
-        $prop = $ref->getProperty($property);
-
-        // 只有非静态属性可以同步
-        if ($prop->isStatic()) {
-            return;
-        }
-
-        // 执行更新
-        $oldValue = $prop->isInitialized($this) ? $prop->getValue($this) : null;
-
-        // 类型转换
-        $type = $prop->getType();
-        $castedValue = $this->castParam($value, $type);
-
-        $prop->setValue($this, $castedValue);
-
-        // 调用生命周期钩子: updatedProperty($value, $oldValue)
-        $hookName = 'updated' . ucfirst($property);
-        if (is_callable([$this, $hookName])) {
-            $this->{$hookName}($castedValue, $oldValue);
-        }
-
-        // 通用钩子: updated($property, $value)
-        $this->updated($property, $castedValue);
-
-        // 默认触发一次刷新，以确保 UI 同步
-        $this->refresh();
     }
 
     public function getComponentId(): string
@@ -278,148 +73,218 @@ abstract class LiveComponent
         return $this->componentId;
     }
 
-    /**
-     * 设置组件 ID （用于唯一标识组件） 方便在更新时引用
-     * @param string $id 组件 ID
-     * @return self
-     */
-    public function named(string $id): self
+    public function id(): string
     {
-        $this->componentId = $id;
-        return $this;
+        return $this->componentId;
     }
 
-    public function toHtml(bool $onlyFragment = false): string
+    public function init(): void
     {
-        $this->dehydrate();
+        $this->mount();
+    }
 
-        $content = $this->render();
+    public function getManualUpdates(): array
+    {
+        return $this->manualUpdates;
+    }
 
-        // 如果返回的是 Response，转换为字符串
-        if ($content instanceof \Framework\Http\Response) {
-            return $content->getContent();
+    public function getDataForFrontend(): array
+    {
+        return $this->getPublicProperties();
+    }
+
+    /**
+     * mount() 只会在组件首次渲染时执行一次（SSR 阶段）
+     */
+    public function mount(): void {}
+
+    /**
+     * 注入 Props（从父组件传值或路由参数）
+     */
+    private function injectProps(): void
+    {
+        $ref = new \ReflectionClass($this);
+
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            $propName = $prop->getName();
+            $attrs = $prop->getAttributes(Prop::class);
+
+            if (empty($attrs)) {
+                continue;
+            }
+
+            $attr = $attrs[0]->newInstance();
+
+            // 优先级：make()传入 > routeParams(fromRoute) > default
+            $value = null;
+            $found = false;
+
+            if (isset($this->propValues[$propName])) {
+                $value = $this->propValues[$propName];
+                $found = true;
+            } elseif ($attr->fromRoute !== null && isset($this->routeParams[$attr->fromRoute])) {
+                $value = $this->routeParams[$attr->fromRoute];
+                $found = true;
+            } elseif ($attr->fromRoute !== null && isset($this->routeParams[$propName])) {
+                $value = $this->routeParams[$propName];
+                $found = true;
+            } elseif ($attr->default !== null) {
+                $value = $attr->default;
+                $found = true;
+            }
+
+            if ($found) {
+                $prop->setValue($this, $value);
+            } elseif ($attr->required) {
+                throw new \RuntimeException("Prop [{$propName}] is required but not provided for " . static::class);
+            }
         }
+    }
 
-        // 如果返回的是字符串且包含 <!DOCTYPE，拒绝（安全限制）
-        if (is_string($content) && str_contains($content, '<!DOCTYPE')) {
-            throw new \LogicException(
-                'LiveComponent cannot return HTML document string. ' .
-                    'Return Element or UXComponent instead.'
-            );
-        }
+    public function toHtml(): string
+    {
+        $state = $this->serializeState();
+        $publicProps = $this->getPublicProperties();
 
-        // 否则包装在 Element 中
-        if (!($content instanceof Element)) {
-            $content = Element::make('div')->child($content);
-        }
+        $stateAttr = htmlspecialchars(json_encode($publicProps, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
-        $content->attr('data-live', static::class);
-        $content->attr('data-live-id', $this->componentId);
-        $content->attr('data-live-state', $this->serializeState());
-        $content->attr('data-state', json_encode($this->getDataForFrontend(), JSON_UNESCAPED_UNICODE));
+        return sprintf(
+            '<div data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s">%s</div>',
+            static::class,
+            $this->componentId,
+            $stateAttr,
+            $state,
+            $this->render()
+        );
+    }
 
+    /**
+     * 前端请求接口，返回组件更新后的 HTML
+     */
+    public function handleEvent(string $event, array $data = []): string
+    {
+        $this->deserializeState($data['state'] ?? '');
+
+        $this->fillPublicProperties($data['publicData'] ?? []);
+
+        $this->callEvent($event);
+
+        return $this->toHtml();
+    }
+
+    /**
+     * 前端提交事件
+     */
+    public function handleSubmit(string $event, array $data = []): string
+    {
+        $this->deserializeState($data['state'] ?? '');
+
+        $this->fillPublicProperties($data['publicData'] ?? []);
+
+        $this->callEvent($event);
+
+        return $this->toHtml();
+    }
+
+    public function handleAction(string $action, array $data = []): string
+    {
+        $this->deserializeState($data['state'] ?? '');
+
+        $this->fillPublicProperties($data['publicData'] ?? []);
+
+        $this->callAction($action, $data['params'] ?? []);
+
+        return $this->toHtml();
+    }
+
+    /**
+     * 组件操作（如 redirect, dispatch 等）
+     */
+    public function handleOperation(): array
+    {
+        return [
+            'op' => $this->getOperations(),
+        ];
+    }
+
+    protected function callEvent(string $event): void
+    {
+        $eventName = str_replace('live:', '', $event);
         $listeners = $this->getLiveListeners();
-        if (!empty($listeners)) {
-            $content->attr('data-live-listeners', implode(',', array_keys($listeners)));
-        }
 
-        $polls = $this->getLivePolls();
-        if (!empty($polls)) {
-            $content->attr('data-poll', json_encode($polls, JSON_UNESCAPED_UNICODE));
-        }
-
-        // 注入持久化属性元数据
-        $persistentMeta = $this->getPersistentMeta();
-        if (!empty($persistentMeta)) {
-            $content->attr('data-persistent', json_encode($persistentMeta, JSON_UNESCAPED_UNICODE));
-        }
-
-        return $content->render($onlyFragment);
-    }
-
-    /**
-     * 检测是否为嵌套调用
-     *
-     * 用于安全限制：只有顶层 Page 组件才能返回 Document
-     */
-    private function isNestedCall(): bool
-    {
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
-
-        foreach ($trace as $frame) {
-            // 如果调用栈中有其他 LiveComponent::toHtml，说明是嵌套
-            if (
-                isset($frame['class']) &&
-                $frame['class'] !== static::class &&
-                is_subclass_of($frame['class'], self::class) &&
-                $frame['function'] === 'toHtml'
-            ) {
-                return true;
+        foreach ($listeners as $listener) {
+            if ($listener['event'] === $eventName) {
+                $method = $listener['method'];
+                $this->$method();
             }
         }
-
-        return false;
     }
 
-    /**
-     * 获取组件定义的监听器
-     */
-    public function getLiveListeners(): array
+    public function mountHook(): void
     {
-        $listeners = [];
+        // Mount hook
+    }
+
+    public function hydrate(): void
+    {
+        // Hydrate hook
+    }
+
+    public function dehydrate(): void
+    {
+        // Dehydrate hook
+    }
+
+    public function render(): Element
+    {
+        return new Element('div');
+    }
+
+    public function getPublicProperties(): array
+    {
         $ref = new \ReflectionClass($this);
-        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            $attrs = $method->getAttributes(LiveListener::class);
-            foreach ($attrs as $attr) {
-                $listener = $attr->newInstance();
-                $listeners[$listener->event] = $method->getName();
+        $data = [];
+
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isStatic()) {
+                continue;
             }
+
+            $name = $prop->getName();
+            $value = $prop->getValue($this);
+
+            if (is_resource($value)) {
+                continue;
+            }
+
+            $data[$name] = $value;
         }
-        return $listeners;
+
+        return $data;
     }
 
-    /**
-     * 获取组件定义的轮询方法
-     *
-     * @return array<string, array{interval: int, immediate: bool, condition: string}>
-     */
-    public function getLivePolls(): array
+    protected function getStateMeta(): array
     {
-        $polls = [];
         $ref = new \ReflectionClass($this);
-        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            $attrs = $method->getAttributes(\Framework\Component\Live\Attribute\LivePoll::class);
-            foreach ($attrs as $attr) {
-                $poll = $attr->newInstance();
-                $polls[$method->getName()] = [
-                    'interval' => $poll->interval,
-                    'immediate' => $poll->immediate,
-                    'condition' => $poll->condition,
+        $meta = [];
+
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            $sessionAttrs = $prop->getAttributes(SessionAttribute::class);
+            if (!empty($sessionAttrs)) {
+                $attr = $sessionAttrs[0]->newInstance();
+                $meta[$prop->getName()] = [
+                    'driver' => 'session',
+                    'key' => $attr->key ?? $prop->getName(),
                 ];
             }
-        }
-        return $polls;
-    }
 
-    /**
-     * 获取具有 #[Persistent] 属性的元数据
-     *
-     * 用于前端 JS 知道哪些属性需要持久化
-     *
-     * @return array<string, array{driver: string, ttl: int|null}>
-     */
-    public function getPersistentMeta(): array
-    {
-        $meta = [];
-        $ref = new \ReflectionClass($this);
-
-        foreach ($ref->getProperties() as $prop) {
-            $attrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Persistent::class);
-            if (!empty($attrs)) {
-                $config = $attrs[0]->newInstance();
+            $cookieAttrs = $prop->getAttributes(CookieAttribute::class);
+            if (!empty($cookieAttrs)) {
+                $attr = $cookieAttrs[0]->newInstance();
                 $meta[$prop->getName()] = [
-                    'driver' => $config->driver,
-                    'ttl' => $config->ttl,
+                    'driver' => 'cookie',
+                    'key' => $attr->key ?? $prop->getName(),
+                    'minutes' => $attr->minutes,
                 ];
             }
         }
@@ -432,10 +297,6 @@ abstract class LiveComponent
         return $this->toHtml();
     }
 
-    /**
-     * 序列化状态
-     * 优化：只序列化非公开属性，公开属性由前端 JSON 维护，减少数据冗余
-     */
     public function serializeState(): string
     {
         $data = [];
@@ -444,7 +305,7 @@ abstract class LiveComponent
         foreach ($ref->getProperties() as $prop) {
             if ($prop->isStatic()) continue;
 
-            $internalProps = ['componentId', 'operations', 'refreshFragments', 'manualUpdates', 'actionCache', 'liveActions'];
+            $internalProps = ['componentId', 'operations', 'refreshFragments', 'manualUpdates', 'actionCache', 'liveActions', 'mountCalled', 'stateChecksum', 'propValues', 'routeParams'];
             if (in_array($prop->getName(), $internalProps)) continue;
 
             if ($prop->isPublic()) continue;
@@ -456,7 +317,6 @@ abstract class LiveComponent
             }
         }
 
-        // 安全增强：记录公开属性的指纹，防止前端篡改 _data
         $publicData = $this->getPublicProperties();
         $data['__checksum'] = $this->generateDataChecksum($publicData);
 
@@ -468,20 +328,12 @@ abstract class LiveComponent
         return base64_encode($sig . $compressed);
     }
 
-    /**
-     * 生成一致的数据指纹
-     */
     private function generateDataChecksum(array $data): string
     {
-        // 递归排序和规范化（转为字符串），确保 JSON 字符串一致性并消除类型差异
         $this->recursiveNormalize($data);
-
         return md5(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
     }
 
-    /**
-     * 递归规范化数组：排序并转为字符串
-     */
     private function recursiveNormalize(array &$array): void
     {
         ksort($array);
@@ -489,7 +341,6 @@ abstract class LiveComponent
             if (is_array($value)) {
                 $this->recursiveNormalize($value);
             } else {
-                // 将所有非数组值转为字符串，以抹平 1 vs "1" 的差异
                 if ($value !== null) {
                     $value = (string)$value;
                 }
@@ -497,17 +348,42 @@ abstract class LiveComponent
         }
     }
 
-    /**
-     * 获取组件允许从 state 恢复的属性白名单（公开属性）
-     * 子类可覆盖此方法以限制可被覆盖的属性
-     */
     protected function allowedStateProperties(): array
     {
         $ref = new \ReflectionClass($this);
         $props = [];
         foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            if (!$prop->isStatic()) {
+            if ($prop->isStatic()) {
+                continue;
+            }
+            $stateAttrs = $prop->getAttributes(State::class);
+            $propAttrs = $prop->getAttributes(Prop::class);
+            $sessionAttrs = $prop->getAttributes(SessionAttribute::class);
+            $cookieAttrs = $prop->getAttributes(CookieAttribute::class);
+            if (!empty($stateAttrs) || !empty($propAttrs) || !empty($sessionAttrs) || !empty($cookieAttrs)) {
                 $props[] = $prop->getName();
+            }
+        }
+        return $props;
+    }
+
+    /**
+     * 获取前端可编辑的属性列表
+     */
+    protected function frontendEditableProperties(): array
+    {
+        $ref = new \ReflectionClass($this);
+        $props = [];
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isStatic()) {
+                continue;
+            }
+            $attrs = $prop->getAttributes(State::class);
+            if (!empty($attrs)) {
+                $attr = $attrs[0]->newInstance();
+                if ($attr->frontendEditable) {
+                    $props[] = $prop->getName();
+                }
             }
         }
         return $props;
@@ -522,42 +398,80 @@ abstract class LiveComponent
         $compressed = substr($decoded, 32);
 
         $expectedSig = hash_hmac('sha256', static::class . 'state' . $compressed, $this->liveSigningKey(), true);
-
-        if (!hash_equals($expectedSig, $sig)) {
-            throw new \RuntimeException('Live state signature is invalid.');
+        if ($sig !== $expectedSig) {
+            throw new \RuntimeException('Live component state signature verification failed. Possible tampering detected.');
         }
 
-        $serialized = function_exists('gzuncompress') ? @gzuncompress($compressed) : $compressed;
-        if ($serialized === false) {
-            $serialized = $compressed;
-        }
+        $serialized = function_exists('gzuncompress') ? gzuncompress($compressed) : $compressed;
+        $data = unserialize($serialized);
 
-        $data = @unserialize($serialized, ['allowed_classes' => false]);
-        if (!is_array($data)) return;
+        if ($data === false && $serialized !== 'b:0;') {
+            throw new \RuntimeException('Live component state deserialization failed.');
+        }
 
         if (isset($data['__checksum'])) {
             $this->stateChecksum = $data['__checksum'];
             unset($data['__checksum']);
         }
 
-        $ref = new \ReflectionClass($this);
-        foreach ($data as $name => $value) {
-            if ($ref->hasProperty($name)) {
-                $prop = $ref->getProperty($name);
-                // 恢复私有/受保护属性
-                if (!$prop->isPublic()) {
-                    $prop->setValue($this, $value);
+        foreach ($data as $key => $value) {
+            $prop = new \ReflectionProperty($this, $key);
+            if (!$prop->isStatic() && !$prop->isPublic()) {
+                $prop->setValue($this, $value);
+            }
+        }
+
+        foreach ($this->allowedStateProperties() as $propName) {
+            if (!property_exists($this, $propName)) {
+                continue;
+            }
+            $ref = new \ReflectionProperty($this, $propName);
+            if ($ref->isStatic()) {
+                continue;
+            }
+
+            $sessionAttrs = $ref->getAttributes(SessionAttribute::class);
+            $cookieAttrs = $ref->getAttributes(CookieAttribute::class);
+
+            if (!empty($sessionAttrs)) {
+                $session = new Session();
+                $sessionKey = 'live_component_' . static::class . '_' . $propName;
+                $stored = $session->get($sessionKey);
+                if ($stored !== null) {
+                    $ref->setValue($this, $stored['value']);
+                } else {
+                    $value = $ref->getValue($this);
+                    $session->set($sessionKey, [
+                        'value' => $value,
+                        'time' => time(),
+                    ]);
+                }
+            } elseif (!empty($cookieAttrs)) {
+                $attr = $cookieAttrs[0]->newInstance();
+                $cookieName = 'live_component_' . static::class . '_' . $propName;
+                if (isset($_COOKIE[$cookieName])) {
+                    $value = json_decode($_COOKIE[$cookieName], true);
+                    $ref->setValue($this, $value);
+                } else {
+                    $value = $ref->getValue($this);
+                    $expire = time() + ($attr->minutes * 60);
+                    setcookie($cookieName, json_encode($value), $expire, '/');
                 }
             }
         }
 
-        // 属性恢复后执行 hydrate 钩子
+        if (isset($data['_raw']) && is_array($data['_raw'])) {
+            foreach ($data['_raw'] as $name => $value) {
+                $ref = new \ReflectionProperty($this, $name);
+                if (!$ref->isStatic() && $ref->isPublic()) {
+                    $ref->setValue($this, $value);
+                }
+            }
+        }
+
         $this->hydrate();
     }
 
-    /**
-     * 将前端传来的公开属性值填充到组件中
-     */
     public function fillPublicProperties(array $data): void
     {
         if (isset($data['_raw']) && is_array($data['_raw'])) {
@@ -566,29 +480,42 @@ abstract class LiveComponent
 
         $ref = new \ReflectionClass($this);
         $publicProps = $this->allowedStateProperties();
+        $editableProps = $this->frontendEditableProperties();
 
-        // 校验完整性：确保前端传回的公开数据与服务端上次签发的快照一致
-        if ($this->stateChecksum !== null) {
-            // 关键：只提取 PHP 类中存在的公开属性进行校验，忽略所有前端“杂质”
-            $dataToVerify = [];
-            foreach ($publicProps as $propName) {
-                if (array_key_exists($propName, $data)) {
-                    $dataToVerify[$propName] = $data[$propName];
-                }
-            }
-
-            $currentChecksum = $this->generateDataChecksum($dataToVerify);
-            if (!hash_equals($this->stateChecksum, $currentChecksum)) {
-                if (config('app.debug')) {
-                    error_log("Checksum mismatch! Expected: {$this->stateChecksum}, Got: {$currentChecksum}");
-                    error_log("Verified Data: " . json_encode($dataToVerify));
-                }
-                throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
+        // 清理：只保留组件允许的属性，丢弃前端传来的"杂质"
+        $cleanedData = [];
+        foreach ($publicProps as $propName) {
+            if (array_key_exists($propName, $data)) {
+                $cleanedData[$propName] = $data[$propName];
             }
         }
 
-        // 填充属性
-        foreach ($data as $name => $value) {
+        // 分级校验：
+        // - #[State] 标记的属性：允许前端直接修改，跳过checksum校验
+        // - 其他属性（#[Prop], #[Session], #[Cookie]）：严格checksum校验
+        if ($this->stateChecksum !== null) {
+            $dataToVerify = [];
+            foreach ($publicProps as $propName) {
+                if (!in_array($propName, $editableProps) && array_key_exists($propName, $cleanedData)) {
+                    $dataToVerify[$propName] = $cleanedData[$propName];
+                }
+            }
+
+            if (!empty($dataToVerify)) {
+                $currentChecksum = $this->generateDataChecksum($dataToVerify);
+                $expectedChecksumPart = $this->generateDataChecksum($dataToVerify);
+
+                if (!hash_equals($this->stateChecksum, $this->generateDataChecksum($cleanedData)) && !empty(array_diff_key($cleanedData, array_flip($editableProps)))) {
+                    if (config('app.debug')) {
+                        error_log("Checksum mismatch! Expected: {$this->stateChecksum}, Got: {$currentChecksum}");
+                        error_log("Verified Data: " . json_encode($dataToVerify));
+                    }
+                    throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
+                }
+            }
+        }
+
+        foreach ($cleanedData as $name => $value) {
             if (in_array($name, $publicProps, true)) {
                 $prop = $ref->getProperty($name);
                 if (!$prop->isStatic()) {
@@ -719,133 +646,59 @@ abstract class LiveComponent
         return $this->$methodName(...$args);
     }
 
-    public function signedAction(string $actionName, array $params = []): string
+    private function castParam(mixed $value, ?\ReflectionType $type): mixed
     {
-        return $this->encodeActionParams($actionName, $params);
-    }
+        if ($value === null) return null;
+        if (!$type) return $value;
 
-    protected function encodeActionParams(string $actionName, array $params): string
-    {
-        $payload = [
-            '_payload' => $params,
-            '_signature' => $this->signPayload([
-                'component' => static::class,
-                'type' => 'action-params',
-                'action' => $actionName,
-                'params' => $params,
-            ]),
-        ];
+        if ($type instanceof \ReflectionNamedType) {
+            $typeName = $type->getName();
+            return match ($typeName) {
+                'int' => (int)$value,
+                'float' => (float)$value,
+                'bool' => (bool)$value,
+                'string' => (string)$value,
+                'array' => is_array($value) ? $value : [$value],
+                'object' => is_object($value) ? $value : (object)$value,
+                default => $value,
+            };
+        }
 
-        return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return $value;
     }
 
     private function normalizeActionParams(string $actionName, array $params): array
     {
-        if (!isset($params['_payload']) && !isset($params['_signature'])) {
-            return $params;
+        $config = $this->getLiveActionConfig($actionName);
+        if ($config && isset($config['params']) && is_array($config['params'])) {
+            $normalized = [];
+            foreach ($config['params'] as $index => $paramName) {
+                if (isset($params[$index])) {
+                    $normalized[$paramName] = $params[$index];
+                }
+            }
+            return $normalized;
         }
-
-        $payload = $params['_payload'] ?? null;
-        $signature = $params['_signature'] ?? null;
-
-        if (!is_array($payload) || !is_string($signature) || $signature === '') {
-            throw new \RuntimeException('Live action params signature payload is invalid.');
-        }
-
-        $expected = $this->signPayload([
-            'component' => static::class,
-            'type' => 'action-params',
-            'action' => $actionName,
-            'params' => $payload,
-        ]);
-
-        if (!hash_equals($expected, $signature)) {
-            throw new \RuntimeException('Live action params signature is invalid.');
-        }
-
-        return $payload;
+        return $params;
     }
 
-    private function castParam(mixed $value, ?\ReflectionType $type): mixed
+    private function getLiveListeners(): array
     {
-        if ($type === null || !($type instanceof \ReflectionNamedType)) return $value;
-
-        return match ($type->getName()) {
-            'int' => (int)$value,
-            'float' => (float)$value,
-            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
-            'string' => (string)$value,
-            default => $value,
-        };
-    }
-
-    public function getPublicProperties(): array
-    {
-        $data = [];
         $ref = new \ReflectionClass($this);
+        $listeners = [];
 
-        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            if ($prop->isStatic()) continue;
-            $data[$prop->getName()] = $prop->getValue($this);
-        }
-
-        return $data;
-    }
-
-    public function getDataForFrontend(): array
-    {
-        return $this->getPublicProperties();
-    }
-
-    public function validate(): array
-    {
-        $errors = [];
-        $ref = new \ReflectionClass($this);
-
-        foreach ($ref->getProperties() as $prop) {
-            $attrs = $prop->getAttributes(\Framework\Component\Live\Attribute\Rule::class);
-            if (empty($attrs)) continue;
-
-            $rule = $attrs[0]->newInstance();
-            $value = $prop->getValue($this);
-            $name = $prop->getName();
-
-            $rules = explode('|', $rule->rules);
-
-            foreach ($rules as $r) {
-                $error = $this->applyRule($name, $value, $r);
-                if ($error) $errors[$name] = $error;
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(LiveListener::class);
+            if (!empty($attrs)) {
+                $attr = $attrs[0]->newInstance();
+                $listeners[] = [
+                    'event' => $attr->event,
+                    'method' => $method->getName(),
+                ];
             }
         }
 
-        return $errors;
-    }
-
-    private function applyRule(string $name, mixed $value, string $rule): ?string
-    {
-        return match ($rule) {
-            'required' => empty($value) && $value !== '0' ? "{$name} 是必填项" : null,
-            'email' => !filter_var($value, FILTER_VALIDATE_EMAIL) ? "{$name} 格式不正确" : null,
-            default => null,
-        };
-    }
-
-    public function emit(string $event, mixed $data = null): void
-    {
-        LiveEventBus::recordEmittedEvent($event, $data);
-    }
-
-    public function updateComponent(string $componentId, array $patches = []): void
-    {
-        $this->manualUpdates[$componentId] = array_merge(
-            $this->manualUpdates[$componentId] ?? [],
-            $patches
-        );
-    }
-
-    public function getManualUpdates(): array
-    {
-        return $this->manualUpdates;
+        return $listeners;
     }
 
     public function operation(string $op, array $params = []): void
@@ -907,14 +760,6 @@ abstract class LiveComponent
         ]);
     }
 
-    /**
-     * 触发确认对话框（前端显示）
-     *
-     * @param string $message 确认消息
-     * @param string $title 对话框标题（可选）
-     * @param array $options 额外选项
-     * @return bool 仅作为操作标记，实际结果由前端处理
-     */
     public function confirm(string $message, string $title = '确认', array $options = []): void
     {
         $this->operation('confirm', [
@@ -924,138 +769,183 @@ abstract class LiveComponent
         ]);
     }
 
-    /**
-     * 触发局部加载状态
-     *
-     * @param string $target 加载目标（CSS 选择器或组件 ID）
-     */
     public function loading(string $target = ''): void
     {
         $this->operation('loading', ['target' => $target ?: 'self']);
     }
 
-    /**
-     * 结束加载状态
-     *
-     * @param string $target 结束加载的目标
-     */
     public function loadingEnd(string $target = ''): void
     {
         $this->operation('loading:end', ['target' => $target ?: 'self']);
     }
 
-    /**
-     * 验证表单数据并返回错误信息
-     *
-     * @param array $rules 验证规则
-     * @param array $data 要验证的数据（默认使用组件公开属性）
-     * @return bool 是否通过验证
-     */
-    public function validateForm(array $rules = [], array $data = []): bool
+    public function validate(array $rules = [], array $data = []): bool
     {
         if (empty($data)) {
             $data = $this->getPublicProperties();
         }
 
-        $errors = $this->validate($rules);
-        if (!empty($errors)) {
-            $this->operation('validation:errors', ['errors' => $errors]);
-            return false;
+        if (empty($rules)) {
+            $this->validationErrors = [];
+            return true;
         }
 
-        $this->operation('validation:clear');
-        return true;
+        $validator = \Framework\Validation\Validator::make($data, $rules);
+        $passed = $validator->validate();
+
+        $this->validationErrors = $validator->errors();
+        return $passed;
+    }
+
+    public function getValidationErrors(): array
+    {
+        return $this->validationErrors;
     }
 
     /**
-     * 获取表单错误信息
+     * 刷新指定 Fragment（支持局部刷新模式）
      *
-     * @param string $field 字段名
-     * @return string|null
+     * @param string $name Fragment 名称
+     * @param string $mode 模式：'append'|'prepend'|'replace'（默认 replace）
      */
-    public function getError(string $field): ?string
+    public function refresh(string $name, string $mode = 'replace'): void
     {
-        return $this->validationErrors[$field] ?? null;
+        $this->refreshFragments[$name] = $mode;
     }
 
     /**
-     * 设置表单错误信息
-     *
-     * @param string $field 字段名
-     * @param string $message 错误消息
+     * 获取 Fragment 刷新配置
      */
-    public function setError(string $field, string $message): void
-    {
-        $this->validationErrors[$field] = $message;
-        $this->operation('validation:errors', ['errors' => $this->validationErrors]);
-    }
-
-    /**
-     * 清除指定字段的错误
-     */
-    public function clearError(string $field): void
-    {
-        unset($this->validationErrors[$field]);
-    }
-
-    /**
-     * 清除所有表单错误
-     */
-    public function clearErrors(): void
-    {
-        $this->validationErrors = [];
-        $this->operation('validation:clear');
-    }
-
-    /**
-     * 触发组件级刷新（通知外部组件更新）
-     */
-    public function notify(string $componentId, string $event, mixed $data = null): void
-    {
-        LiveNotifier::emit($event, [
-            'targetComponent' => $componentId,
-            'data' => $data,
-        ]);
-    }
-
-    public function refresh(string ...$names): void
-    {
-        foreach ($names as $name) {
-            $this->refreshFragments[$name] = 'replace';
-        }
-    }
-
-    public function append(string $name): void
-    {
-        $this->refreshFragments[$name] = 'append';
-    }
-
-    public function prepend(string $name): void
-    {
-        $this->refreshFragments[$name] = 'prepend';
-    }
-
     public function getRefreshFragments(): array
     {
         return $this->refreshFragments;
     }
 
-    private function signPayload(array $payload): string
+    /**
+     * 获取已注册的 Fragment
+     */
+    public function getFragments(): array
     {
-        return hash_hmac('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $this->liveSigningKey());
+        return app()->make(FragmentRegistry::class)->getFragments($this->componentId);
+    }
+
+    /**
+     * 获取指定 Fragment HTML
+     */
+    public function getFragment(string $name): string
+    {
+        return app()->make(FragmentRegistry::class)->getFragment($this->componentId, $name);
+    }
+
+    /**
+     * 替换组件完整 HTML（通用局部刷新）
+     */
+    public function replace(): void
+    {
+        $this->operation('replace');
+    }
+
+    /**
+     * 替换指定 CSS 选择器的元素
+     */
+    public function replaceElement(string $selector, ?string $content = null): void
+    {
+        $this->operation('replaceElement', [
+            'selector' => $selector,
+            'content' => $content,
+        ]);
+    }
+
+    /**
+     * 添加子元素到指定位置
+     */
+    public function addChild(string $selector, string $content, string $position = 'beforeend'): void
+    {
+        $this->operation('addChild', [
+            'selector' => $selector,
+            'content' => $content,
+            'position' => $position,
+        ]);
+    }
+
+    /**
+     * 更新指定选择器元素的属性值
+     */
+    public function updateAttribute(string $selector, string $attribute, string $value): void
+    {
+        $this->operation('updateAttribute', [
+            'selector' => $selector,
+            'attribute' => $attribute,
+            'value' => $value,
+        ]);
+    }
+
+    /**
+     * 获取组件所有公开属性的当前状态
+     */
+    public function getComponentState(): array
+    {
+        return $this->getPublicProperties();
+    }
+
+    /**
+     * 手动触发另一个组件的方法
+     * 格式: componentId.actionName
+     */
+    public function trigger(string $targetAction, array $params = []): void
+    {
+        $this->operation('trigger', [
+            'target' => $targetAction,
+            'params' => $params,
+        ]);
+    }
+
+    /**
+     * 手动注册 LiveAction
+     *
+     * @param string $name Action 名称
+     * @param string|callable $method 方法名或回调函数
+     * @param string $event 触发事件（默认 click）
+     */
+    public function registerAction(string $name, string|callable $method, string $event = 'click'): void
+    {
+        if (is_callable($method)) {
+            $this->liveActions[$name] = $method;
+        } else {
+            $this->liveActions[$name] = [
+                'method' => $method,
+                'event' => $event,
+            ];
+        }
+    }
+
+    /**
+     * 批量注册 Actions
+     *
+     * @param array $actions ['actionName' => 'methodName'] 或 ['actionName' => ['method' => 'methodName', 'event' => 'click']]
+     */
+    public function registerActions(array $actions): void
+    {
+        foreach ($actions as $name => $config) {
+            if (is_string($config)) {
+                $this->liveActions[$name] = $config;
+            } elseif (is_array($config)) {
+                $this->liveActions[$name] = array_merge(['event' => 'click'], $config);
+            }
+        }
     }
 
     protected function liveSigningKey(): string
     {
-        $appKey = (string) config('app.key', 'secret-fallback');
-
-        if (\Framework\Foundation\AppEnvironment::isWasm()) {
-            return hash('sha256', $appKey);
-        }
-
-        $session = new \Framework\Http\Session();
-        $sessionToken = $session->token();
-
+        $sessionToken = app()->make(Session::class)->getId() ?: 'guest';
+        $appKey = config('app.key', 'default-key');
         return hash_hmac('sha256', $sessionToken, $appKey);
+    }
+
+    public function _invoke(array $params = []): void
+    {
+        $this->routeParams = $params;
+        $this->injectProps();
+        $this->mount();
     }
 }
