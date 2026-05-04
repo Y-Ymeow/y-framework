@@ -134,7 +134,7 @@ class Router
 
             $handlerMethod = '__invoke';
             if ($reflection->isSubclassOf(\Framework\Component\Live\LiveComponent::class)) {
-                $handlerMethod = 'render';
+                $handlerMethod = 'toHtml';
             }
 
             foreach ($methods as $method) {

@@ -654,16 +654,51 @@ Element::make('input')
     ->attr('type', 'text');
 ```
 
-### 8.4 属性绑定 — `#[Prop]`
+### 8.4 状态标记 — `#[State]` 与 `#[Prop]`
 
-从父组件接收数据，类似 Vue 的 `props`：
+LiveComponent 的状态管理通过两组属性标记来控制暴露、持久化与安全校验：
+
+| 标记 | 暴露给前端 | 前端可修改 | 参与 checksum | 用途 |
+|------|-----------|-----------|--------------|------|
+| `#[State]` | ✅ | ✅ | ❌ 跳过 | 组件自身的可修改状态 |
+| `#[Prop]` | ✅ | ❌ | ✅ | 从父组件接收的只读属性 |
+| `#[Session]` | ✅ | ❌ | ✅ | 持久化到 Session |
+| `#[Cookie]` | ✅ | ❌ | ✅ | 持久化到 Cookie |
+
+> 未标注任何属性的公开字段**不会**暴露给前端，也不参与任何序列化或校验。
+
+#### `#[State]` — 可修改状态
+
+标记组件的响应式状态，前端可以直接修改（如 `liveModel` 双向绑定）：
 
 ```php
-namespace App\Component;
+use Framework\Component\Live\Attribute\State;
 
-use Framework\Component\Live\LiveComponent;
+class Counter extends LiveComponent
+{
+    #[State]
+    public int $count = 0;
+
+    public function increment()
+    {
+        $this->count++;
+    }
+}
+```
+
+`#[State]` 默认 `frontendEditable: true`，跳过 checksum 校验——因为前端发来的值就是最新的，不需要和服务端保存的旧值比对。可设置 `frontendEditable: false` 禁止前端直接写入：
+
+```php
+#[State(frontendEditable: false)]
+public array $internalCache = [];
+```
+
+#### `#[Prop]` — 父组件传值
+
+从父组件接收数据，前端**不可直接修改**，参与 checksum 防篡改校验：
+
+```php
 use Framework\Component\Live\Attribute\Prop;
-use Framework\Html\Element;
 
 class UserCard extends LiveComponent
 {
@@ -1381,6 +1416,13 @@ $app->run();
 | `#[Route]` | 类/方法 | 定义路由 |
 | `#[RouteGroup]` | 类 | 路由分组 |
 | `#[Middleware]` | 类/方法 | 注册中间件 |
+| `#[State]` | LiveComponent 属性 | 暴露为响应式状态，前端可修改，跳过 checksum |
+| `#[Prop]` | LiveComponent 属性 | 从父组件传值，前端只读，参与 checksum |
+| `#[Session]` | LiveComponent 属性 | 自动持久化到 Session，参与 checksum |
+| `#[Cookie]` | LiveComponent 属性 | 自动持久化到 Cookie，参与 checksum |
+| `#[Computed]` | LiveComponent 方法 | 缓存计算结果 |
+| `#[LiveAction]` | LiveComponent 方法 | 暴露为前端可调用的动作 |
+| `#[LiveListener]` | LiveComponent 方法 | 监听浏览器事件 |
 
 ### C. 最佳实践
 
