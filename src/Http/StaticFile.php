@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Framework\Http;
 
+use Framework\Exception\HttpException;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
+use Framework\Http\Response\StreamedResponse;
 
 class StaticFile
 {
