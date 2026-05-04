@@ -22,7 +22,7 @@ class Session
 
         $sessionPath = getenv('SESSION_PATH') ?: $_ENV['SESSION_PATH'] ?? null;
         if (!$sessionPath) {
-            $sessionPath = base_path('storage/sessions');
+            $sessionPath = paths()->sessions();
         }
         ini_set('session.save_path', $sessionPath);
 

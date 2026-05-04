@@ -9,7 +9,7 @@ use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
-use Framework\Http\StreamedResponse;
+use Framework\Http\Response\StreamedResponse;
 use Framework\Routing\Attribute as Attr;
 use Framework\Support\File;
 use Framework\Support\Finder;

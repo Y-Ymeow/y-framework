@@ -2,66 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Framework\Http;
+namespace Framework\Http\Response;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Response\Response;
-use Framework\Http\Response\ResponseSender;
 use Generator;
 
-/**
- * StreamResponse 流式响应
- *
- * 基于 Generator 的流式 HTTP 响应，支持 NDJSON、SSE、纯文本三种输出格式。
- * 每个 yield 后自动 flush，确保客户端实时接收数据。
- *
- * ## 输出格式
- *
- * - `FORMAT_NDJSON`：每行一个 JSON 对象，Content-Type: application/x-ndjson
- * - `FORMAT_SSE`：Server-Sent Events 格式，Content-Type: text/event-stream
- * - `FORMAT_TEXT`：纯文本格式，Content-Type: text/plain
- *
- * @http-category Response
- * @http-since 2.0
- *
- * @http-example
- * // NDJSON 流（默认）
- * $gen = (function () {
- *     for ($i = 0; $i < 5; $i++) {
- *         yield ['type' => 'text', 'content' => "chunk $i"];
- *         sleep(1);
- *     }
- *     yield ['type' => 'done'];
- * })();
- * return new StreamResponse($gen);
- *
- * // 使用工厂方法
- * return StreamResponse::generator(fn() => myGenerator());
- * return StreamResponse::fromArray($items);
- * @http-example-end
- */
 class StreamResponse extends Response
 {
     private Generator $generator;
     private string $format;
     private bool $flush;
 
-    /** NDJSON 格式：每行一个 JSON 对象 */
     public const FORMAT_NDJSON = 'ndjson';
-
-    /** SSE 格式：Server-Sent Events */
     public const FORMAT_SSE = 'sse';
-
-    /** 纯文本格式 */
     public const FORMAT_TEXT = 'text';
 
-    /**
-     * 创建流式响应
-     * @param Generator $generator 数据生成器，每次 yield 一个数据块
-     * @param string $format 输出格式，使用 FORMAT_* 常量
-     * @param bool $flush 是否在每个数据块后自动 flush
-     * @http-default true
-     */
     public function __construct(Generator $generator, string $format = self::FORMAT_NDJSON, bool $flush = true)
     {
         $this->generator = $generator;
@@ -86,25 +41,11 @@ class StreamResponse extends Response
         $this->headers['X-Accel-Buffering'] = 'no';
     }
 
-    /**
-     * 从回调创建流式响应（回调需返回 Generator）
-     * @param callable $callback 返回 Generator 的回调函数
-     * @param string $format 输出格式
-     * @return static
-     * @http-example StreamResponse::generator(fn() => myGenerator(), StreamResponse::FORMAT_SSE)
-     */
     public static function generator(callable $callback, string $format = self::FORMAT_NDJSON): self
     {
         return new self($callback(), $format);
     }
 
-    /**
-     * 从静态数组创建流式响应
-     * @param array $items 数据数组
-     * @param string $format 输出格式
-     * @return static
-     * @http-example StreamResponse::fromArray([['type'=>'text','content'=>'hi'],['type'=>'done']])
-     */
     public static function fromArray(array $items, string $format = self::FORMAT_NDJSON): self
     {
         return new self((function () use ($items) {
@@ -114,13 +55,6 @@ class StreamResponse extends Response
         })(), $format);
     }
 
-    /**
-     * 创建纯文本流式响应
-     * @param callable $callback 返回文本生成器的回调
-     * @param float $delay 每块之间的延迟秒数
-     * @return static
-     * @http-example StreamResponse::textStream(fn() => $textGen(), 0.05)
-     */
     public static function textStream(callable $callback, float $delay = 0.01): self
     {
         return new self((function () use ($callback, $delay) {
@@ -133,28 +67,16 @@ class StreamResponse extends Response
         })(), self::FORMAT_TEXT);
     }
 
-    /**
-     * 获取底层 Generator
-     * @return Generator
-     */
     public function getGenerator(): Generator
     {
         return $this->generator;
     }
 
-    /**
-     * 获取输出格式
-     * @return string
-     */
     public function getFormat(): string
     {
         return $this->format;
     }
 
-    /**
-     * 发送流式响应：发送 headers → 清除输出缓冲 → 逐块输出
-     * @return void
-     */
     public function send(): void
     {
         if (AppEnvironment::isWasm()) {
@@ -166,7 +88,7 @@ class StreamResponse extends Response
             return;
         }
 
-        (new ResponseSender())->sendHeaders($this->statusCode, $this->statusText, $this->headers);
+        $this->sendHeaders();
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
@@ -189,10 +111,6 @@ class StreamResponse extends Response
         }
     }
 
-    /**
-     * 收集所有 Generator 数据为字符串（会消费整个 Generator）
-     * @return string
-     */
     public function getContent(): string
     {
         $output = '';
@@ -202,7 +120,6 @@ class StreamResponse extends Response
         return $output;
     }
 
-    /** @internal */
     private function formatData(mixed $data): string
     {
         switch ($this->format) {
@@ -215,7 +132,6 @@ class StreamResponse extends Response
         }
     }
 
-    /** @internal */
     private function formatSse(mixed $data): string
     {
         if (is_array($data)) {
@@ -235,7 +151,6 @@ class StreamResponse extends Response
         return "data: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
     }
 
-    /** @internal */
     private function flushOutput(): void
     {
         if (ob_get_level() > 0) {

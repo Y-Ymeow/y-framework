@@ -4,31 +4,25 @@ declare(strict_types=1);
 
 namespace Framework\Http\Request;
 
-/**
- * 请求头容器
- */
 class HeaderBag
 {
     private array $headers = [];
 
-    /**
-     * @param array<string, string> $headers
-     */
     public function __construct(array $headers = [])
     {
-        $this->headers = $headers;
+        foreach ($headers as $key => $value) {
+            $normalizedKey = $this->normalize($key);
+            $this->headers[$normalizedKey] = $value;
+        }
     }
 
-    /**
-     * 从 $_SERVER 解析 HTTP 头
-     */
     public static function fromServer(array $server): self
     {
         $headers = [];
 
         foreach ($server as $key => $value) {
             if (str_starts_with($key, 'HTTP_')) {
-                $headerKey = str_replace('_', '-', substr($key, 5));
+                $headerKey = strtoupper(str_replace('_', '-', substr($key, 5)));
                 $headers[$headerKey] = $value;
             }
         }
@@ -46,23 +40,13 @@ class HeaderBag
     public function get(string $key, ?string $default = null): ?string
     {
         $normalizedKey = $this->normalize($key);
-
-        if (isset($this->headers[$normalizedKey])) {
-            return $this->headers[$normalizedKey];
-        }
-
-        foreach ($this->headers as $headerKey => $value) {
-            if ($this->normalize($headerKey) === $normalizedKey) {
-                return $value;
-            }
-        }
-
-        return $default;
+        return $this->headers[$normalizedKey] ?? $default;
     }
 
     public function set(string $key, string $value): void
     {
-        $this->headers[$key] = $value;
+        $normalizedKey = $this->normalize($key);
+        $this->headers[$normalizedKey] = $value;
     }
 
     public function all(): array
@@ -72,21 +56,15 @@ class HeaderBag
 
     public function has(string $key): bool
     {
-        return $this->get($key) !== null;
+        return isset($this->headers[$this->normalize($key)]);
     }
 
-    /**
-     * 判断是否为 JSON 请求
-     */
     public function isJson(): bool
     {
         $ct = $this->get('Content-Type', '');
         return str_contains($ct, 'application/json');
     }
 
-    /**
-     * 判断客户端是否期望 JSON
-     */
     public function expectsJson(): bool
     {
         $accept = $this->get('Accept', '');

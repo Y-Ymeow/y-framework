@@ -44,9 +44,18 @@ function base_path(string $path = ''): string
     return $path ? $base . '/' . ltrim($path, '/') : $base;
 }
 
+function paths(): \Framework\Support\Paths
+{
+    $app = \Framework\Foundation\Application::getInstance();
+    if ($app !== null) {
+        return $app->paths();
+    }
+    return new \Framework\Support\Paths(dirname(__DIR__, 2));
+}
+
 function storage_path(string $path = ''): string
 {
-    return base_path('storage' . ($path ? '/' . ltrim($path, '/') : ''));
+    return paths()->storage($path);
 }
 
 function logger(string $message, array $context = []): void
@@ -102,7 +111,7 @@ function stream_url(string $path): string
 
 function public_path(string $path = ''): string
 {
-    return base_path('public' . ($path ? '/' . ltrim($path, '/') : ''));
+    return paths()->public($path);
 }
 
 function vite(string $entry): string
@@ -151,7 +160,7 @@ function route(string $name, array $parameters = [], bool $absolute = false): st
         }
     }
 
-    throw new \RuntimeException("Route [{$name}] not found");
+    throw new \Framework\Exception\RouteNotFoundException($name);
 }
 
 function session(): \Framework\Http\Session\Session
@@ -165,9 +174,19 @@ function back(): \Framework\Http\Response\Response
     return redirect($referer);
 }
 
+function request(): \Framework\Http\Request\Request
+{
+    return app()->make(\Framework\Http\Request\Request::class);
+}
+
+function response(string $content = '', int $status = 200, array $headers = []): \Framework\Http\Response\Response
+{
+    return new \Framework\Http\Response\Response($content, $status, $headers);
+}
+
 function abort(int $code, string $message = ''): never
 {
-    throw new \Framework\Http\HttpException($code, $message);
+    throw new \Framework\Exception\HttpException($code, $message);
 }
 
 function now(): \DateTimeImmutable

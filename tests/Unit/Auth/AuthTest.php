@@ -9,7 +9,7 @@ use Framework\Auth\User;
 use Framework\Auth\AuthManager;
 use Framework\Database\Connection;
 use Framework\Database\Model;
-use Framework\Http\Session;
+use Framework\Http\Session\Session;
 
 class AuthTest extends TestCase
 {

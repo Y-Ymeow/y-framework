@@ -33,7 +33,9 @@ class ConfigManager
         }
 
         $base = self::resolveBasePath();
-        self::$cachePath = $base . '/storage/cache/config.php';
+        $p = new \Framework\Support\Paths($base);
+
+        self::$cachePath = $p->cache('config.php');
 
         // 加载运行时动态配置（在检查缓存之前）
         self::loadRuntimeConfig($base);
@@ -44,10 +46,10 @@ class ConfigManager
             $cacheTime = filemtime(self::$cachePath);
 
             // 检查配置文件是否更新
-            $configDir = $base . '/config';
+            $configDir = $p->config();
             $configModified = is_dir($configDir) ? filemtime($configDir) : 0;
             $runtimeModified = 0;
-            $runtimeFile = $base . '/storage/config/runtime.php';
+            $runtimeFile = $p->runtimeConfig('runtime.php');
             if (file_exists($runtimeFile)) {
                 $runtimeModified = filemtime($runtimeFile);
             }
@@ -74,7 +76,7 @@ class ConfigManager
         $config = self::$defaults;
 
         // 合并用户项目 config/ 覆盖
-        $userConfigDir = $base . '/config';
+        $userConfigDir = $p->config();
         if (is_dir($userConfigDir)) {
             foreach (glob($userConfigDir . '/*.php') as $file) {
                 $name = basename($file, '.php');
@@ -118,7 +120,7 @@ class ConfigManager
      */
     private static function loadRuntimeConfig(string $base): void
     {
-        $runtimeFile = $base . '/storage/config/runtime.php';
+        $runtimeFile = (new \Framework\Support\Paths($base))->runtimeConfig('runtime.php');
         if (file_exists($runtimeFile)) {
             self::$runtimeConfig = require $runtimeFile;
             if (!is_array(self::$runtimeConfig)) {
@@ -138,7 +140,7 @@ class ConfigManager
     public static function set(string $key, mixed $value): void
     {
         $base = self::resolveBasePath();
-        $runtimeFile = $base . '/storage/config/runtime.php';
+        $runtimeFile = (new \Framework\Support\Paths($base))->runtimeConfig('runtime.php');
 
         $parts = explode('.', $key);
         $fileName = array_shift($parts);
@@ -290,7 +292,7 @@ class ConfigManager
         }
 
         $base = self::resolveBasePath();
-        $runtimeFile = $base . '/storage/config/runtime.php';
+        $runtimeFile = (new \Framework\Support\Paths($base))->runtimeConfig('runtime.php');
         if (file_exists($runtimeFile)) {
             unlink($runtimeFile);
         }

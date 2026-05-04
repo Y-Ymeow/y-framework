@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Sse;
 
-use Framework\Http\Session;
+use Framework\Http\Session\Session;
 
 /**
  * SSE 安全令牌

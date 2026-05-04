@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Admin;
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 use Framework\Routing\Attribute\Route;
 use Framework\Admin\Live\AdminListPage;
 use Framework\Admin\Live\AdminFormPage;
@@ -15,10 +15,6 @@ use Framework\View\Container;
 use Framework\View\Link;
 use Framework\View\Listing;
 use Framework\View\Text;
-
-namespace Framework\Admin;
-
-use Framework\Http\Response;
 
 class AdminResourceController
 {

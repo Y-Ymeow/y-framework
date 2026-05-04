@@ -356,7 +356,7 @@ class SseHub
     {
         if (self::$cacheDir === '') {
             // 使用项目的 storage 目录，确保跨进程共享
-            self::$cacheDir = base_path('storage/sse');
+            self::$cacheDir = paths()->sse();
         }
 
         if (!is_dir(self::$cacheDir)) {

@@ -11,7 +11,7 @@ class DebugBarStorage
 
     public function __construct(?string $path = null, int $lifetime = 3600)
     {
-        $this->path = $path ?? base_path('storage/debug');
+        $this->path = $path ?? paths()->debug();
         $this->lifetime = $lifetime;
 
         if (!is_dir($this->path)) {

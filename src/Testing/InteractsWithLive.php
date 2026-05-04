@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Framework\Testing;
 
 use Framework\Component\Live\LiveComponent;
-use Framework\Http\Request;
+use Framework\Http\Request\Request;
 
 trait InteractsWithLive
 {

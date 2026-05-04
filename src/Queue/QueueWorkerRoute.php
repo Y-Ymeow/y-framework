@@ -6,13 +6,14 @@ namespace Framework\Queue;
 
 use Framework\Routing\Attribute\Post;
 use Framework\Routing\Attribute\Route;
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
+use Framework\Routing\Attribute\RouteGroup;
 
-#[Route('/_queue')]
+#[RouteGroup('/_queue')]
 class QueueWorkerRoute
 {
-    #[Post('/worker')]
+    #[Route('/worker', methods: ['POST'])]
     public function handle(Request $request): Response
     {
         $token = $request->header('x-queue-token') ?? $request->input('token', '');

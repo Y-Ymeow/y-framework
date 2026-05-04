@@ -29,7 +29,7 @@ class ErrorHandler
             ini_set('display_errors', '0');
 
             set_exception_handler(function (\Throwable $exception) {
-                $code = $exception instanceof \Framework\Http\HttpException ? $exception->getStatusCode() : 500;
+                $code = $exception instanceof \Framework\Exception\HttpException ? $exception->getStatusCode() : 500;
                 if (!headers_sent()) {
                     http_response_code($code);
                     echo self::renderProduction($code);
@@ -86,7 +86,7 @@ class ErrorHandler
 
     public static function handleException(\Throwable $exception): void
     {
-        $code = $exception instanceof \Framework\Http\HttpException ? $exception->getStatusCode() : 500;
+        $code = $exception instanceof \Framework\Exception\HttpException ? $exception->getStatusCode() : 500;
 
         if (!headers_sent() && http_response_code() === false) {
             http_response_code($code);
@@ -115,7 +115,7 @@ class ErrorHandler
             return;
         }
 
-        $logFile = dirname(__DIR__, 2) . '/storage/logs/app.log';
+        $logFile = paths()->logs('app.log');
         $dir = dirname($logFile);
         if (!is_dir($dir)) @mkdir($dir, 0755, true);
 
@@ -140,7 +140,7 @@ class ErrorHandler
             return;
         }
 
-        $logFile = dirname(__DIR__, 2) . '/storage/logs/app.log';
+        $logFile = paths()->logs('app.log');
         $dir = dirname($logFile);
         if (!is_dir($dir)) @mkdir($dir, 0755, true);
 
@@ -154,7 +154,7 @@ class ErrorHandler
     private static function renderDebug(\Throwable $exception): void
     {
         $class = get_class($exception);
-        $code = $exception instanceof \Framework\Http\HttpException ? $exception->getStatusCode() : 500;
+        $code = $exception instanceof \Framework\Exception\HttpException ? $exception->getStatusCode() : 500;
         $message = htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
         $file = $exception->getFile();
         $line = $exception->getLine();

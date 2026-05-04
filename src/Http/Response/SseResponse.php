@@ -2,42 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Framework\Http;
+namespace Framework\Http\Response;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Response\ResponseSender;
 
-/**
- * SseResponse 长连接 SSE 响应
- *
- * 服务器推送（Server-Sent Events）响应，支持 keep-alive 心跳、
- * 定时轮询回调、频道订阅、最大执行时间限制。
- *
- * ## 与 StreamResponse 的区别
- *
- * - `StreamResponse`：一次性 Generator 流，数据发完即结束
- * - `SseResponse`：长连接，通过 onInterval 持续推送，直到客户端断开或超时
- *
- * @http-category Response
- * @http-since 2.0
- *
- * @http-example
- * // 简单定时推送
- * return SseResponse::simple(function () {
- *     return ['event' => 'tick', 'data' => ['time' => date('H:i:s')]];
- * }, 1000);
- *
- * // 完整构建
- * return SseResponse::create()
- *     ->event('init', ['status' => 'connected'])
- *     ->keepAlive(30)
- *     ->onInterval(function () {
- *         $msg = SseHub::getMessages('notifications');
- *         return $msg ? ['event' => 'notification', 'data' => $msg] : null;
- *     }, 1000)
- *     ->maxExecTime(3600);
- * @http-example-end
- */
 class SseResponse extends Response
 {
     private array $events = [];
@@ -60,23 +28,11 @@ class SseResponse extends Response
         ];
     }
 
-    /**
-     * 创建 SSE 响应实例
-     * @return static
-     * @http-example SseResponse::create()->event('init', ['status'=>'ok'])
-     */
     public static function create(): self
     {
         return new self();
     }
 
-    /**
-     * 添加初始事件（连接建立时立即发送）
-     * @param string $event 事件名称
-     * @param mixed $data 事件数据
-     * @param string|null $id 事件 ID
-     * @return static
-     */
     public function event(string $event, mixed $data, ?string $id = null): self
     {
         $this->events[] = [
@@ -87,23 +43,12 @@ class SseResponse extends Response
         return $this;
     }
 
-    /**
-     * 设置 keep-alive 心跳间隔
-     * @param int $seconds 心跳间隔秒数
-     * @return static
-     */
     public function keepAlive(int $seconds): self
     {
         $this->keepAlive = $seconds;
         return $this;
     }
 
-    /**
-     * 设置定时轮询回调
-     * @param callable $callback 回调函数，返回事件数组或 null
-     * @param int $intervalMs 轮询间隔毫秒
-     * @return static
-     */
     public function onInterval(callable $callback, int $intervalMs = 1000): self
     {
         $this->onInterval = $callback;
@@ -111,32 +56,18 @@ class SseResponse extends Response
         return $this;
     }
 
-    /**
-     * 设置最大执行时间
-     * @param int $seconds 最大执行秒数，0 为无限
-     * @return static
-     */
     public function maxExecTime(int $seconds): self
     {
         $this->maxExecTime = $seconds;
         return $this;
     }
 
-    /**
-     * 订阅 SSE 频道
-     * @param string ...$channels 频道名称列表
-     * @return static
-     */
     public function subscribe(string ...$channels): self
     {
         $this->channels = array_merge($this->channels, $channels);
         return $this;
     }
 
-    /**
-     * 发送 SSE 响应：发送初始事件 → 进入轮询循环
-     * @return void
-     */
     public function send(): void
     {
         if (AppEnvironment::isWasm()) {
@@ -148,7 +79,7 @@ class SseResponse extends Response
             return;
         }
 
-        (new ResponseSender())->sendHeaders($this->statusCode, $this->statusText, $this->headers);
+        $this->sendHeaders();
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
@@ -220,10 +151,6 @@ class SseResponse extends Response
         }
     }
 
-    /**
-     * 收集初始事件为字符串
-     * @return string
-     */
     public function getContent(): string
     {
         $output = '';
@@ -233,19 +160,11 @@ class SseResponse extends Response
         return $output;
     }
 
-    /**
-     * 快速创建定时推送 SSE
-     * @param callable $callback 回调函数
-     * @param int $intervalMs 轮询间隔毫秒
-     * @return static
-     * @http-example SseResponse::simple(fn() => ['event'=>'tick','data'=>['ts'=>time()]], 1000)
-     */
     public static function simple(callable $callback, int $intervalMs = 1000): self
     {
         return self::create()->onInterval($callback, $intervalMs);
     }
 
-    /** @internal */
     private function sendEvent(string $event, mixed $data, ?string $id = null): void
     {
         echo $this->formatEvent($event, $data, $id);
@@ -256,7 +175,6 @@ class SseResponse extends Response
         flush();
     }
 
-    /** @internal */
     private function formatEvent(string $event, mixed $data, ?string $id = null): string
     {
         $output = '';

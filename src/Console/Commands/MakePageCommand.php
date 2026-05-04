@@ -94,7 +94,7 @@ declare(strict_types=1);
 namespace {$namespace};
 
 use Framework\Routing\Attribute\Route;
-use Framework\Http\Response;
+use Framework\Http\Response\Response;
 use Framework\View\Container;
 use Framework\View\Text;
 

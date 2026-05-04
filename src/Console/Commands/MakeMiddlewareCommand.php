@@ -88,8 +88,8 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 
 class {$className}
 {

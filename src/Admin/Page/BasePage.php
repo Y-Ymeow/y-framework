@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Framework\Admin\Page;
 
 use Framework\Admin\Live\AdminLayout;
-use Framework\Http\Response;
+use Framework\Http\Response\Response;
 
 abstract class BasePage implements PageInterface
 {

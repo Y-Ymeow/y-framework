@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Framework\Component\Live\Sse;
 
 use Framework\Foundation\AppEnvironment;
-use Framework\Http\Session;
+use Framework\Http\Session\Session;
+use Framework\Http\Response\Response;
 use Framework\Routing\Attribute\Route;
 
 /**
@@ -51,7 +52,7 @@ class SseEndpoint
     {
         $endpoint = self::fromToken($token);
         if (!$endpoint) {
-            return \Framework\Http\Response::json(['error' => 'Invalid or expired token'], 403);
+            return Response::json(['error' => 'Invalid or expired token'], 403);
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {

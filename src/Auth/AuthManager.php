@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Auth;
 
-use Framework\Http\Session;
-use Framework\Http\Cookie;
+use Framework\Http\Session\Session;
+use Framework\Http\Cookie\CookieJar;
 
 class AuthManager
 {
@@ -73,8 +73,8 @@ class AuthManager
         if ($remember) {
             $token = hash('sha256', bin2hex(random_bytes(32)));
             $this->provider()->updateRememberToken($user, $token);
-            Cookie::forever('remember_token', $token);
-            Cookie::forever('remember_id', (string)$user->getAuthIdentifier());
+            CookieJar::foreverCookie('remember_token', $token);
+            CookieJar::foreverCookie('remember_id', (string)$user->getAuthIdentifier());
         }
 
         $this->user = $user;
@@ -125,8 +125,8 @@ class AuthManager
 
         $this->session->remove('auth_id');
         $this->session->remove('auth_type');
-        Cookie::forget('remember_token');
-        Cookie::forget('remember_id');
+        CookieJar::forgetCookie('remember_token');
+        CookieJar::forgetCookie('remember_id');
         $this->session->regenerate();
         $this->user = null;
     }
@@ -244,7 +244,7 @@ class AuthManager
             'eloquent' => new EloquentUserProvider(
                 config('auth.model', config('auth.providers.users.model', 'App\\Models\\User'))
             ),
-            default => throw new \RuntimeException("Auth driver [{$name}] is not supported."),
+            default => throw new \Framework\Exception\AuthenticationException("Auth driver [{$name}] is not supported."),
         };
     }
 }

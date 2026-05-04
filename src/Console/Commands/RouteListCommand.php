@@ -42,14 +42,14 @@ class RouteListCommand extends Command
         $router = $this->app->make(Router::class);
         
         $basePath = $this->app->basePath();
-        $cacheLoaded = $router->loadCache($basePath . '/storage/cache/routes.php');
+        $cacheLoaded = $router->loadCache(paths()->cache('routes.php'));
         
         if (!$cacheLoaded) {
             $scanDirs = config('routes.routes', []);
             $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
             $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
 
-            $frameworkDir = dirname(__DIR__, 3) . '/src';
+            $frameworkDir = paths()->frameworkSrc();
             $files = [
                 $frameworkDir . '/Component/Live/LiveComponentResolver.php',
                 $frameworkDir . '/Routing/SystemRoute.php',

@@ -52,8 +52,8 @@ class ThrottleRequests implements MiddlewareInterface
         $response = $next($request);
 
         $remaining = max(0, $maxAttempts - $record['count']);
-        $response->header('X-RateLimit-Limit', $maxAttempts);
-        $response->header('X-RateLimit-Remaining', $remaining);
+        $response->setHeader('X-RateLimit-Limit', (string)$maxAttempts);
+        $response->setHeader('X-RateLimit-Remaining', (string)$remaining);
 
         return $response;
     }

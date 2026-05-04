@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar;
 
-use Framework\Http\Request;
+use Framework\Http\Request\Request;
 
 class RequestCollector implements CollectorInterface
 {

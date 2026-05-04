@@ -6,7 +6,7 @@ namespace Framework\Routing;
 
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
-use Framework\Http\StreamedResponse;
+use Framework\Http\Response\StreamedResponse;
 use Framework\Http\StaticFile;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
@@ -30,8 +30,8 @@ class SystemRoute
     public function media(Request $request, string $path): Response
     {
         $route = new MediaRoute(
-            $this->basePath . '/storage/uploads',
-            $this->basePath . '/storage/cache/images'
+            paths()->uploads(),
+            paths()->cache('images')
         );
         return $route->handle($request, $path);
     }
@@ -44,13 +44,13 @@ class SystemRoute
 
     public function download(Request $request, string $path): Response|StreamedResponse
     {
-        $route = new FileDownloadRoute($this->basePath . '/storage/files');
+        $route = new FileDownloadRoute(paths()->files());
         return $route->handle($request, $path, true);
     }
 
     public function stream(Request $request, string $path): Response|StreamedResponse
     {
-        $route = new FileDownloadRoute($this->basePath . '/storage/files');
+        $route = new FileDownloadRoute(paths()->files());
         return $route->handle($request, $path, false);
     }
 

@@ -36,8 +36,7 @@ class CacheClearCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $type = $input->getArgument('type');
-        $basePath = $this->app->basePath();
-        $cachePath = $basePath . '/storage/cache';
+        $cachePath = paths()->cache();
 
         $cleared = 0;
 

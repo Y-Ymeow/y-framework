@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Framework\File;
 
-use Framework\Http\Response;
-use Framework\Http\StreamedResponse;
-use Framework\Http\Request;
+use Framework\Http\Response\Response;
+use Framework\Http\Response\StreamedResponse;
+use Framework\Http\Request\Request;
 
 class ImageServer
 {

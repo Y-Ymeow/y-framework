@@ -14,7 +14,7 @@ return [
         \Framework\Log\LogServiceProvider::class,
         \Framework\Cache\CacheServiceProvider::class,
         \Framework\Database\DatabaseServiceProvider::class,
-        \Framework\Http\SessionServiceProvider::class,
+        \Framework\Http\Session\SessionServiceProvider::class,
         \Framework\Auth\AuthServiceProvider::class,
         \Framework\Queue\QueueServiceProvider::class,
         \Framework\Scheduler\SchedulerServiceProvider::class,

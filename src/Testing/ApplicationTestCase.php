@@ -6,7 +6,7 @@ namespace Framework\Testing;
 
 use Framework\Foundation\Application;
 use Framework\Foundation\Kernel;
-use Framework\Http\Request;
+use Framework\Http\Request\Request;
 use Framework\View\Document\AssetRegistry;
 
 abstract class ApplicationTestCase extends \PHPUnit\Framework\TestCase

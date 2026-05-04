@@ -9,9 +9,8 @@ use Framework\Http\Middleware\VerifyCsrfToken;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
 use Framework\Http\Session\Session;
-use Framework\Http\Session\SessionStoreInterface;
-use Framework\Http\StreamResponse;
-use Framework\Http\SseResponse;
+use Framework\Http\Response\StreamResponse;
+use Framework\Http\Response\SseResponse;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\FragmentRegistry;
@@ -289,7 +288,7 @@ class LiveRequestHandler
         $component = app()->make($class);
 
         if (!($component instanceof LiveComponent)) {
-            throw new \RuntimeException("Invalid component: {$class}");
+            throw new \Framework\Exception\ComponentNotFoundException($class);
         }
 
         if (!empty($componentId)) {

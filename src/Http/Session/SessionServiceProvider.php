@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Framework\Http;
+namespace Framework\Http\Session;
 
 use Framework\Foundation\ServiceProvider;
 use Framework\Http\Session\Session;

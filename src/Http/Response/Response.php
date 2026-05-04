@@ -4,14 +4,9 @@ declare(strict_types=1);
 
 namespace Framework\Http\Response;
 
+use Framework\Foundation\AppEnvironment;
 use Framework\Http\Session\Session;
 
-/**
- * Response 核心类
- *
- * 职责：持有响应数据（内容、状态码、头、Flash），组合 ResponseSender 发送。
- * 子类：JsonResponse、HtmlResponse、RedirectResponse
- */
 class Response
 {
     protected string $content = '';
@@ -48,8 +43,6 @@ class Response
         $this->statusText = self::$statusTexts[$status] ?? 'Unknown';
     }
 
-    // ── 工厂方法 ──
-
     public static function json(mixed $data, int $status = 200, array $headers = []): JsonResponse
     {
         return new JsonResponse($data, $status, $headers);
@@ -68,7 +61,7 @@ class Response
         $data = [
             'content' => $doc->render(),
             'title' => $title,
-            'mode' => \Framework\Foundation\AppEnvironment::isWasm() ? 'partial' : 'full',
+            'mode' => AppEnvironment::isWasm() ? 'partial' : 'full',
             'status' => $status,
         ];
 
@@ -79,8 +72,6 @@ class Response
     {
         return new RedirectResponse($url, $status);
     }
-
-    // ── 链式方法 ──
 
     public function with(string|array $key, mixed $value = null): self
     {
@@ -143,12 +134,28 @@ class Response
         return $this;
     }
 
-    // ── 发送 ──
-
     public function send(): void
     {
-        $sender = new ResponseSender();
-        $sender->send($this->content, $this->statusCode, $this->statusText, $this->headers);
+        if (AppEnvironment::isWasm()) {
+            echo $this->content;
+            return;
+        }
+
+        $this->sendHeaders();
+        echo $this->content;
+    }
+
+    protected function sendHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+
+        $protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1';
+        header("{$protocol} {$this->statusCode} {$this->statusText}");
+
+        foreach ($this->headers as $name => $value) {
+            header("{$name}: {$value}", true);
+        }
     }
 }
-

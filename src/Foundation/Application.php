@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Framework\Foundation;
 
 use Framework\Http\Request\Request;
+use Framework\Support\Paths;
 
 class Application
 {
     private string $basePath;
+    private Paths $paths;
     private Container $container;
     private bool $booted = false;
     private array $providers = [];
@@ -17,6 +19,7 @@ class Application
     public function __construct(string $basePath)
     {
         $this->basePath = rtrim($basePath, '/');
+        $this->paths = new Paths($this->basePath);
         self::$instance = $this;
         $GLOBALS['app'] = $this;
 
@@ -68,6 +71,11 @@ class Application
     public function basePath(string $path = ''): string
     {
         return $this->basePath . ($path ? '/' . $path : '');
+    }
+
+    public function paths(): Paths
+    {
+        return $this->paths;
     }
 
     public function storagePath(string $path = ''): string

@@ -6,7 +6,7 @@ namespace Framework\Intl;
 
 class LocaleMiddleware
 {
-    public function handle(\Framework\Http\Request $request, \Closure $next): mixed
+    public function handle(\Framework\Http\Request\Request $request, \Closure $next): mixed
     {
         $locale = $request->input('_locale')
             ?? $request->header('Accept-Language', config('app.locale', 'en'));

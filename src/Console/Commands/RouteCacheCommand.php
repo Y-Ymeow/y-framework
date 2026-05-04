@@ -42,7 +42,7 @@ class RouteCacheCommand extends Command
         $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
         $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
 
-        $frameworkDir = dirname(__DIR__, 3) . '/src';
+        $frameworkDir = paths()->frameworkSrc();
         $files = [
             $frameworkDir . '/Component/Live/LiveComponentResolver.php',
             $frameworkDir . '/Routing/SystemRoute.php',
@@ -57,7 +57,7 @@ class RouteCacheCommand extends Command
         $routes = $router->getRoutes();
         $count = count($routes);
         
-        $cachePath = $this->app->basePath('storage/cache/routes.php');
+        $cachePath = paths()->cache('routes.php');
         $dir = dirname($cachePath);
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 

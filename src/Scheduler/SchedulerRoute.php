@@ -6,8 +6,8 @@ namespace Framework\Scheduler;
 
 use Framework\Routing\Attribute\Post;
 use Framework\Routing\Attribute\Route;
-use Framework\Http\Request;
-use Framework\Http\Response;
+use Framework\Http\Request\Request;
+use Framework\Http\Response\Response;
 
 #[Route('/_schedule', name: 'schedule')]
 class SchedulerRoute

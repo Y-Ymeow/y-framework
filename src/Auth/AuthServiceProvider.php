@@ -12,7 +12,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->app->singleton(AuthManager::class, function () {
             return new AuthManager(
-                $this->app->make(\Framework\Http\Session::class)
+                $this->app->make(\Framework\Http\Session\Session::class)
             );
         });
 

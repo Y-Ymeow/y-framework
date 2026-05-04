@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Framework\Http;
+namespace Framework\Exception;
 
 class HttpException extends \RuntimeException
 {

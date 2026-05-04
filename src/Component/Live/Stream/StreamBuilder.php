@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Stream;
 
-use Framework\Http\StreamResponse;
+use Framework\Http\Response\StreamResponse;
 use Generator;
 
 /**

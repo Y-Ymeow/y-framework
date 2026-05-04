@@ -50,14 +50,14 @@ class LogManager implements LoggerInterface
 
         switch ($driver) {
             case 'daily':
-                $this->writeToDaily($channelConfig['path'] ?? base_path('storage/logs/app.log'), $formatted);
+                $this->writeToDaily($channelConfig['path'] ?? paths()->logs('app.log'), $formatted);
                 break;
             case 'stderr':
                 $this->writeToStderr($formatted);
                 break;
             case 'single':
             default:
-                $this->writeToSingle($channelConfig['path'] ?? base_path('storage/logs/app.log'), $formatted);
+                $this->writeToSingle($channelConfig['path'] ?? paths()->logs('app.log'), $formatted);
                 break;
         }
     }

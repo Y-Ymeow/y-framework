@@ -7,7 +7,7 @@ namespace Framework\Foundation;
 use Framework\Events\Hook;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
-use Framework\Http\StreamedResponse;
+use Framework\Http\Response\StreamedResponse;
 use Framework\Routing\Router;
 use Framework\Routing\SystemRoutesProvider;
 
@@ -35,13 +35,13 @@ class Kernel
         $basePath = $this->app->basePath();
 
         // 尝试从缓存加载路由
-        if (!$this->router->loadCache($basePath . '/storage/cache/routes.php')) {
+        if (!$this->router->loadCache(paths()->cache('routes.php'))) {
             $scanDirs = config('routes.routes', []);
             $dirs = array_map(fn($dir) => $basePath . '/' . ltrim($dir, '/'), (array)$scanDirs);
 
             $dirs = array_filter($dirs, fn($dir) => is_dir($dir));
 
-            $frameworkDir = dirname(__DIR__, 2) . '/src';
+            $frameworkDir = paths()->frameworkSrc();
 
             $files = [
                 $frameworkDir . '/Component/Live/LiveRequestHandler.php',

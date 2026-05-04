@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Testing;
 
-use Framework\Http\Response;
+use Framework\Http\Response\Response;
 
 class TestResponse
 {

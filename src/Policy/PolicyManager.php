@@ -58,7 +58,7 @@ class PolicyManager
     {
         if ($this->denies($ability, $arguments)) {
             $message = "You are not authorized to perform [{$ability}].";
-            throw new \Framework\Http\HttpException(403, $message);
+            throw new \Framework\Exception\HttpException(403, $message);
         }
     }
 

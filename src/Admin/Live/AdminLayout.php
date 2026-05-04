@@ -11,7 +11,7 @@ use Framework\Admin\AdminManager;
 use Framework\UX\Dialog\Drawer;
 use Framework\UX\Menu\Dropdown;
 use Framework\UX\Menu\Menu;
-use Framework\UX\UI\Avatar;
+use Framework\UX\Display\Avatar;
 use Framework\UX\Display\Badge;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
@@ -36,7 +36,7 @@ class AdminLayout extends LiveComponent
 
     public function mount(): void
     {
-        $request = app()->make(\Framework\Http\Request::class);
+        $request = app()->make(\Framework\Http\Request\Request::class);
         $path = $request->path();
         $prefix = AdminManager::getPrefix();
 
