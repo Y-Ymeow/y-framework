@@ -25,10 +25,44 @@ use Framework\View\Text;
  */
 class Drawer extends UXComponent
 {
+    protected static ?string $componentName = 'drawer';
+
     protected string $title = '';
     protected string $position = 'right'; // left, right, top, bottom
     protected string $size = 'md'; // sm, md, lg, xl, full
     protected bool $open = false;
+
+    protected function init(): void
+    {
+        $this->registerJs('drawer', '
+            const Drawer = {
+                open(id) {
+                    const el = typeof id === "string" ? document.getElementById(id) : id;
+                    if (!el) return;
+                    el.classList.add("ux-drawer-open");
+                    document.body.style.overflow = "hidden";
+                },
+                close(id) {
+                    const el = id ? (typeof id === "string" ? document.getElementById(id) : id) : document.querySelector(".ux-drawer-open");
+                    if (!el) return;
+                    el.classList.remove("ux-drawer-open");
+                    document.body.style.overflow = "";
+                },
+                init() {
+                    document.addEventListener("click", (e) => {
+                        const trigger = e.target.closest("[data-ux-drawer-toggle]");
+                        if (trigger) {
+                            return Drawer.open(trigger.getAttribute("data-ux-drawer-toggle"));
+                        }
+                        const close = e.target.closest("[data-ux-drawer-close]");
+                        if (close) return Drawer.close();
+                        if (e.target.classList.contains("ux-drawer-overlay")) Drawer.close();
+                    });
+                }
+            };
+            return Drawer;
+        ');
+    }
 
     /**
      * 设置抽屉标题

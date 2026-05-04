@@ -21,6 +21,8 @@ use Framework\View\Base\Element;
  */
 class QRCode extends UXComponent
 {
+    protected static ?string $componentName = 'qrcode';
+
     protected string $value = '';
     protected int $size = 128;
     protected string $level = 'M';
@@ -28,6 +30,69 @@ class QRCode extends UXComponent
     protected int $iconSize = 32;
     protected ?string $color = '#000000';
     protected ?string $bgColor = '#ffffff';
+
+    protected function init(): void
+    {
+        $this->registerJs('qrcode', '
+            const QRCode = {
+                init() {
+                    document.querySelectorAll(".ux-qrcode").forEach(el => {
+                        const value = el.dataset.qrcodeValue || "";
+                        if (!value || el.dataset.qrcodeRendered === "true") return;
+                        this.render(el);
+                    });
+                },
+                async render(el) {
+                    const QRLib = window.UX?.QRCodeLib;
+                    if (!QRLib) { console.warn("QRCode library not loaded"); return; }
+                    const value = el.dataset.qrcodeValue || "";
+                    const size = parseInt(el.dataset.qrcodeSize, 10) || 128;
+                    const color = el.dataset.qrcodeColor || "#000000";
+                    const bgColor = el.dataset.qrcodeBgColor || "#ffffff";
+                    const icon = el.dataset.qrcodeIcon || null;
+                    const iconSize = parseInt(el.dataset.qrcodeIconSize, 10) || 32;
+                    if (!value) return;
+                    const canvas = document.createElement("canvas");
+                    canvas.width = size;
+                    canvas.height = size;
+                    canvas.style.display = "block";
+                    try {
+                        await QRLib.toCanvas(canvas, value, {
+                            width: size,
+                            margin: 2,
+                            color: { dark: color, light: bgColor }
+                        });
+                        if (icon) {
+                            const img = new Image();
+                            img.onload = () => {
+                                const ctx = canvas.getContext("2d");
+                                const x = (size - iconSize) / 2;
+                                const y = (size - iconSize) / 2;
+                                ctx.fillStyle = bgColor;
+                                ctx.fillRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+                                ctx.drawImage(img, x, y, iconSize, iconSize);
+                            };
+                            img.src = icon;
+                        }
+                        el.innerHTML = "";
+                        el.appendChild(canvas);
+                        el.dataset.qrcodeRendered = "true";
+                    } catch (err) {
+                        console.error("QRCode render error:", err);
+                    }
+                },
+                update(id, value) {
+                    const el = document.querySelector(`.ux-qrcode[data-qrcode-id="${id}"]`);
+                    if (el) {
+                        el.dataset.qrcodeValue = value;
+                        el.dataset.qrcodeRendered = "";
+                        this.render(el);
+                    }
+                }
+            };
+            return QRCode;
+        ');
+    }
 
     /**
      * 设置二维码内容

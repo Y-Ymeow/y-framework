@@ -25,12 +25,41 @@ use Framework\View\Text;
  */
 class Dropdown extends UXComponent
 {
+    protected static ?string $componentName = 'dropdown';
+
     protected string $label = 'Dropdown';
     protected array $items = [];
     protected string $position = 'bottom-start';
     protected bool $hover = false;
     protected mixed $customTrigger = null;
     protected bool $noborder = false;
+
+    protected function init(): void
+    {
+        $this->registerJs('dropdown', '
+            const Dropdown = {
+                toggle(id) {
+                    const el = typeof id === "string" ? document.getElementById(id) : id;
+                    if (!el) return;
+                    el.classList.toggle("ux-open");
+                },
+                closeAll() {
+                    document.querySelectorAll(".ux-dropdown.ux-open").forEach(d => d.classList.remove("ux-open"));
+                },
+                init() {
+                    document.addEventListener("click", (e) => {
+                        const trigger = e.target.closest("[data-ux-dropdown-toggle]");
+                        if (trigger) {
+                            this.toggle(trigger.getAttribute("data-ux-dropdown-toggle") || trigger.closest(".ux-dropdown")?.id);
+                            return;
+                        }
+                        if (!e.target.closest(".ux-dropdown")) this.closeAll();
+                    });
+                }
+            };
+            return Dropdown;
+        ');
+    }
 
     /**
      * 设置默认标签文字（当不使用自定义 trigger 时显示）

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\DebugBar;
 
+use Framework\UX\UI\Accordion;
 use Framework\View\Document\AssetRegistry;
 
 class DebugBar
@@ -80,6 +81,7 @@ class DebugBar
         }
 
         AssetRegistry::getInstance()->registerScript('debug-bar', DebugBarSource::renderJs());
+        Accordion::make();
     }
 
     public static function getInstance(): self

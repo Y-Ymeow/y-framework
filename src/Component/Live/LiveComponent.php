@@ -47,7 +47,7 @@ abstract class LiveComponent
 
     /**
      * 构造函数
-     * 
+     *
      * @param array $routeParams 路由参数（由 LiveComponentResolver 通过容器注入）
      */
     public function __construct(array $routeParams = [])
@@ -176,7 +176,7 @@ abstract class LiveComponent
     /**
      * 生命周期钩子：当任何公开属性更新后触发
      */
-    public function updated(string $name, mixed $value): void 
+    public function updated(string $name, mixed $value): void
     {
         // 自动保存到 Session/Cookie
         $ref = new \ReflectionClass($this);
@@ -284,7 +284,7 @@ abstract class LiveComponent
         if (is_string($content) && str_contains($content, '<!DOCTYPE')) {
             throw new \LogicException(
                 'LiveComponent cannot return HTML document string. ' .
-                'Return Element or UXComponent instead.'
+                    'Return Element or UXComponent instead.'
             );
         }
 
@@ -322,10 +322,12 @@ abstract class LiveComponent
 
         foreach ($trace as $frame) {
             // 如果调用栈中有其他 LiveComponent::toHtml，说明是嵌套
-            if (isset($frame['class']) &&
+            if (
+                isset($frame['class']) &&
                 $frame['class'] !== static::class &&
                 is_subclass_of($frame['class'], self::class) &&
-                $frame['function'] === 'toHtml') {
+                $frame['function'] === 'toHtml'
+            ) {
                 return true;
             }
         }
@@ -512,7 +514,7 @@ abstract class LiveComponent
 
         $ref = new \ReflectionClass($this);
         $publicProps = $this->allowedStateProperties();
-        
+
         // 校验完整性：确保前端传回的公开数据与服务端上次签发的快照一致
         if ($this->stateChecksum !== null) {
             // 关键：只提取 PHP 类中存在的公开属性进行校验，忽略所有前端“杂质”
@@ -522,7 +524,7 @@ abstract class LiveComponent
                     $dataToVerify[$propName] = $data[$propName];
                 }
             }
-            
+
             $currentChecksum = $this->generateDataChecksum($dataToVerify);
             if (!hash_equals($this->stateChecksum, $currentChecksum)) {
                 if (config('app.debug')) {
@@ -845,7 +847,7 @@ abstract class LiveComponent
 
     public function toast(string $message, string $type = 'success', int $duration = 3000, ?string $title = null): void
     {
-        $this->operation('ux:toast', [
+        $this->ux('toast', '', 'show', [
             'message' => $message,
             'type' => $type,
             'duration' => $duration,

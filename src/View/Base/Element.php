@@ -109,6 +109,7 @@ class Element
     protected ?string $htmlContent = null;
     protected ?string $textContent = null;
     protected bool $void = false;
+    protected bool $isComment = false;
 
     /**
      * 创建 Element 实例
@@ -774,6 +775,34 @@ class Element
     }
 
     /**
+     * 将元素标记为 HTML 注释节点
+     *
+     * 调用后，render() 会输出 HTML 注释而非实际标签。
+     * 用于需要注册资源（JS/CSS）但不想输出可见 DOM 的场景，
+     * 如 Toast、Chart 等纯 JS 驱动的组件。
+     *
+     * @view-since 1.0.0
+     * @param string $comment 注释内容（可选）
+     * @return static
+     *
+     * @view-example
+     * // Toast 组件只注册 JS，不输出可见元素
+     * return Element::make('div')
+     *     ->comment('toast placeholder')
+     *     ->requireScript('ux:toast');
+     * // 输出: <!-- toast placeholder -->
+     * @view-example-end
+     */
+    public function comment(string $comment = ''): static
+    {
+        $this->isComment = true;
+        if ($comment !== '') {
+            $this->textContent = $comment;
+        }
+        return $this;
+    }
+
+    /**
      * 将属性数组转换为 HTML 属性字符串
      *
      * 安全处理：
@@ -934,6 +963,12 @@ class Element
      */
     public function render(): string
     {
+        // 注释模式：输出 HTML 注释，不渲染实际标签
+        if ($this->isComment) {
+            $comment = $this->textContent ?? '';
+            return $comment !== '' ? "<!-- {$comment} -->" : '<!-- -->';
+        }
+
         if ($this->tag === 'script') {
             if ($this->textContent !== null) {
                 $this->textContent = '';

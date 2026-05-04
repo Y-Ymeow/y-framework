@@ -24,6 +24,8 @@ use Framework\View\Base\Element;
  */
 class Rate extends UXComponent
 {
+    protected static ?string $componentName = 'rate';
+
     protected int $count = 5;
     protected float $value = 0;
     protected bool $allowHalf = false;
@@ -32,6 +34,113 @@ class Rate extends UXComponent
     protected ?string $character = null;
     protected ?string $action = null;
     protected ?string $hoverAction = null;
+
+    protected function init(): void
+    {
+        $this->registerJs('rate', '
+            const Rate = {
+                init() {
+                    // 初始化所有评分组件：根据默认值设置星星状态
+                    document.querySelectorAll(".ux-rate").forEach(rate => {
+                        const value = parseFloat(rate.dataset.rateValue);
+                        if (!isNaN(value) && value > 0) {
+                            this.updateStars(rate, value);
+                        }
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const star = e.target.closest(".ux-rate-star");
+                        if (star) {
+                            const rate = star.closest(".ux-rate");
+                            if (rate && !rate.dataset.rateDisabled && !rate.dataset.rateReadonly) {
+                                this.handleClick(rate, star);
+                            }
+                        }
+                        const halfTrigger = e.target.closest(".ux-rate-star-half-trigger");
+                        if (halfTrigger) {
+                            const rate = halfTrigger.closest(".ux-rate");
+                            if (rate && !rate.dataset.rateDisabled && !rate.dataset.rateReadonly) {
+                                this.handleHalfClick(rate, halfTrigger);
+                            }
+                        }
+                    });
+                    document.addEventListener("mouseenter", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const star = e.target.closest(".ux-rate-star");
+                        if (star) {
+                            const rate = star.closest(".ux-rate");
+                            if (rate && !rate.dataset.rateDisabled && !rate.dataset.rateReadonly) {
+                                this.handleHover(rate, star);
+                            }
+                        }
+                    }, true);
+                    document.addEventListener("mouseleave", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const rate = e.target.closest(".ux-rate");
+                        if (rate && !rate.dataset.rateDisabled && !rate.dataset.rateReadonly) {
+                            this.handleLeave(rate);
+                        }
+                    }, true);
+                },
+                handleClick(rate, star) {
+                    const index = parseFloat(star.dataset.rateIndex);
+                    rate.dataset.rateValue = index;
+                    this.updateStars(rate, index);
+                    rate.dispatchEvent(new CustomEvent("ux:change", { detail: { value: index }, bubbles: true }));
+                },
+                handleHalfClick(rate, halfTrigger) {
+                    const index = parseFloat(halfTrigger.dataset.rateIndex);
+                    rate.dataset.rateValue = index;
+                    this.updateStars(rate, index);
+                    rate.dispatchEvent(new CustomEvent("ux:change", { detail: { value: index }, bubbles: true }));
+                },
+                handleHover(rate, star) {
+                    const index = parseFloat(star.dataset.rateIndex);
+                    this.updateHoverStars(rate, index);
+                    const hoverAction = rate.dataset.rateHoverAction;
+                    if (hoverAction && window.L) {
+                        window.L.executeOperation({ op: "action", action: hoverAction, params: { value: index } });
+                    }
+                },
+                handleLeave(rate) {
+                    const value = parseFloat(rate.dataset.rateValue) || 0;
+                    this.updateStars(rate, value);
+                },
+                updateStars(rate, value) {
+                    const stars = rate.querySelectorAll(".ux-rate-star");
+                    const allowHalf = rate.dataset.rateAllowHalf === "true";
+                    stars.forEach((star) => {
+                        const index = parseFloat(star.dataset.rateIndex);
+                        star.classList.remove("ux-rate-star-full", "ux-rate-star-half", "ux-rate-star-empty");
+                        if (index <= value) star.classList.add("ux-rate-star-full");
+                        else if (allowHalf && index - 0.5 <= value) star.classList.add("ux-rate-star-half");
+                        else star.classList.add("ux-rate-star-empty");
+                    });
+                },
+                updateHoverStars(rate, hoverIndex) {
+                    const stars = rate.querySelectorAll(".ux-rate-star");
+                    stars.forEach((star) => {
+                        const index = parseFloat(star.dataset.rateIndex);
+                        if (index <= hoverIndex) star.classList.add("hovered");
+                        else star.classList.remove("hovered");
+                    });
+                },
+                setValue(id, value) {
+                    const rate = document.querySelector(`#${id}.ux-rate`);
+                    if (rate) {
+                        rate.dataset.rateValue = value;
+                        this.updateStars(rate, value);
+                    }
+                },
+                getValue(id) {
+                    const rate = document.querySelector(`#${id}.ux-rate`);
+                    return rate ? parseFloat(rate.dataset.rateValue) || 0 : 0;
+                }
+            };
+            return Rate;
+        ');
+    }
 
     /**
      * 设置星星数量

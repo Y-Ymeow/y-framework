@@ -21,6 +21,8 @@ use Framework\View\Base\Element;
  */
 class Transfer extends UXComponent
 {
+    protected static ?string $componentName = 'transfer';
+
     protected array $dataSource = [];
     protected array $targetKeys = [];
     protected ?string $titles = null;
@@ -28,6 +30,177 @@ class Transfer extends UXComponent
     protected bool $showSearch = false;
     protected ?string $action = null;
     protected ?string $searchPlaceholder = '请输入搜索内容';
+
+    protected function init(): void
+    {
+        $this->registerJs('transfer', '
+            const Transfer = {
+                init() {
+                    // 初始化所有穿梭框：更新按钮状态和计数
+                    document.querySelectorAll(".ux-transfer").forEach(transfer => {
+                        this.updatePanelState(transfer);
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        if (!e.target || !e.target.closest) return;
+
+                        // 选择项点击
+                        const item = e.target.closest(".ux-transfer-item");
+                        if (item && !item.classList.contains("ux-transfer-item-disabled")) {
+                            const checkbox = item.querySelector("input[type=\"checkbox\"]");
+                            if (checkbox && !checkbox.disabled) {
+                                item.classList.toggle("selected");
+                                checkbox.checked = item.classList.contains("selected");
+                                const transfer = item.closest(".ux-transfer");
+                                this.updatePanelState(transfer);
+                            }
+                        }
+
+                        // 全选/取消全选
+                        const checkAll = e.target.closest(".ux-transfer-panel-check-all");
+                        if (checkAll) {
+                            const panel = checkAll.closest(".ux-transfer-panel");
+                            const transfer = checkAll.closest(".ux-transfer");
+                            const isChecked = checkAll.checked;
+                            panel.querySelectorAll(".ux-transfer-item:not(.ux-transfer-item-disabled)").forEach(it => {
+                                const cb = it.querySelector("input[type=\"checkbox\"]");
+                                if (cb && !cb.disabled) {
+                                    it.classList.toggle("selected", isChecked);
+                                    cb.checked = isChecked;
+                                }
+                            });
+                            this.updatePanelState(transfer);
+                        }
+
+                        // 左移按钮
+                        const leftBtn = e.target.closest(".ux-transfer-btn-left");
+                        if (leftBtn && !leftBtn.disabled) {
+                            const transfer = leftBtn.closest(".ux-transfer");
+                            if (transfer) this.moveLeft(transfer);
+                        }
+
+                        // 右移按钮
+                        const rightBtn = e.target.closest(".ux-transfer-btn-right");
+                        if (rightBtn && !rightBtn.disabled) {
+                            const transfer = rightBtn.closest(".ux-transfer");
+                            if (transfer) this.moveRight(transfer);
+                        }
+                    });
+
+                    // 搜索功能
+                    document.addEventListener("input", (e) => {
+                        if (!e.target || !e.target.classList.contains("ux-transfer-panel-search-input")) return;
+                        const searchInput = e.target;
+                        const panel = searchInput.closest(".ux-transfer-panel");
+                        const keyword = searchInput.value.toLowerCase();
+                        panel.querySelectorAll(".ux-transfer-item").forEach(item => {
+                            const label = item.querySelector(".ux-transfer-item-label");
+                            if (label) {
+                                const text = label.textContent.toLowerCase();
+                                item.style.display = text.includes(keyword) ? "" : "none";
+                            }
+                        });
+                    });
+                },
+                moveRight(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    const leftPanel = panels[0];
+                    const rightPanel = panels[1];
+                    const selected = leftPanel.querySelectorAll(".ux-transfer-item.selected");
+                    if (selected.length === 0) return;
+                    const rightList = rightPanel.querySelector(".ux-transfer-panel-list");
+                    selected.forEach(item => {
+                        item.classList.remove("selected");
+                        item.dataset.side = "right";
+                        const checkbox = item.querySelector("input[type=\"checkbox\"]");
+                        if (checkbox) checkbox.checked = false;
+                        rightList.appendChild(item);
+                    });
+                    const rightEmpty = rightList.querySelector(".ux-transfer-panel-empty");
+                    if (rightEmpty) rightEmpty.remove();
+                    this.updatePanelState(transfer);
+                    this.syncToServer(transfer);
+                },
+                moveLeft(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    const leftPanel = panels[0];
+                    const rightPanel = panels[1];
+                    const selected = rightPanel.querySelectorAll(".ux-transfer-item.selected");
+                    if (selected.length === 0) return;
+                    const leftList = leftPanel.querySelector(".ux-transfer-panel-list");
+                    selected.forEach(item => {
+                        item.classList.remove("selected");
+                        item.dataset.side = "left";
+                        const checkbox = item.querySelector("input[type=\"checkbox\"]");
+                        if (checkbox) checkbox.checked = false;
+                        leftList.appendChild(item);
+                    });
+                    const leftEmpty = leftList.querySelector(".ux-transfer-panel-empty");
+                    if (leftEmpty) leftEmpty.remove();
+                    this.updatePanelState(transfer);
+                    this.syncToServer(transfer);
+                },
+                updatePanelState(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    const leftPanel = panels[0];
+                    const rightPanel = panels[1];
+                    const rightBtn = transfer.querySelector(".ux-transfer-btn-right");
+                    const leftBtn = transfer.querySelector(".ux-transfer-btn-left");
+                    if (rightBtn) rightBtn.disabled = leftPanel.querySelectorAll(".ux-transfer-item.selected").length === 0;
+                    if (leftBtn) leftBtn.disabled = rightPanel.querySelectorAll(".ux-transfer-item.selected").length === 0;
+                    this.updateCount(transfer);
+                    this.updateCheckAllState(leftPanel);
+                    this.updateCheckAllState(rightPanel);
+                },
+                updateCheckAllState(panel) {
+                    const checkAll = panel.querySelector(".ux-transfer-panel-check-all");
+                    if (!checkAll) return;
+                    const items = panel.querySelectorAll(".ux-transfer-item:not(.ux-transfer-item-disabled)");
+                    const selectedItems = panel.querySelectorAll(".ux-transfer-item.selected:not(.ux-transfer-item-disabled)");
+                    if (items.length === 0) {
+                        checkAll.checked = false;
+                        checkAll.indeterminate = false;
+                    } else if (selectedItems.length === items.length) {
+                        checkAll.checked = true;
+                        checkAll.indeterminate = false;
+                    } else if (selectedItems.length > 0) {
+                        checkAll.checked = false;
+                        checkAll.indeterminate = true;
+                    } else {
+                        checkAll.checked = false;
+                        checkAll.indeterminate = false;
+                    }
+                },
+                updateCount(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    panels.forEach(panel => {
+                        const items = panel.querySelectorAll(".ux-transfer-item");
+                        const countEl = panel.querySelector(".ux-transfer-panel-count");
+                        if (countEl) countEl.textContent = items.length;
+                    });
+                },
+                syncToServer(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    const rightPanel = panels[1];
+                    const targetKeys = [];
+                    rightPanel.querySelectorAll(".ux-transfer-item").forEach(item => {
+                        const key = item.dataset.key;
+                        if (key) targetKeys.push(key);
+                    });
+                    transfer.dispatchEvent(new CustomEvent("ux:change", {
+                        detail: { value: JSON.stringify(targetKeys) },
+                        bubbles: true
+                    }));
+                },
+                getValue(transfer) {
+                    const panels = transfer.querySelectorAll(".ux-transfer-panel");
+                    const rightPanel = panels[1];
+                    return Array.from(rightPanel.querySelectorAll(".ux-transfer-item")).map(item => item.dataset.key);
+                }
+            };
+            return Transfer;
+        ');
+    }
 
     /**
      * 设置数据源

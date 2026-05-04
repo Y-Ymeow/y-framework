@@ -76,6 +76,10 @@
     padding: 4px 0;
 }
 
+.ux-tag-input-field:focus {
+    outline: none;
+}
+
 .ux-tag-input-field::placeholder {
     color: #9ca3af;
 }

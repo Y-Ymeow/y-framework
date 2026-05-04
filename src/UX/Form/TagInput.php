@@ -21,12 +21,102 @@ use Framework\View\Base\Element;
  */
 class TagInput extends UXComponent
 {
+    protected static ?string $componentName = 'tagInput';
+
     protected array $value = [];
     protected ?string $placeholder = '请输入标签';
     protected bool $disabled = false;
     protected int $maxCount = 0;
     protected ?string $action = null;
     protected bool $allowClear = true;
+
+    protected function init(): void
+    {
+        $this->registerJs('tagInput', '
+            const TagInput = {
+                init() {
+                    // 初始化所有标签输入：渲染默认值标签
+                    document.querySelectorAll(".ux-tag-input").forEach(tagInput => {
+                        const valueStr = tagInput.dataset.tagValue;
+                        if (valueStr) {
+                            try {
+                                const values = JSON.parse(valueStr);
+                                if (Array.isArray(values)) {
+                                    values.forEach(value => {
+                                        if (value && typeof value === "string") this.addTag(tagInput, value);
+                                    });
+                                }
+                            } catch (e) {
+                                // 兼容逗号分隔的字符串
+                                valueStr.split(",").forEach(value => {
+                                    const v = value.trim();
+                                    if (v) this.addTag(tagInput, v);
+                                });
+                            }
+                        }
+                    });
+
+                    document.addEventListener("keydown", (e) => {
+                        if (!e.target || !e.target.classList) return;
+                        const input = e.target.closest(".ux-tag-input-field");
+                        if (!input) return;
+                        const tagInput = input.closest(".ux-tag-input");
+                        if (!tagInput) return;
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            const value = input.value.trim();
+                            if (value) {
+                                this.addTag(tagInput, value);
+                                input.value = "";
+                            }
+                        } else if (e.key === "Backspace" && !input.value) {
+                            const tags = tagInput.querySelectorAll(".ux-tag-input-tag");
+                            if (tags.length > 0) this.removeTag(tags[tags.length - 1]);
+                        }
+                    });
+                    document.addEventListener("click", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const removeBtn = e.target.closest(".ux-tag-input-tag-remove");
+                        if (removeBtn) {
+                            const tag = removeBtn.closest(".ux-tag-input-tag");
+                            if (tag) this.removeTag(tag);
+                        }
+                        const container = e.target.closest(".ux-tag-input-container");
+                        if (container) {
+                            const input = container.querySelector(".ux-tag-input-field");
+                            if (input) input.focus();
+                        }
+                    });
+                },
+                addTag(tagInput, value) {
+                    const maxCount = parseInt(tagInput.dataset.tagMax) || 0;
+                    const currentTags = tagInput.querySelectorAll(".ux-tag-input-tag");
+                    if (maxCount > 0 && currentTags.length >= maxCount) return;
+                    const container = tagInput.querySelector(".ux-tag-input-container");
+                    const input = tagInput.querySelector(".ux-tag-input-field");
+                    const tag = document.createElement("span");
+                    tag.className = "ux-tag-input-tag";
+                    tag.innerHTML = `${value}<span class="ux-tag-input-tag-remove"><i class="bi bi-x"></i></span>`;
+                    container.insertBefore(tag, input);
+                    this.updateValue(tagInput);
+                },
+                removeTag(tag) {
+                    const tagInput = tag.closest(".ux-tag-input");
+                    tag.remove();
+                    if (tagInput) this.updateValue(tagInput);
+                },
+                updateValue(tagInput) {
+                    const tags = tagInput.querySelectorAll(".ux-tag-input-tag");
+                    const values = Array.from(tags).map(tag => tag.childNodes[0].textContent.trim());
+                    tagInput.dataset.tagValue = JSON.stringify(values);
+                    const hidden = tagInput.querySelector(".ux-tag-input-hidden");
+                    if (hidden) hidden.value = values.join(",");
+                    tagInput.dispatchEvent(new CustomEvent("ux:change", { detail: { value: values.join(",") }, bubbles: true }));
+                }
+            };
+            return TagInput;
+        ');
+    }
 
     /**
      * 设置标签值列表

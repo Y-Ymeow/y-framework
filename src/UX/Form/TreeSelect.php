@@ -21,6 +21,8 @@ use Framework\View\Base\Element;
  */
 class TreeSelect extends UXComponent
 {
+    protected static ?string $componentName = 'treeSelect';
+
     protected array $treeData = [];
     protected ?string $value = null;
     protected ?string $placeholder = '请选择';
@@ -30,6 +32,185 @@ class TreeSelect extends UXComponent
     protected bool $showSearch = false;
     protected ?string $action = null;
     protected ?string $emptyText = '暂无数据';
+
+    protected function init(): void
+    {
+        $this->registerJs('treeSelect', '
+            const TreeSelect = {
+                init() {
+                    document.querySelectorAll(".ux-tree-select").forEach(select => {
+                        const value = select.dataset.treeValue;
+                        if (value) {
+                            const multiple = select.classList.contains("ux-tree-select-multiple");
+                            if (multiple) {
+                                value.split(",").forEach(v => {
+                                    const node = select.querySelector(\'.ux-tree-select-node[data-node-value="\' + v + \'"]\');
+                                    if (node) node.classList.add("selected");
+                                });
+                            } else {
+                                const display = select.querySelector(".ux-tree-select-display");
+                                const searchInput = select.querySelector(".ux-tree-select-search");
+                                const node = select.querySelector(\'.ux-tree-select-node[data-node-value="\' + value + \'"]\');
+                                const titleText = node?.querySelector(".ux-tree-select-node-title")?.textContent || "";
+                                if (display) {
+                                    display.textContent = titleText;
+                                    display.classList.remove("placeholder");
+                                }
+                                if (searchInput) {
+                                    searchInput.value = titleText;
+                                }
+                                if (node) node.classList.add("selected");
+                            }
+                        }
+                    });
+
+                    document.addEventListener("mousedown", (e) => {
+                        if (!e.target || !e.target.closest) return;
+
+                        const clear = e.target.closest(".ux-tree-select-clear");
+                        if (clear) { e.preventDefault(); e.stopPropagation(); const s = clear.closest(".ux-tree-select"); if (s) this.clear(s); return; }
+
+                        const titleEl = e.target.closest(".ux-tree-select-node-title");
+                        if (titleEl) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const node = titleEl.closest(".ux-tree-select-node");
+                            const sel = node?.closest(".ux-tree-select");
+                            if (sel) this.selectNode(sel, node);
+                            return;
+                        }
+
+                        const toggleEl = e.target.closest(".ux-tree-select-node-toggle:not(.leaf)");
+                        if (toggleEl) {
+                            e.stopPropagation();
+                            const node = toggleEl.closest(".ux-tree-select-node");
+                            if (node) this.toggleNode(node);
+                            return;
+                        }
+
+                        const selectorEl = e.target.closest(".ux-tree-select-selector");
+                        if (selectorEl && !e.target.closest(".ux-tree-select-dropdown")) {
+                            const sel = selectorEl.closest(".ux-tree-select");
+                            if (sel) { this.toggle(sel); return; }
+                        }
+
+                        if (!e.target.closest(".ux-tree-select")) this.hideAll();
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                    });
+
+                    document.addEventListener("input", (e) => {
+                        if (!e.target || !e.target.classList.contains("ux-tree-select-search")) return;
+                        const searchInput = e.target;
+                        const select = searchInput.closest(".ux-tree-select");
+                        if (select) this.filter(select, searchInput.value);
+                    });
+                },
+                toggle(select) {
+                    if (select.classList.contains("ux-tree-select-open")) this.hide(select);
+                    else this.show(select);
+                },
+                show(select) {
+                    this.hideAll();
+                    select.classList.add("ux-tree-select-open");
+                    const dropdown = select.querySelector(".ux-tree-select-dropdown");
+                    if (dropdown) {
+                        dropdown.classList.add("show");
+                        dropdown.style.pointerEvents = "auto";
+                    }
+                },
+                hide(select) {
+                    select.classList.remove("ux-tree-select-open");
+                    const dropdown = select.querySelector(".ux-tree-select-dropdown");
+                    if (dropdown) dropdown.classList.remove("show");
+                },
+                hideAll() {
+                    document.querySelectorAll(".ux-tree-select-open").forEach(s => this.hide(s));
+                },
+                toggleNode(node) {
+                    if (!node) return;
+                    const children = node.querySelector(":scope > .ux-tree-select-children");
+                    if (!children) return;
+                    const icon = node.querySelector(":scope > .ux-tree-select-node-content > .ux-tree-select-node-toggle i");
+                    if (children.classList.contains("collapsed")) {
+                        children.classList.remove("collapsed");
+                        if (icon) icon.className = "bi bi-chevron-down";
+                    } else {
+                        children.classList.add("collapsed");
+                        if (icon) icon.className = "bi bi-chevron-right";
+                    }
+                },
+                selectNode(select, node) {
+                    const value = node.dataset.nodeValue;
+                    if (!value) return;
+                    const multiple = select.classList.contains("ux-tree-select-multiple");
+                    if (multiple) {
+                        const values = select.dataset.treeValue ? select.dataset.treeValue.split(",") : [];
+                        const idx = values.indexOf(value);
+                        if (idx > -1) {
+                            values.splice(idx, 1);
+                            node.classList.remove("selected");
+                        } else {
+                            values.push(value);
+                            node.classList.add("selected");
+                        }
+                        select.dataset.treeValue = values.join(",");
+                    } else {
+                        select.dataset.treeValue = value;
+                        const titleText = node.querySelector(".ux-tree-select-node-title")?.textContent || "";
+                        const display = select.querySelector(".ux-tree-select-display");
+                        const searchInput = select.querySelector(".ux-tree-select-search");
+                        if (display) {
+                            display.textContent = titleText;
+                            display.classList.remove("placeholder");
+                        }
+                        if (searchInput) {
+                            searchInput.value = titleText;
+                        }
+                        select.querySelectorAll(".ux-tree-select-node.selected").forEach(n => n.classList.remove("selected"));
+                        node.classList.add("selected");
+                        this.hide(select);
+                    }
+                    select.dispatchEvent(new CustomEvent("ux:change", { detail: { value: select.dataset.treeValue }, bubbles: true }));
+                },
+                clear(select) {
+                    select.dataset.treeValue = "";
+                    const display = select.querySelector(".ux-tree-select-display");
+                    const searchInput = select.querySelector(".ux-tree-select-search");
+                    if (display) {
+                        display.textContent = display.dataset.placeholder || "请选择";
+                        display.classList.add("placeholder");
+                    }
+                    if (searchInput) {
+                        searchInput.value = "";
+                    }
+                    select.querySelectorAll(".ux-tree-select-node.selected").forEach(n => n.classList.remove("selected"));
+                    select.dispatchEvent(new CustomEvent("ux:change", { detail: { value: "" }, bubbles: true }));
+                },
+                filter(select, keyword) {
+                    const nodes = select.querySelectorAll(".ux-tree-select-node");
+                    keyword = keyword.toLowerCase();
+                    nodes.forEach(node => {
+                        const title = (node.querySelector(".ux-tree-select-node-title")?.textContent || "").toLowerCase();
+                        const match = title.includes(keyword);
+                        node.style.display = match ? "" : "none";
+                        if (match) {
+                            let parent = node.parentElement?.closest(".ux-tree-select-node");
+                            while (parent) {
+                                parent.style.display = "";
+                                const children = parent.querySelector(":scope > .ux-tree-select-children");
+                                if (children) children.classList.remove("collapsed");
+                                parent = parent.parentElement?.closest(".ux-tree-select-node");
+                            }
+                        }
+                    });
+                }
+            };
+            return TreeSelect;
+        ');
+    }
 
     /**
      * 设置树形数据
@@ -165,14 +346,15 @@ class TreeSelect extends UXComponent
             $el->data('tree-action', $this->action);
         }
 
-        // 选择框
         $selectorEl = Element::make('div')->class('ux-tree-select-selector');
 
         // 搜索/显示区域
         if ($this->showSearch) {
+            $searchValue = $this->value ? $this->getDisplayText() : '';
             $searchEl = Element::make('input')
                 ->attr('type', 'text')
                 ->attr('placeholder', $this->placeholder)
+                ->attr('value', $searchValue)
                 ->class('ux-tree-select-search');
             $selectorEl->child($searchEl);
         } else {
@@ -180,6 +362,7 @@ class TreeSelect extends UXComponent
             $displayEl = Element::make('span')
                 ->class('ux-tree-select-display')
                 ->class($displayText === $this->placeholder ? 'placeholder' : '')
+                ->attr('data-placeholder', $this->placeholder)
                 ->text($displayText);
             $selectorEl->child($displayEl);
         }
@@ -235,9 +418,10 @@ class TreeSelect extends UXComponent
     protected function renderTreeNodes(Element $parent, array $nodes, int $level = 0): void
     {
         foreach ($nodes as $node) {
+            $nodeValue = $node['value'] ?? $node['label'] ?? $node['title'] ?? '';
             $nodeEl = Element::make('div')
                 ->class('ux-tree-select-node')
-                ->data('node-value', $node['value'] ?? '');
+                ->data('node-value', $nodeValue);
 
             $contentEl = Element::make('div')
                 ->class('ux-tree-select-node-content')
@@ -290,8 +474,9 @@ class TreeSelect extends UXComponent
         if (!$this->value) {
             return false;
         }
+        $nodeValue = $node['value'] ?? $node['label'] ?? $node['title'] ?? '';
         $values = $this->multiple ? explode(',', $this->value) : [$this->value];
-        return in_array($node['value'] ?? '', $values);
+        return in_array($nodeValue, $values);
     }
 
     protected function getDisplayText(): string
@@ -316,7 +501,8 @@ class TreeSelect extends UXComponent
     protected function findLabelInTree(array $tree, string $value): ?string
     {
         foreach ($tree as $node) {
-            if (($node['value'] ?? '') === $value) {
+            $nodeValue = $node['value'] ?? $node['label'] ?? $node['title'] ?? '';
+            if ($nodeValue === $value) {
                 return $node['label'] ?? $node['title'] ?? $value;
             }
             if (!empty($node['children'])) {

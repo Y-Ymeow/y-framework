@@ -50,6 +50,8 @@ use Framework\View\Base\Element;
  */
 class Modal extends UXComponent
 {
+    protected static ?string $componentName = 'modal';
+
     protected string $title = '';
     protected string $content = '';
     protected string $size = 'md';
@@ -58,6 +60,38 @@ class Modal extends UXComponent
     protected bool $centered = true;
     protected mixed $footer = null;
     protected bool $open = false;
+
+    protected function init(): void
+    {
+        $this->registerJs('modal', '
+            const Modal = {
+                open(id) {
+                    const el = typeof id === "string" ? document.getElementById(id) : id;
+                    if (!el) return;
+                    el.classList.add("ux-modal-open");
+                    el.setAttribute("data-visible", "true");
+                    document.body.style.overflow = "hidden";
+                },
+                close(id) {
+                    const el = id ? (typeof id === "string" ? document.getElementById(id) : id) : document.querySelector(".ux-modal-open");
+                    if (!el) return;
+                    el.classList.remove("ux-modal-open");
+                    el.removeAttribute("data-visible");
+                    document.body.style.overflow = "";
+                },
+                init() {
+                    document.addEventListener("click", (e) => {
+                        const open = e.target.closest("[data-ux-modal-open]");
+                        if (open) return Modal.open(open.getAttribute("data-ux-modal-open"));
+                        const close = e.target.closest("[data-ux-modal-close]");
+                        if (close) return Modal.close(close.getAttribute("data-ux-modal-close"));
+                        if (e.target.classList.contains("ux-modal-backdrop")) Modal.close();
+                    });
+                }
+            };
+            return Modal;
+        ');
+    }
 
     /**
      * 设置弹窗标题

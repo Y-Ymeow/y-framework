@@ -21,6 +21,8 @@ use Framework\View\Base\Element;
  */
 class Chart extends UXComponent
 {
+    protected static ?string $componentName = 'chart';
+
     protected string $type = 'line';
     protected array $data = [];
     protected array $options = [];
@@ -30,6 +32,143 @@ class Chart extends UXComponent
     protected bool $showLegend = true;
     protected bool $showGrid = true;
     protected string $animation = 'none';
+
+    protected function init(): void
+    {
+        $this->registerJs('chart', '
+            const Chart = {
+                charts: new Map(),
+                init() {
+                    document.querySelectorAll(".ux-chart[data-chart-id]").forEach(el => {
+                        if (!this.charts.has(el.dataset.chartId)) this.initChart(el);
+                    });
+                },
+                initChart(el) {
+                    const chartId = el.dataset.chartId;
+                    const type = el.dataset.chartType || "line";
+                    const data = JSON.parse(el.dataset.chartData || "[]");
+                    const options = JSON.parse(el.dataset.chartOptions || "{}");
+                    const canvas = el.querySelector("canvas");
+                    if (!canvas) return;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) return;
+                    this.drawChart(ctx, type, data, options, canvas);
+                    this.charts.set(chartId, { el, canvas, ctx, type, data, options });
+                },
+                drawChart(ctx, type, data, options, canvas) {
+                    const width = canvas.width = canvas.offsetWidth || 600;
+                    const height = canvas.height = canvas.offsetHeight || 300;
+                    ctx.clearRect(0, 0, width, height);
+                    if (type === "line" || type === "area") this.drawLineChart(ctx, data, options, width, height, type === "area");
+                    else if (type === "bar") this.drawBarChart(ctx, data, options, width, height);
+                    else if (type === "pie" || type === "doughnut") this.drawPieChart(ctx, data, options, width, height, type === "doughnut");
+                },
+                drawLineChart(ctx, data, options, width, height, fill = false) {
+                    const padding = 40;
+                    const labels = data.labels || [];
+                    const datasets = data.datasets || [];
+                    if (!datasets.length) return;
+                    const maxValue = Math.max(...datasets.flatMap(d => d.data || [])) || 1;
+                    const chartWidth = width - padding * 2;
+                    const chartHeight = height - padding * 2;
+                    ctx.strokeStyle = "#e5e7eb";
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i <= 5; i++) {
+                        const y = padding + chartHeight - (i / 5) * chartHeight;
+                        ctx.beginPath();
+                        ctx.moveTo(padding, y);
+                        ctx.lineTo(width - padding, y);
+                        ctx.stroke();
+                    }
+                    datasets.forEach((dataset, di) => {
+                        const color = dataset.borderColor || dataset.backgroundColor || "#3b82f6";
+                        ctx.strokeStyle = color;
+                        ctx.fillStyle = color + "20";
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        const points = (dataset.data || []).map((value, i) => ({
+                            x: padding + (i / (labels.length - 1 || 1)) * chartWidth,
+                            y: padding + chartHeight - (value / maxValue) * chartHeight
+                        }));
+                        if (points.length) {
+                            ctx.moveTo(points[0].x, points[0].y);
+                            points.forEach(p => ctx.lineTo(p.x, p.y));
+                            ctx.stroke();
+                            if (fill) {
+                                ctx.lineTo(points[points.length - 1].x, padding + chartHeight);
+                                ctx.lineTo(points[0].x, padding + chartHeight);
+                                ctx.closePath();
+                                ctx.fill();
+                            }
+                        }
+                    });
+                },
+                drawBarChart(ctx, data, options, width, height) {
+                    const padding = 40;
+                    const labels = data.labels || [];
+                    const datasets = data.datasets || [];
+                    if (!datasets.length) return;
+                    const maxValue = Math.max(...datasets.flatMap(d => d.data || [])) || 1;
+                    const chartWidth = width - padding * 2;
+                    const chartHeight = height - padding * 2;
+                    const barCount = labels.length;
+                    const groupWidth = chartWidth / barCount;
+                    const barWidth = groupWidth / (datasets.length + 1);
+                    datasets.forEach((dataset, di) => {
+                        const color = dataset.backgroundColor || dataset.borderColor || "#3b82f6";
+                        ctx.fillStyle = color;
+                        (dataset.data || []).forEach((value, i) => {
+                            const barHeight = (value / maxValue) * chartHeight;
+                            const x = padding + i * groupWidth + di * barWidth + barWidth / 2;
+                            const y = padding + chartHeight - barHeight;
+                            ctx.fillRect(x, y, barWidth * 0.8, barHeight);
+                        });
+                    });
+                },
+                drawPieChart(ctx, data, options, width, height, doughnut = false) {
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const radius = Math.min(width, height) / 3;
+                    const datasets = data.datasets || [];
+                    if (!datasets.length) return;
+                    const values = datasets[0].data || [];
+                    const colors = datasets[0].backgroundColor || ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
+                    const total = values.reduce((a, b) => a + b, 0) || 1;
+                    let currentAngle = -Math.PI / 2;
+                    values.forEach((value, i) => {
+                        const angle = (value / total) * Math.PI * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, centerY);
+                        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + angle);
+                        ctx.closePath();
+                        ctx.fillStyle = colors[i % colors.length];
+                        ctx.fill();
+                        currentAngle += angle;
+                    });
+                    if (doughnut) {
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, radius * 0.5, 0, Math.PI * 2);
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fill();
+                    }
+                },
+                update(chartId, data) {
+                    const chart = this.charts.get(chartId);
+                    if (chart) {
+                        chart.data = data;
+                        this.drawChart(chart.ctx, chart.type, data, chart.options, chart.canvas);
+                    }
+                },
+                destroy(chartId) {
+                    const chart = this.charts.get(chartId);
+                    if (chart) {
+                        this.charts.delete(chartId);
+                    }
+                }
+            };
+            return Chart;
+        ');
+    }
 
     /**
      * 设置图表类型

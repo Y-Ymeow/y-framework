@@ -24,6 +24,8 @@ use Framework\CSS\RichEditorRules;
  */
 class RichEditor extends FormField
 {
+    protected static ?string $componentName = 'richEditor';
+
     protected int $rows = 10;
     protected array $toolbar = ['bold', 'italic', 'underline', 'strike', '|', 'heading', 'quote', 'code', '|', 'list', 'link', 'image'];
     protected bool $minimal = false;
@@ -42,6 +44,81 @@ class RichEditor extends FormField
     {
         parent::__construct();
         AssetRegistry::getInstance()->inlineStyle(RichEditorRules::getStyles());
+    }
+
+    protected function init(): void
+    {
+        // RichEditor JS 较复杂，通过外部文件加载，但注册到 UX 以便 hookLive 能找到
+        $this->registerJs('richEditor', '
+            const RichEditor = {
+                editors: new Map(),
+                init() {
+                    document.querySelectorAll(".ux-rich-editor[data-editor-id]").forEach(el => {
+                        if (!this.editors.has(el.dataset.editorId)) this.initEditor(el);
+                    });
+                },
+                initEditor(el) {
+                    const editorId = el.dataset.editorId;
+                    const textarea = el.querySelector("textarea");
+                    const content = el.querySelector(".ux-rich-editor-content");
+                    if (!content) return;
+                    const toolbar = el.querySelector(".ux-rich-editor-toolbar");
+                    if (toolbar) {
+                        toolbar.addEventListener("click", (e) => {
+                            const btn = e.target.closest("[data-command]");
+                            if (btn) {
+                                e.preventDefault();
+                                this.exec(editorId, btn.dataset.command, btn.dataset.value);
+                            }
+                        });
+                    }
+                    content.addEventListener("input", () => {
+                        if (textarea) textarea.value = content.innerHTML;
+                        el.dispatchEvent(new CustomEvent("ux:change", { detail: { value: content.innerHTML }, bubbles: true }));
+                    });
+                    content.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            document.execCommand("insertParagraph", false, null);
+                        }
+                    });
+                    this.editors.set(editorId, { el, content, textarea });
+                },
+                exec(editorId, command, value = null) {
+                    const editor = this.editors.get(editorId);
+                    if (!editor) return;
+                    editor.content.focus();
+                    if (command === "heading") document.execCommand("formatBlock", false, value || "H2");
+                    else if (command === "code") document.execCommand("formatBlock", false, "PRE");
+                    else if (command === "link") {
+                        const url = prompt("输入链接地址:");
+                        if (url) document.execCommand("createLink", false, url);
+                    } else if (command === "image") {
+                        const url = prompt("输入图片地址:");
+                        if (url) document.execCommand("insertImage", false, url);
+                    } else document.execCommand(command, false, value);
+                    if (editor.textarea) editor.textarea.value = editor.content.innerHTML;
+                },
+                getValue(editorId) {
+                    const editor = this.editors.get(editorId);
+                    return editor ? editor.content.innerHTML : "";
+                },
+                setValue(editorId, value) {
+                    const editor = this.editors.get(editorId);
+                    if (editor) {
+                        editor.content.innerHTML = value;
+                        if (editor.textarea) editor.textarea.value = value;
+                    }
+                },
+                liveHandler(op) {
+                    if (op.action === "exec" && op.editorId) this.exec(op.editorId, op.command, op.value);
+                    else if (op.action === "setValue" && op.id) this.setValue(op.id, op.value);
+                    else if (op.action === "getValue" && op.id) this.getValue(op.id);
+                    else if (typeof this[op.action] === "function") this[op.action](op.id, op.value);
+                }
+            };
+            return RichEditor;
+        ');
     }
 
     /**

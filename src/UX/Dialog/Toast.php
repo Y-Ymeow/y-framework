@@ -22,6 +22,8 @@ use Framework\View\Base\Element;
  */
 class Toast extends UXComponent
 {
+    protected static ?string $componentName = 'toast';
+
     protected string $message = '';
     protected string $type = 'info';
     protected int $duration = 3000;
@@ -29,6 +31,49 @@ class Toast extends UXComponent
     protected ?string $title = null;
     protected ?string $icon = null;
     protected string $position = 'top-right';
+
+    protected function init(): void
+    {
+        $this->registerJs('toast', '
+            const Toast = {
+                show(detail) {
+                    const container = document.getElementById("ux-toast-container") || this.createContainer();
+                    const toast = document.createElement("div");
+                    toast.className = `ux-toast ux-toast-${detail.type || "info"}`;
+                    const icon = { success: "✓", error: "✕", warning: "!", info: "i" }[detail.type] || "i";
+                    toast.innerHTML = `
+                        <div class="ux-toast-icon">${icon}</div>
+                        <div class="ux-toast-content">
+                            ${detail.title ? `<div class="ux-toast-title">${detail.title}</div>` : ""}
+                            <div class="ux-toast-message">${detail.message}</div>
+                        </div>
+                        <button class="ux-toast-close" data-ux-toast-close>&times;</button>
+                    `;
+                    container.appendChild(toast);
+                    const close = () => {
+                        toast.style.opacity = "0";
+                        toast.style.transform = "translateX(20px)";
+                        setTimeout(() => toast.remove(), 300);
+                    };
+                    toast.querySelector("[data-ux-toast-close]").onclick = close;
+                    if (detail.duration !== 0) setTimeout(close, detail.duration || 3000);
+                },
+                init() {
+                    window.addEventListener("toast:show", (e) => {
+                        this.show(e.detail || {});
+                    });
+                },
+                createContainer() {
+                    const el = document.createElement("div");
+                    el.id = "ux-toast-container";
+                    el.className = "ux-toast-container top-right";
+                    document.body.appendChild(el);
+                    return el;
+                }
+            };
+            return Toast;
+        ');
+    }
 
     /**
      * 设置提示消息
@@ -220,45 +265,10 @@ class Toast extends UXComponent
 
     protected function toElement(): Element
     {
-        $el = new Element('div');
+        // Toast 是纯 JS 驱动的组件，不需要输出可见 DOM
+        // 使用注释模式占位，只注册 JS 资源
+        $el = Element::make('div')->comment('ux-toast');
         $this->buildElement($el);
-
-        $el->class('ux-toast');
-        $el->class("ux-toast-{$this->type}");
-        $el->data('toast', 'true');
-        $el->data('duration', (string) $this->duration);
-        $el->data('position', $this->position);
-
-        if ($this->closeable) {
-            $el->data('closeable', 'true');
-        }
-
-        $iconMap = [
-            'success' => '✓',
-            'error' => '✕',
-            'warning' => '⚠',
-            'info' => 'ℹ',
-        ];
-        $icon = $this->icon ?? ($iconMap[$this->type] ?? 'ℹ');
-
-        $el->child(Element::make('div')->class('ux-toast-icon')->html($icon));
-
-        $contentEl = Element::make('div')->class('ux-toast-content');
-        if ($this->title) {
-            $contentEl->child(Element::make('div')->class('ux-toast-title')->text($this->title));
-        }
-        $contentEl->child(Element::make('div')->class('ux-toast-message')->text($this->message));
-        $el->child($contentEl);
-
-        if ($this->closeable) {
-            $el->child(
-                Element::make('button')
-                    ->class('ux-toast-close')
-                    ->data('toast-close', '')
-                    ->html('&times;')
-            );
-        }
-
         return $el;
     }
 }

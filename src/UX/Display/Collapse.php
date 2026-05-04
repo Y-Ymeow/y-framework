@@ -22,11 +22,71 @@ use Framework\View\Base\Element;
  */
 class Collapse extends UXComponent
 {
+    protected static ?string $componentName = 'collapse';
+
     protected string $title = '';
     protected bool $open = false;
     protected bool $disabled = false;
     protected ?string $icon = null;
     protected ?string $action = null;
+
+    protected function init(): void
+    {
+        $this->registerJs('collapse', '
+            const Collapse = {
+                init() {
+                    document.addEventListener("click", (e) => {
+                        const header = e.target.closest(".ux-collapse-header");
+                        if (header) {
+                            const collapse = header.closest(".ux-collapse");
+                            if (collapse && !collapse.classList.contains("ux-collapse-disabled")) {
+                                this.toggle(collapse);
+                            }
+                        }
+                    });
+                },
+                toggle(collapse) {
+                    const isOpen = collapse.classList.contains("ux-collapse-open");
+                    isOpen ? this.close(collapse) : this.open(collapse);
+                },
+                open(collapse) {
+                    collapse.classList.add("ux-collapse-open");
+                    const action = collapse.dataset.collapseAction;
+                    if (action && window.L) {
+                        window.L.executeOperation({ op: "action", action: action, params: { open: true } });
+                    }
+                    collapse.dispatchEvent(new CustomEvent("collapse:open"));
+                },
+                close(collapse) {
+                    collapse.classList.remove("ux-collapse-open");
+                    const action = collapse.dataset.collapseAction;
+                    if (action && window.L) {
+                        window.L.executeOperation({ op: "action", action: action, params: { open: false } });
+                    }
+                    collapse.dispatchEvent(new CustomEvent("collapse:close"));
+                },
+                openById(id) {
+                    const collapse = document.querySelector(`#${id}.ux-collapse`);
+                    if (collapse) this.open(collapse);
+                },
+                closeById(id) {
+                    const collapse = document.querySelector(`#${id}.ux-collapse`);
+                    if (collapse) this.close(collapse);
+                },
+                toggleById(id) {
+                    const collapse = document.querySelector(`#${id}.ux-collapse`);
+                    if (collapse) this.toggle(collapse);
+                },
+                liveHandler(op) {
+                    if (op.action === "open") this.openById(op.id);
+                    else if (op.action === "close") this.closeById(op.id);
+                    else if (op.action === "toggle") this.toggleById(op.id);
+                    else if (typeof this[op.action] === "function") this[op.action](op.id, op.value);
+                }
+            };
+            return Collapse;
+        ');
+    }
 
     /**
      * 设置面板标题

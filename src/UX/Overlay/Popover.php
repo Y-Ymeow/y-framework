@@ -21,6 +21,8 @@ use Framework\View\Base\Element;
  */
 class Popover extends UXComponent
 {
+    protected static ?string $componentName = 'popover';
+
     protected ?string $title = null;
     protected ?string $content = null;
     protected string $placement = 'top';
@@ -28,6 +30,153 @@ class Popover extends UXComponent
     protected bool $arrow = true;
     protected ?int $maxWidth = null;
     protected bool $open = false;
+
+    protected function init(): void
+    {
+        $this->registerJs('popover', '
+            const Popover = {
+                wrapperMap: new Map(),
+                init() {
+                    // 初始化所有 popover
+                    document.querySelectorAll(".ux-popover-wrapper").forEach(wrapper => {
+                        this.wrapperMap.set(wrapper, { popover: null, open: false });
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const wrapper = e.target.closest(".ux-popover-wrapper");
+                        if (wrapper && wrapper.dataset.popoverTrigger === "click") {
+                            e.preventDefault();
+                            this.toggle(wrapper);
+                        } else if (!e.target.closest(".ux-popover")) {
+                            this.hideAll();
+                        }
+                    });
+                    document.addEventListener("mouseenter", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const wrapper = e.target.closest(".ux-popover-wrapper");
+                        if (wrapper && wrapper.dataset.popoverTrigger === "hover") this.show(wrapper);
+                    }, true);
+                    document.addEventListener("mouseleave", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const wrapper = e.target.closest(".ux-popover-wrapper");
+                        if (wrapper && wrapper.dataset.popoverTrigger === "hover") this.hide(wrapper);
+                    }, true);
+                    document.addEventListener("focus", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const wrapper = e.target.closest(".ux-popover-wrapper");
+                        if (wrapper && wrapper.dataset.popoverTrigger === "focus") this.show(wrapper);
+                    }, true);
+                    document.addEventListener("blur", (e) => {
+                        if (!e.target || !e.target.closest) return;
+                        const wrapper = e.target.closest(".ux-popover-wrapper");
+                        if (wrapper && wrapper.dataset.popoverTrigger === "focus") this.hide(wrapper);
+                    }, true);
+                },
+                toggle(wrapper) {
+                    const state = this.wrapperMap.get(wrapper);
+                    if (!state) return;
+                    if (state.open) this.hide(wrapper);
+                    else this.show(wrapper);
+                },
+                show(wrapper) {
+                    const state = this.wrapperMap.get(wrapper);
+                    if (!state) return;
+                    this.hideAll();
+
+                    let popover = state.popover;
+                    if (!popover) {
+                        popover = this.createPopover(wrapper);
+                        if (!popover) return;
+                        state.popover = popover;
+                    }
+
+                    this.position(wrapper, popover);
+                    popover.classList.add("show");
+                    state.open = true;
+                },
+                hide(wrapper) {
+                    const state = this.wrapperMap.get(wrapper);
+                    if (!state || !state.popover) return;
+                    state.popover.classList.remove("show");
+                    state.open = false;
+                },
+                hideAll() {
+                    document.querySelectorAll(".ux-popover.show").forEach(popover => popover.classList.remove("show"));
+                    this.wrapperMap.forEach(state => { state.open = false; });
+                },
+                createPopover(wrapper) {
+                    const title = wrapper.dataset.popoverTitle || "";
+                    const content = wrapper.dataset.popoverContent || "";
+                    if (!title && !content) return null;
+
+                    const placement = wrapper.dataset.popoverPlacement || "top";
+                    const showArrow = wrapper.dataset.popoverArrow !== "false";
+
+                    const popover = document.createElement("div");
+                    popover.className = "ux-popover";
+                    popover.dataset.placement = placement;
+
+                    let html = "";
+                    if (showArrow) html += `<div class="ux-popover-arrow"></div>`;
+                    if (title) html += `<div class="ux-popover-title">${this.escapeHtml(title)}</div>`;
+                    if (content) html += `<div class="ux-popover-content">${this.escapeHtml(content)}</div>`;
+                    popover.innerHTML = html;
+
+                    wrapper.appendChild(popover);
+                    return popover;
+                },
+                position(wrapper, popover) {
+                    const placement = wrapper.dataset.popoverPlacement || "top";
+                    const rect = wrapper.getBoundingClientRect();
+                    
+                    popover.style.visibility = "hidden";
+                    popover.style.display = "block";
+                    const popoverRect = popover.getBoundingClientRect();
+                    popover.style.display = "";
+                    popover.style.visibility = "";
+
+                    const gap = 8;
+                    let top, left;
+                    
+                    if (placement === "top") {
+                        top = rect.top - popoverRect.height - gap;
+                        left = rect.left + (rect.width - popoverRect.width) / 2;
+                    } else if (placement === "bottom") {
+                        top = rect.bottom + gap;
+                        left = rect.left + (rect.width - popoverRect.width) / 2;
+                    } else if (placement === "left") {
+                        top = rect.top + (rect.height - popoverRect.height) / 2;
+                        left = rect.left - popoverRect.width - gap;
+                    } else if (placement === "right") {
+                        top = rect.top + (rect.height - popoverRect.height) / 2;
+                        left = rect.right + gap;
+                    }
+                    
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+                    
+                    left = Math.max(4, Math.min(left, vw - popoverRect.width - 4));
+                    top = Math.max(4, Math.min(top, vh - popoverRect.height - 4));
+                    
+                    popover.style.position = "fixed";
+                    popover.style.top = `${top}px`;
+                    popover.style.left = `${left}px`;
+                    popover.style.zIndex = "1050";
+                    popover.style.margin = "0";
+                    popover.style.bottom = "auto";
+                    popover.style.right = "auto";
+                    popover.style.transform = "none";
+                },
+                escapeHtml(text) {
+                    const div = document.createElement("div");
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+            };
+            return Popover;
+        ');
+    }
 
     /**
      * 设置气泡标题

@@ -69,6 +69,17 @@ abstract class UXComponent
     protected array $eventListeners = [];
     protected static array $idCounter = [];
 
+    /**
+     * 组件名称（用于 JS 注册，如 'modal', 'tabs'）
+     * 子类可覆盖，默认为类名小写
+     */
+    protected static ?string $componentName = null;
+
+    /**
+     * 组件是否已初始化（防止重复注册资源）
+     */
+    private static array $initializedComponents = [];
+
     public function __construct()
     {
         $shortClass = (new \ReflectionClass($this))->getShortName();
@@ -77,8 +88,76 @@ abstract class UXComponent
         self::$idCounter[$key]++;
         $this->id = $key . '-' . self::$idCounter[$key];
 
+        // 按需加载：只注册 UI 核心和 UX 框架（不含所有组件）
         AssetRegistry::getInstance()->ui();
         AssetRegistry::getInstance()->ux();
+
+        // 调用组件自身的初始化逻辑（注册 JS/CSS 片段）
+        $this->init();
+    }
+
+    /**
+     * 组件初始化 - 子类覆盖此方法注册 JS/CSS 片段
+     *
+     * 示例：
+     * protected function init(): void
+     * {
+     *     $this->registerJs('modal', 'UX.register("modal", { ... })');
+     *     $this->registerCss('.ux-modal { ... }');
+     * }
+     */
+    protected function init(): void
+    {
+        // 子类实现
+    }
+
+    /**
+     * 注册组件 JS 代码片段到 AssetRegistry
+     *
+     * @param string $componentName 组件名称（如 'modal', 'tabs'）
+     * @param string $jsCode JS 组件实现代码（会被包裹在 UX.register 中）
+     */
+    protected function registerJs(string $componentName, string $jsCode): void
+    {
+        $key = static::class . ':' . $componentName;
+
+        if (isset(self::$initializedComponents[$key])) {
+            return;
+        }
+        self::$initializedComponents[$key] = true;
+
+        $wrappedJs = "UX.register('{$componentName}', (function() {\n{$jsCode}\n})());";
+
+        AssetRegistry::getInstance()->registerScript('ux:' . $componentName, $wrappedJs);
+    }
+
+    /**
+     * 注册内联 CSS 样式到 AssetRegistry
+     *
+     * @param string $cssCode CSS 代码
+     */
+    protected function registerCss(string $cssCode): void
+    {
+        $key = static::class . ':css';
+        if (isset(self::$initializedComponents[$key])) {
+            return;
+        }
+        self::$initializedComponents[$key] = true;
+
+        AssetRegistry::getInstance()->inlineStyle($cssCode);
+    }
+
+    /**
+     * 获取组件名称
+     */
+    protected function getComponentName(): string
+    {
+        if (static::$componentName !== null) {
+            return static::$componentName;
+        }
+
+        $shortClass = (new \ReflectionClass($this))->getShortName();
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $shortClass));
     }
 
     /**

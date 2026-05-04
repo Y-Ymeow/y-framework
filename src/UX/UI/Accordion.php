@@ -21,10 +21,83 @@ use Framework\View\Base\Element;
  */
 class Accordion extends UXComponent
 {
+    protected static ?string $componentName = 'accordion';
+
     protected array $items = [];
     protected bool $multiple = false;
     protected string $variant = 'default';
     protected bool $dark = false;
+
+    protected function init(): void
+    {
+        $this->registerJs('accordion', '
+            const Accordion = {
+                toggle(id, forceOpen = null) {
+                    const item = typeof id === "string" ? document.getElementById(id) : id;
+                    if (!item) return;
+                    const accordion = item.closest(".ux-accordion");
+                    const isOpen = forceOpen !== null ? !forceOpen : item.classList.contains("open");
+                    if (accordion?.dataset.accordionMultiple !== "true" && !isOpen) {
+                        accordion.querySelectorAll(".ux-accordion-item").forEach(i => {
+                            i.classList.remove("open");
+                            i.querySelector(".ux-accordion-collapse")?.classList.remove("show");
+                        });
+                    }
+                    if (isOpen) {
+                        item.classList.remove("open");
+                        item.querySelector(".ux-accordion-collapse")?.classList.remove("show");
+                    } else {
+                        item.classList.add("open");
+                        item.querySelector(".ux-accordion-collapse")?.classList.add("show");
+                    }
+                },
+                init() {
+                    // 初始化所有手风琴：确保展开状态与 class 一致
+                    document.querySelectorAll(".ux-accordion").forEach(accordion => {
+                        accordion.querySelectorAll(".ux-accordion-item").forEach(item => {
+                            const isOpen = item.classList.contains("open");
+                            const collapse = item.querySelector(".ux-accordion-collapse");
+                            if (collapse) collapse.classList.toggle("show", isOpen);
+                            const header = item.querySelector(".ux-accordion-header");
+                            if (header) header.setAttribute("aria-expanded", String(isOpen));
+                        });
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        const header = e.target.closest(".ux-accordion-header");
+                        if (!header) return;
+                        const item = header.closest(".ux-accordion-item");
+                        if (!item) return;
+                        const accordion = item.closest(".ux-accordion");
+                        const isOpen = item.classList.contains("open");
+                        
+                        // 如果不是多开模式，先关闭其他项
+                        if (accordion?.dataset.accordionMultiple !== "true" && !isOpen) {
+                            accordion.querySelectorAll(".ux-accordion-item").forEach(i => {
+                                if (i !== item) {
+                                    i.classList.remove("open");
+                                    i.querySelector(".ux-accordion-collapse")?.classList.remove("show");
+                                    i.querySelector(".ux-accordion-header")?.setAttribute("aria-expanded", "false");
+                                }
+                            });
+                        }
+                        
+                        // 切换当前项
+                        if (isOpen) {
+                            item.classList.remove("open");
+                            item.querySelector(".ux-accordion-collapse")?.classList.remove("show");
+                            header.setAttribute("aria-expanded", "false");
+                        } else {
+                            item.classList.add("open");
+                            item.querySelector(".ux-accordion-collapse")?.classList.add("show");
+                            header.setAttribute("aria-expanded", "true");
+                        }
+                    });
+                }
+            };
+            return Accordion;
+        ');
+    }
 
     /**
      * 添加面板项

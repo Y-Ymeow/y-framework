@@ -56,7 +56,13 @@
     color: #374151;
     outline: none;
     padding: 0;
+    width: 100%;
 }
+
+.ux-tree-select-search:focus {
+    outline: none;
+}
+
 
 .ux-tree-select-search::placeholder {
     color: #9ca3af;

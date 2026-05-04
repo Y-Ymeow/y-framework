@@ -264,10 +264,10 @@ CSS);
                 Element::make('pre')->style('margin:0;color:#ce9178')->html(htmlspecialchars(json_encode($req, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)))
             );
 
-            $accordion->item($titleEl->render(), $contentEl->render(), "req-$i");
+            $accordion->item($titleEl, $contentEl, "req-$i");
         }
 
-        $wrapper->html($accordion->render());
+        $wrapper->child($accordion);
         return $wrapper;
     }
 
