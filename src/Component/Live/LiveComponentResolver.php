@@ -77,8 +77,8 @@ class LiveComponentResolver
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
             }
 
-            $component->_invoke();
-
+            $component->_invokeAction();
+            
             $requestedComponentId = $request->input('_component_id', '');
             if (!empty($requestedComponentId)) {
                 $component->named($requestedComponentId);
@@ -86,9 +86,8 @@ class LiveComponentResolver
 
             if (!empty($state)) {
                 $component->deserializeState($state);
-            }
-
-            $component->fillPublicProperties($publicData);
+                $component->fillPublicProperties($publicData);
+            } 
 
             $before = $component->getDataForFrontend();
 
@@ -263,7 +262,7 @@ class LiveComponentResolver
                 return Response::json(['success' => false, 'error' => 'Invalid component'], 400);
             }
 
-            $component->_invoke($params);
+            $component->_invokeAction($params);
 
             $requestedComponentId = $request->input('_component_id', '');
             if (!empty($requestedComponentId)) {

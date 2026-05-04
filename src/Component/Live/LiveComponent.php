@@ -972,4 +972,10 @@ abstract class LiveComponent
         $this->injectProps();
         $this->mount();
     }
+
+    public function _invokeAction(array $params = []): void
+    {
+        $this->routeParams = $params;
+        $this->injectProps();
+    }
 }
