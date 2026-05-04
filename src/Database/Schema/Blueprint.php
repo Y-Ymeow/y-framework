@@ -374,6 +374,15 @@ class Blueprint
         return $this;
     }
 
+    public function change(): self
+    {
+        $lastColumn = array_key_last($this->columns);
+        if ($lastColumn) {
+            $this->columns[$lastColumn]['change'] = true;
+        }
+        return $this;
+    }
+
     public function unique(string|array $columns = '', ?string $name = null): self
     {
         if (is_string($columns) && $columns === '') {
@@ -425,7 +434,7 @@ class Blueprint
         return $this;
     }
 
-    public function addForeignKey(string $column, string $references, string $on, string $onDelete = 'CASCADE', string $onUpdate = 'CASCADE'): self
+    public function addForeignKey(string $column, string $references, string $on, string $onDelete = 'CASCADE', string $onUpdate = 'CASCADE'): int
     {
         $this->foreignKeys[] = [
             'column' => $column,
@@ -434,7 +443,14 @@ class Blueprint
             'on_delete' => $onDelete,
             'on_update' => $onUpdate,
         ];
-        return $this;
+        return array_key_last($this->foreignKeys);
+    }
+
+    public function updateForeignKey(int $index, array $data): void
+    {
+        if (isset($this->foreignKeys[$index])) {
+            $this->foreignKeys[$index] = array_merge($this->foreignKeys[$index], $data);
+        }
     }
 
     public function rememberToken(): self
@@ -636,7 +652,7 @@ class Blueprint
     {
         $q = $this->driver === 'sqlite' ? '"' : '`';
         if ($this->driver === 'sqlite') {
-            return "FOREIGN KEY ({$q}{$fk['column']}{$q}) REFERENCES {$q}{$fk['on']}{$q} ({$q}{$fk['references']}{$q})";
+            return "FOREIGN KEY ({$q}{$fk['column']}{$q}) REFERENCES {$q}{$fk['on']}{$q} ({$q}{$fk['references']}{$q}) ON DELETE {$fk['on_delete']} ON UPDATE {$fk['on_update']}";
         }
         return "CONSTRAINT `fk_{$this->table}_{$fk['column']}` FOREIGN KEY (`{$fk['column']}`) REFERENCES `{$fk['on']}` (`{$fk['references']}`) ON DELETE {$fk['on_delete']} ON UPDATE {$fk['on_update']}";
     }
@@ -644,5 +660,20 @@ class Blueprint
     public function getTable(): string
     {
         return $this->table;
+    }
+
+    public function getColumns(): array
+    {
+        return $this->columns;
+    }
+
+    public function getIndexes(): array
+    {
+        return $this->indexes;
+    }
+
+    public function getForeignKeys(): array
+    {
+        return $this->foreignKeys;
     }
 }

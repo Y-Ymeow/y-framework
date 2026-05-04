@@ -38,6 +38,97 @@ class Schema
     {
         $blueprint = new Blueprint($table, $this->connection->getDriverName());
         $callback($blueprint);
+
+        foreach ($blueprint->getColumns() as $name => $column) {
+            if ($column['change'] ?? false) {
+                $this->modifyColumn($table, $name, $this->compileColumnType($column), $column);
+            } elseif (!$this->hasColumn($table, $name)) {
+                $this->addColumn($table, $name, $this->compileColumnType($column), $column);
+            }
+        }
+    }
+
+    public function modifyColumn(string $table, string $column, string $type, array $options = []): void
+    {
+        if ($this->connection->getDriverName() === 'sqlite') {
+            // SQLite doesn't support MODIFY COLUMN.
+            return;
+        }
+
+        $sql = "ALTER TABLE `{$table}` MODIFY COLUMN `{$column}` {$type}";
+
+        if (!($options['nullable'] ?? true)) {
+            $sql .= ' NOT NULL';
+        }
+
+        if (isset($options['default'])) {
+            $default = $options['default'];
+            if ($default === null) {
+                $sql .= ' DEFAULT NULL';
+            } elseif (is_bool($default)) {
+                $sql .= ' DEFAULT ' . ($default ? 1 : 0);
+            } elseif (is_int($default) || is_float($default)) {
+                $sql .= " DEFAULT {$default}";
+            } elseif (strtoupper((string)$default) === 'CURRENT_TIMESTAMP') {
+                $sql .= ' DEFAULT CURRENT_TIMESTAMP';
+            } else {
+                $sql .= " DEFAULT '{$default}'";
+            }
+        }
+
+        if (($options['after'] ?? null)) {
+            $sql .= " AFTER `{$options['after']}`";
+        }
+
+        $this->connection->execute($sql);
+    }
+
+    private function compileColumnType(array $column): string
+    {
+        $driver = $this->connection->getDriverName();
+        if ($driver === 'sqlite') {
+            return match ($column['type']) {
+                'varchar' => "VARCHAR({$column['length']})",
+                'char' => "CHAR({$column['length']})",
+                'text', 'longtext', 'mediumtext' => 'TEXT',
+                'int', 'tinyint', 'bigint', 'smallint', 'mediumint' => 'INTEGER',
+                'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
+                'float' => "FLOAT({$column['precision']}, {$column['scale']})",
+                'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
+                'date', 'time', 'year' => 'TEXT',
+                'datetime', 'timestamp' => 'TEXT',
+                'json', 'blob' => 'BLOB',
+                'enum', 'set' => "TEXT",
+                default => strtoupper($column['type']),
+            };
+        } else {
+            $sql = match ($column['type']) {
+                'varchar' => "VARCHAR({$column['length']})",
+                'char' => "CHAR({$column['length']})",
+                'text' => 'TEXT',
+                'mediumtext' => 'MEDIUMTEXT',
+                'longtext' => 'LONGTEXT',
+                'int' => ($column['unsigned'] ?? false) ? 'INT UNSIGNED' : 'INT',
+                'tinyint' => ($column['unsigned'] ?? false) ? 'TINYINT UNSIGNED' : 'TINYINT',
+                'smallint' => ($column['unsigned'] ?? false) ? 'SMALLINT UNSIGNED' : 'SMALLINT',
+                'mediumint' => ($column['unsigned'] ?? false) ? 'MEDIUMINT UNSIGNED' : 'MEDIUMINT',
+                'bigint' => ($column['unsigned'] ?? false) ? 'BIGINT UNSIGNED' : 'BIGINT',
+                'decimal' => "DECIMAL({$column['precision']}, {$column['scale']})",
+                'float' => "FLOAT({$column['precision']}, {$column['scale']})",
+                'double' => "DOUBLE({$column['precision']}, {$column['scale']})",
+                'date' => 'DATE',
+                'time' => 'TIME',
+                'year' => 'YEAR',
+                'datetime' => 'DATETIME',
+                'timestamp' => 'TIMESTAMP',
+                'json' => 'JSON',
+                'blob' => 'BLOB',
+                'enum' => "ENUM('" . implode("', '", $column['values']) . "')",
+                'set' => "SET('" . implode("', '", $column['values']) . "')",
+                default => strtoupper($column['type']),
+            };
+            return $sql;
+        }
     }
 
     public function hasTable(string $table): bool
