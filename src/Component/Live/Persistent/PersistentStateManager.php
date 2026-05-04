@@ -12,8 +12,6 @@ class PersistentStateManager
 
     private static array $driversMap = [
         'local' => LocalStorageDriver::class,
-        'session' => SessionStorageDriver::class,
-        'cookie' => CookieDriver::class,
         'database' => DatabaseDriver::class,
         'cache' => CacheDriver::class,
         'redis' => RedisDriver::class,

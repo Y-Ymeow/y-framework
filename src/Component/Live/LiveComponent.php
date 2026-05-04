@@ -10,7 +10,9 @@ use Framework\Component\Live\Attribute\Computed;
 use Framework\Component\Live\Attribute\State;
 use Framework\Component\Live\Attribute\Session as SessionAttribute;
 use Framework\Component\Live\Attribute\Cookie as CookieAttribute;
+use Framework\Component\Live\Attribute\Persistent as PersistentAttribute;
 use Framework\Component\Live\Attribute\LiveListener;
+use Framework\Component\Live\Persistent\PersistentStateManager;
 use Framework\Http\Session;
 use Framework\Http\Request;
 use Framework\View\Base\Element;
@@ -27,7 +29,7 @@ abstract class LiveComponent
     private array $manualUpdates = [];
     private array $validationErrors = [];
     private ?string $stateChecksum = null;
-    private ?string $lockedChecksum = null;
+    private array $lockedChecksums = [];
     protected array $routeParams = [];
     protected array $propValues = [];
     protected bool $mountCalled = false;
@@ -232,7 +234,7 @@ abstract class LiveComponent
 
     public function dehydrate(): void
     {
-        // Dehydrate hook
+        $this->persistProperties();
     }
 
     public function render(): Element
@@ -247,6 +249,17 @@ abstract class LiveComponent
 
         foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
             if ($prop->isStatic()) {
+                continue;
+            }
+
+            $stateAttrs = $prop->getAttributes(State::class);
+            $propAttrs = $prop->getAttributes(Prop::class);
+            $sessionAttrs = $prop->getAttributes(SessionAttribute::class);
+            $cookieAttrs = $prop->getAttributes(CookieAttribute::class);
+            $persistentAttrs = $prop->getAttributes(PersistentAttribute::class);
+
+            // 只返回被标记的属性
+            if (empty($stateAttrs) && empty($propAttrs) && empty($sessionAttrs) && empty($cookieAttrs) && empty($persistentAttrs)) {
                 continue;
             }
 
@@ -320,16 +333,16 @@ abstract class LiveComponent
         $publicData = $this->getPublicProperties();
         $data['__checksum'] = $this->generateDataChecksum($publicData);
 
-        // 额外存储 locked 属性的 checksum（用于校验非编辑属性）
+        // 存储每个 locked 属性的独立 checksum（支持部分校验）
         $editableProps = $this->frontendEditableProperties();
-        $lockedData = [];
+        $lockedChecksums = [];
         foreach ($publicData as $propName => $value) {
             if (!in_array($propName, $editableProps, true)) {
-                $lockedData[$propName] = $value;
+                $lockedChecksums[$propName] = $this->generateDataChecksum([$propName => $value]);
             }
         }
-        if (!empty($lockedData)) {
-            $data['__locked_checksum'] = $this->generateDataChecksum($lockedData);
+        if (!empty($lockedChecksums)) {
+            $data['__locked_checksums'] = $lockedChecksums;
         }
 
         $serialized = serialize($data);
@@ -372,7 +385,8 @@ abstract class LiveComponent
             $propAttrs = $prop->getAttributes(Prop::class);
             $sessionAttrs = $prop->getAttributes(SessionAttribute::class);
             $cookieAttrs = $prop->getAttributes(CookieAttribute::class);
-            if (!empty($stateAttrs) || !empty($propAttrs) || !empty($sessionAttrs) || !empty($cookieAttrs)) {
+            $persistentAttrs = $prop->getAttributes(PersistentAttribute::class);
+            if (!empty($stateAttrs) || !empty($propAttrs) || !empty($sessionAttrs) || !empty($cookieAttrs) || !empty($persistentAttrs)) {
                 $props[] = $prop->getName();
             }
         }
@@ -426,10 +440,10 @@ abstract class LiveComponent
             unset($data['__checksum']);
         }
 
-        // 提取并存储 locked checksum（用于后续校验）
-        if (isset($data['__locked_checksum'])) {
-            $this->lockedChecksum = $data['__locked_checksum'];
-            unset($data['__locked_checksum']);
+        // 提取并存储每个 locked 属性的独立 checksum
+        if (isset($data['__locked_checksums'])) {
+            $this->lockedChecksums = $data['__locked_checksums'];
+            unset($data['__locked_checksums']);
         }
 
         foreach ($data as $key => $value) {
@@ -450,6 +464,7 @@ abstract class LiveComponent
 
             $sessionAttrs = $ref->getAttributes(SessionAttribute::class);
             $cookieAttrs = $ref->getAttributes(CookieAttribute::class);
+            $persistentAttrs = $ref->getAttributes(PersistentAttribute::class);
 
             if (!empty($sessionAttrs)) {
                 $session = new Session();
@@ -475,6 +490,8 @@ abstract class LiveComponent
                     $expire = time() + ($attr->minutes * 60);
                     setcookie($cookieName, json_encode($value), $expire, '/');
                 }
+            } elseif (!empty($persistentAttrs)) {
+                PersistentStateManager::restorePersistentProperty($this, $propName);
             }
         }
 
@@ -511,25 +528,20 @@ abstract class LiveComponent
         // 分级校验：
         // - #[State] 标记的属性：允许前端直接修改，不参与checksum校验
         // - 其他属性（#[Prop], #[Session], #[Cookie]）：严格checksum校验
-        if ($this->lockedChecksum !== null) {
-            // 提取非编辑（locked）属性
-            $lockedData = [];
+        if (!empty($this->lockedChecksums)) {
+            // 校验前端传回的每个 locked 属性
             foreach ($cleanedData as $propName => $value) {
                 if (!in_array($propName, $editableProps, true)) {
-                    $lockedData[$propName] = $value;
-                }
-            }
-
-            // 校验 locked 数据是否被篡改
-            if (!empty($lockedData)) {
-                $currentLockedChecksum = $this->generateDataChecksum($lockedData);
-
-                if (!hash_equals($this->lockedChecksum, $currentLockedChecksum)) {
-                    if (config('app.debug')) {
-                        error_log("Checksum mismatch! Locked data changed unexpectedly.");
-                        error_log("Expected: {$this->lockedChecksum}, Got: {$currentLockedChecksum}");
+                    // 该属性是 locked 的，校验其 checksum
+                    if (isset($this->lockedChecksums[$propName])) {
+                        $currentChecksum = $this->generateDataChecksum([$propName => $value]);
+                        if (!hash_equals($this->lockedChecksums[$propName], $currentChecksum)) {
+                            if (config('app.debug')) {
+                                error_log("Checksum mismatch for property [{$propName}].");
+                            }
+                            throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
+                        }
                     }
-                    throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
                 }
             }
         }
@@ -964,6 +976,24 @@ abstract class LiveComponent
         $sessionToken = app()->make(Session::class)->getId() ?: 'guest';
         $appKey = config('app.key', 'default-key');
         return hash_hmac('sha256', $sessionToken, $appKey);
+    }
+
+    /**
+     * 自动保存 #[Persistent] 属性
+     */
+    protected function persistProperties(): void
+    {
+        $ref = new \ReflectionClass($this);
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isStatic()) {
+                continue;
+            }
+
+            $persistentAttrs = $prop->getAttributes(PersistentAttribute::class);
+            if (!empty($persistentAttrs)) {
+                PersistentStateManager::syncPersistentProperty($this, $prop->getName());
+            }
+        }
     }
 
     public function _invoke(array $params = []): void
