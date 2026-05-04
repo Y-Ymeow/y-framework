@@ -25,6 +25,12 @@ return [
         \Framework\DebugBar\DebugBarServiceProvider::class,
     ],
 
+    'modules' => [
+        \Framework\Module\User\UserModule::class,
+        \Framework\Module\Notification\NotificationModule::class,
+        // \Framework\Module\Mail\MailModule::class,
+    ],
+
     'aliases' => [],
 
     'middleware' => [

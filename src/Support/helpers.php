@@ -332,6 +332,26 @@ function gate(): \Framework\Auth\Gate
     return \Framework\Auth\Gate::getInstance();
 }
 
+function modules(): \Framework\Module\ModuleManager
+{
+    return app(\Framework\Module\ModuleManager::class);
+}
+
+function module(string $name): ?\Framework\Module\ModuleInterface
+{
+    return modules()->getModule($name);
+}
+
+function notify(int $userId, string $type, string $title, string $message, array $data = []): \Framework\Module\Notification\Notification
+{
+    return app(\Framework\Module\Notification\NotificationManager::class)->send($userId, $type, $title, $message, $data);
+}
+
+function mailer(): \Framework\Module\Mail\MailManager
+{
+    return app(\Framework\Module\Mail\MailManager::class);
+}
+
 
 if (!function_exists('debug')) {
     function debug(mixed ...$data): void

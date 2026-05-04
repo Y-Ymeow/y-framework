@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Framework\Foundation;
 
 use Framework\Http\Request\Request;
+use Framework\Module\ModuleManager;
 use Framework\Support\Paths;
 
 class Application
@@ -14,6 +15,7 @@ class Application
     private Container $container;
     private bool $booted = false;
     private array $providers = [];
+    private ?ModuleManager $moduleManager = null;
     private static ?Application $instance = null;
 
     public function __construct(string $basePath)
@@ -129,6 +131,11 @@ class Application
 
     public function bootstrapProviders(): void
     {
+        $this->moduleManager = new ModuleManager($this);
+        $this->container->instance(ModuleManager::class, $this->moduleManager);
+
+        $this->registerFrameworkModules();
+
         $providers = config('app.providers', []);
         foreach ($providers as $providerClass) {
             $this->register(new $providerClass($this));
@@ -144,6 +151,22 @@ class Application
         $this->make(\Framework\Intl\IntlServiceProvider::class)->register();
 
         $this->boot();
+
+        $this->moduleManager->boot();
+    }
+
+    private function registerFrameworkModules(): void
+    {
+        $modules = config('app.modules', []);
+
+        foreach ($modules as $moduleClass) {
+            $this->moduleManager->register(new $moduleClass());
+        }
+    }
+
+    public function getModuleManager(): ?ModuleManager
+    {
+        return $this->moduleManager;
     }
 
     public function isBooted(): bool
