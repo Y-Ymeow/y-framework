@@ -154,11 +154,20 @@ class ColorRules
 
     public static function parse(string $class, ?string $pseudo = null, ?string $originalClass = null): ?string
     {
+        if (preg_match('/^text-\[(.+)\]$/', $class, $m)) {
+            return "color:{$m[1]}";
+        }
         if (preg_match('/^text-(.+)$/', $class, $m) && isset(self::$colors[$m[1]])) {
             return "color:" . self::$colors[$m[1]];
         }
+        if (preg_match('/^bg-\[(.+)\]$/', $class, $m)) {
+            return "background-color:{$m[1]}";
+        }
         if (preg_match('/^bg-(.+)$/', $class, $m) && isset(self::$colors[$m[1]])) {
             return "background-color:" . self::$colors[$m[1]];
+        }
+        if (preg_match('/^border-\[(.+)\]$/', $class, $m)) {
+            return "border-color:{$m[1]}";
         }
         if (preg_match('/^border-(.+)$/', $class, $m) && isset(self::$colors[$m[1]])) {
             return "border-color:" . self::$colors[$m[1]];

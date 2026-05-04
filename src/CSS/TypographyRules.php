@@ -43,16 +43,31 @@ class TypographyRules
         'loose' => '2',
     ];
 
+    private static array $fontFamilies = [
+        'sans' => 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
+        'serif' => 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
+        'mono' => 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    ];
+
     public static function parse(string $class, ?string $pseudo = null, ?string $originalClass = null): ?string
     {
+        if (preg_match('/^text-\[(.+)\]$/', $class, $m)) {
+            return "font-size:{$m[1]}";
+        }
         if (preg_match('/^text-(.+)$/', $class, $m) && isset(self::$fontSizes[$m[1]])) {
             return "font-size:" . self::$fontSizes[$m[1]];
         }
 
+        if (preg_match('/^font-size-\[(.+)\]$/', $class, $m)) {
+            return "font-size:{$m[1]}";
+        }
         if (preg_match('/^font-size-(.+)$/', $class, $m) && isset(self::$fontSizes[$m[1]])) {
             return "font-size:" . self::$fontSizes[$m[1]];
         }
 
+        if (preg_match('/^font-\[(.+)\]$/', $class, $m)) {
+            return "font-family:{$m[1]}";
+        }
         if (preg_match('/^font-(.+)$/', $class, $m) && isset(self::$fontWeights[$m[1]])) {
             return "font-weight:" . self::$fontWeights[$m[1]];
         }
@@ -60,11 +75,22 @@ class TypographyRules
             return "font-weight:" . self::$fontWeights[$class];
         }
 
+        if (preg_match('/^font-(.+)$/', $class, $m) && isset(self::$fontFamilies[$m[1]])) {
+            return "font-family:" . self::$fontFamilies[$m[1]];
+        }
+
+        if (preg_match('/^leading-\[(.+)\]$/', $class, $m)) {
+            return "line-height:{$m[1]}";
+        }
         if (isset(self::$lineHeights[$class])) {
             return "line-height:" . self::$lineHeights[$class];
         }
         if (preg_match('/^leading-(.+)$/', $class, $m) && isset(self::$lineHeights[$m[1]])) {
             return "line-height:" . self::$lineHeights[$m[1]];
+        }
+
+        if (preg_match('/^tracking-\[(.+)\]$/', $class, $m)) {
+            return "letter-spacing:{$m[1]}";
         }
 
         if ($class === 'text-left') return 'text-align:left';

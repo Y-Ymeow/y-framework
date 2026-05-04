@@ -16,6 +16,8 @@ use Framework\CSS\InteractionRules;
 use Framework\CSS\TransitionRules;
 use Framework\CSS\TransformRules;
 use Framework\CSS\AnimationRules;
+use Framework\CSS\GradientRules;
+use Framework\CSS\UtilityRules;
 use Framework\Foundation\Application;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -136,18 +138,39 @@ class CssGenerateCommand extends Command
             }
         }
 
-        if (preg_match_all('/\[([^\]]+)\]/', $expr, $matches)) {
-            foreach ($matches[1] as $arrContent) {
-                if (preg_match_all("/'([^']+)'/", $arrContent, $classMatches)) {
-                    foreach ($classMatches[1] as $className) {
-                        $parts = preg_split('/\s+/', $className);
-                        foreach ($parts as $part) {
-                            $part = trim($part);
-                            if ($part && !str_starts_with($part, '$')) {
-                                $classes[$part] = true;
+        $depth = 0;
+        $current = '';
+        $length = strlen($expr);
+        
+        for ($i = 0; $i < $length; $i++) {
+            $char = $expr[$i];
+            
+            if ($char === '[') {
+                if ($depth > 0) {
+                    $current .= $char;
+                }
+                $depth++;
+            } elseif ($char === ']') {
+                $depth--;
+                if ($depth > 0) {
+                    $current .= $char;
+                } else {
+                    if (preg_match_all("/'([^']+)'/", $current, $classMatches)) {
+                        foreach ($classMatches[1] as $className) {
+                            $parts = preg_split('/\s+/', $className);
+                            foreach ($parts as $part) {
+                                $part = trim($part);
+                                if ($part && !str_starts_with($part, '$')) {
+                                    $classes[$part] = true;
+                                }
                             }
                         }
                     }
+                    $current = '';
+                }
+            } else {
+                if ($depth > 0) {
+                    $current .= $char;
                 }
             }
         }
@@ -173,6 +196,8 @@ class CssGenerateCommand extends Command
             TransitionRules::class,
             TransformRules::class,
             AnimationRules::class,
+            GradientRules::class,
+            UtilityRules::class,
         ];
 
         foreach ($classes as $class => $_) {

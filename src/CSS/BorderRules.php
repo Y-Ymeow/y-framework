@@ -23,6 +23,9 @@ class BorderRules
         if ($class === 'border-r') return 'border-right-width:1px;border-style:solid';
         if ($class === 'border-r-0') return 'border-right-width:0';
 
+        if (preg_match('/^rounded-\[(.+)\]$/', $class, $m)) {
+            return "border-radius:{$m[1]}";
+        }
         if ($class === 'rounded-none') return 'border-radius:0';
         if ($class === 'rounded-sm') return 'border-radius:0.125rem';
         if ($class === 'rounded') return 'border-radius:0.25rem';
@@ -32,6 +35,11 @@ class BorderRules
         if ($class === 'rounded-2xl') return 'border-radius:1rem';
         if ($class === 'rounded-3xl') return 'border-radius:1.5rem';
         if ($class === 'rounded-full') return 'border-radius:9999px';
+
+        if (preg_match('/^border-\[(.+)\]$/', $class, $m)) {
+            return "border-width:{$m[1]};border-style:solid";
+        }
+        if ($class === 'border') return 'border-width:1px;border-style:solid';
 
         if ($class === 'rounded-t-none') return 'border-top-left-radius:0;border-top-right-radius:0';
         if ($class === 'rounded-t-sm') return 'border-top-left-radius:0.125rem;border-top-right-radius:0.125rem';

@@ -50,58 +50,100 @@ class SpacingRules
 
     public static function parse(string $class, ?string $pseudo = null, ?string $originalClass = null): ?string
     {
+        if (preg_match('/^p-\[(.+)\]$/', $class, $m)) {
+            return "padding:{$m[1]}";
+        }
         if (preg_match('/^p-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding:{$v}rem";
+        }
+        if (preg_match('/^px-\[(.+)\]$/', $class, $m)) {
+            return "padding-left:{$m[1]};padding-right:{$m[1]}";
         }
         if (preg_match('/^px-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-left:{$v}rem;padding-right:{$v}rem";
         }
+        if (preg_match('/^py-\[(.+)\]$/', $class, $m)) {
+            return "padding-top:{$m[1]};padding-bottom:{$m[1]}";
+        }
         if (preg_match('/^py-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-top:{$v}rem;padding-bottom:{$v}rem";
+        }
+        if (preg_match('/^pt-\[(.+)\]$/', $class, $m)) {
+            return "padding-top:{$m[1]}";
         }
         if (preg_match('/^pt-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-top:{$v}rem";
         }
+        if (preg_match('/^pr-\[(.+)\]$/', $class, $m)) {
+            return "padding-right:{$m[1]}";
+        }
         if (preg_match('/^pr-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-right:{$v}rem";
         }
+        if (preg_match('/^pb-\[(.+)\]$/', $class, $m)) {
+            return "padding-bottom:{$m[1]}";
+        }
         if (preg_match('/^pb-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-bottom:{$v}rem";
+        }
+        if (preg_match('/^pl-\[(.+)\]$/', $class, $m)) {
+            return "padding-left:{$m[1]}";
         }
         if (preg_match('/^pl-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "padding-left:{$v}rem";
         }
 
+        if (preg_match('/^m-\[(.+)\]$/', $class, $m)) {
+            return "margin:{$m[1]}";
+        }
         if (preg_match('/^m-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin:{$v}rem";
+        }
+        if (preg_match('/^mx-\[(.+)\]$/', $class, $m)) {
+            return "margin-left:{$m[1]};margin-right:{$m[1]}";
         }
         if (preg_match('/^mx-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin-left:{$v}rem;margin-right:{$v}rem";
         }
+        if (preg_match('/^my-\[(.+)\]$/', $class, $m)) {
+            return "margin-top:{$m[1]};margin-bottom:{$m[1]}";
+        }
         if (preg_match('/^my-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin-top:{$v}rem;margin-bottom:{$v}rem";
+        }
+        if (preg_match('/^mt-\[(.+)\]$/', $class, $m)) {
+            return "margin-top:{$m[1]}";
         }
         if (preg_match('/^mt-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin-top:{$v}rem";
         }
+        if (preg_match('/^mr-\[(.+)\]$/', $class, $m)) {
+            return "margin-right:{$m[1]}";
+        }
         if (preg_match('/^mr-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin-right:{$v}rem";
         }
+        if (preg_match('/^mb-\[(.+)\]$/', $class, $m)) {
+            return "margin-bottom:{$m[1]}";
+        }
         if (preg_match('/^mb-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "margin-bottom:{$v}rem";
+        }
+        if (preg_match('/^ml-\[(.+)\]$/', $class, $m)) {
+            return "margin-left:{$m[1]}";
         }
         if (preg_match('/^ml-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
@@ -116,13 +158,22 @@ class SpacingRules
         if ($class === 'mt-auto') return 'margin-top:auto';
         if ($class === 'mb-auto') return 'margin-bottom:auto';
 
+        if (preg_match('/^gap-\[(.+)\]$/', $class, $m)) {
+            return "gap:{$m[1]}";
+        }
         if (preg_match('/^gap-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "gap:{$v}rem";
         }
+        if (preg_match('/^gap-x-\[(.+)\]$/', $class, $m)) {
+            return "column-gap:{$m[1]}";
+        }
         if (preg_match('/^gap-x-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);
             return "column-gap:{$v}rem";
+        }
+        if (preg_match('/^gap-y-\[(.+)\]$/', $class, $m)) {
+            return "row-gap:{$m[1]}";
         }
         if (preg_match('/^gap-y-(\d+(?:\.\d+)?)$/', $class, $m)) {
             $v = self::calcSpacing((float)$m[1]);

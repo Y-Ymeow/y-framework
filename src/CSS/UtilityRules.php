@@ -80,6 +80,9 @@ class UtilityRules
         }
 
         // opacity-*
+        if (preg_match('/^opacity-\[(.+)\]$/', $class, $m)) {
+            return "opacity:{$m[1]}";
+        }
         if (preg_match('/^opacity-(.+)$/', $class, $m)) {
             $val = (int)$m[1];
             if ($val >= 0 && $val <= 100) {
@@ -88,6 +91,9 @@ class UtilityRules
         }
 
         // min-h-*
+        if (preg_match('/^min-h-\[(.+)\]$/', $class, $m)) {
+            return "min-height:{$m[1]}";
+        }
         if (preg_match('/^min-h-(.+)$/', $class, $m)) {
             $val = match($m[1]) {
                 '0' => '0',

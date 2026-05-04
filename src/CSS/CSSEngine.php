@@ -81,7 +81,7 @@ class CSSEngine
             $workingClass = substr($class, 0, -1);
         }
 
-        $parts = explode(':', $workingClass);
+        $parts = self::smartSplit($workingClass);
         $mediaQuery = null;
         $pseudoSelector = '';
         $utilityFound = false;
@@ -127,6 +127,37 @@ class CSSEngine
             'hasBreakpoint' => $mediaQuery !== null,
             'hasPseudo' => $pseudoSelector !== '',
         ];
+    }
+
+    private static function smartSplit(string $str): array
+    {
+        $parts = [];
+        $current = '';
+        $bracketDepth = 0;
+        $length = strlen($str);
+        
+        for ($i = 0; $i < $length; $i++) {
+            $char = $str[$i];
+            
+            if ($char === '[') {
+                $bracketDepth++;
+                $current .= $char;
+            } elseif ($char === ']') {
+                $bracketDepth--;
+                $current .= $char;
+            } elseif ($char === ':' && $bracketDepth === 0) {
+                $parts[] = $current;
+                $current = '';
+            } else {
+                $current .= $char;
+            }
+        }
+        
+        if ($current !== '') {
+            $parts[] = $current;
+        }
+        
+        return $parts;
     }
 
     private static function extractDashPseudo(string $baseClass): ?array

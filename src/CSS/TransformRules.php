@@ -12,9 +12,15 @@ class TransformRules
         if ($class === 'transform-gpu') return 'transform:translate3d(var(--tw-translate-x,0),var(--tw-translate-y,0),0) rotate(var(--tw-rotate,0)) skewX(var(--tw-skew-x,0)) skewY(var(--tw-skew-y,0)) scaleX(var(--tw-scale-x,1)) scaleY(var(--tw-scale-y,1))';
         if ($class === 'transform-none') return 'transform:none';
 
+        if (preg_match('/^translate-x-\[(.+)\]$/', $class, $m)) {
+            return "--tw-translate-x:{$m[1]}";
+        }
         if (preg_match('/^translate-x-(\d+)$/', $class, $m)) {
             $v = (int)$m[1] * 0.25;
             return "--tw-translate-x:{$v}rem";
+        }
+        if (preg_match('/^translate-y-\[(.+)\]$/', $class, $m)) {
+            return "--tw-translate-y:{$m[1]}";
         }
         if (preg_match('/^translate-y-(\d+)$/', $class, $m)) {
             $v = (int)$m[1] * 0.25;
@@ -23,17 +29,29 @@ class TransformRules
         if ($class === 'translate-y-full') return '--tw-translate-y:100%';
         if ($class === 'translate-x-full') return '--tw-translate-x:100%';
 
+        if (preg_match('/^rotate-\[(.+)\]$/', $class, $m)) {
+            return "--tw-rotate:{$m[1]}";
+        }
         if (preg_match('/^rotate-(\d+)$/', $class, $m)) {
             return "--tw-rotate:{$m[1]}deg";
         }
 
+        if (preg_match('/^scale-\[(.+)\]$/', $class, $m)) {
+            return "--tw-scale-x:{$m[1]};--tw-scale-y:{$m[1]}";
+        }
         if (preg_match('/^scale-(\d+)$/', $class, $m)) {
             $v = (int)$m[1] / 100;
             return "--tw-scale-x:{$v};--tw-scale-y:{$v}";
         }
+        if (preg_match('/^scale-x-\[(.+)\]$/', $class, $m)) {
+            return "--tw-scale-x:{$m[1]}";
+        }
         if (preg_match('/^scale-x-(\d+)$/', $class, $m)) {
             $v = (int)$m[1] / 100;
             return "--tw-scale-x:{$v}";
+        }
+        if (preg_match('/^scale-y-\[(.+)\]$/', $class, $m)) {
+            return "--tw-scale-y:{$m[1]}";
         }
         if (preg_match('/^scale-y-(\d+)$/', $class, $m)) {
             $v = (int)$m[1] / 100;

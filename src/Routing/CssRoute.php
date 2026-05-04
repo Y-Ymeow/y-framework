@@ -86,7 +86,6 @@ class CssRoute
                 // e.g. ->class('a b', 'c') or ->class("a", "b", "c")
                 if (preg_match_all('/->class\s*\(([^)]+)\)/s', $content, $matches)) {
                     foreach ($matches[1] as $argsString) {
-                        // Extract all quoted strings from the arguments
                         if (preg_match_all('/[\'"]([^\'"]*)[\'"]/', $argsString, $argMatches)) {
                             foreach ($argMatches[1] as $classString) {
                                 $parts = preg_split('/\s+/', $classString);
@@ -101,7 +100,7 @@ class CssRoute
                     }
                 }
 
-                if (preg_match_all('/class\s*=\s*["\']([^"\']+)["\']/', $content, $matches)) {
+                if (preg_match_all('/class\s*=\s*["\']((?:[^"\']|\[[^\]]*\])+)["\']/', $content, $matches)) {
                     foreach ($matches[1] as $classString) {
                         $parts = preg_split('/\s+/', $classString);
                         foreach ($parts as $part) {
@@ -122,6 +121,22 @@ class CssRoute
                 if (preg_match_all('/->bindAttr\s*\(\s*"class"\s*,\s*"((?:[^"\\\\]|\\\\.)*)"\s*\)/s', $content, $matches)) {
                     foreach ($matches[1] as $expr) {
                         $this->extractClassesFromExpr($expr, $classes);
+                    }
+                }
+
+                if (preg_match_all('/\[\'classes\'\]\s*=>\s*\[([^\]]+)\]/s', $content, $matches)) {
+                    foreach ($matches[1] as $classesList) {
+                        if (preg_match_all('/[\'"]([^\'"]+)[\'"]/', $classesList, $classMatches)) {
+                            foreach ($classMatches[1] as $classString) {
+                                $parts = preg_split('/\s+/', $classString);
+                                foreach ($parts as $part) {
+                                    $part = trim($part);
+                                    if ($part && !str_starts_with($part, '$') && !str_contains($part, '{{')) {
+                                        $classes[$part] = true;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -148,18 +163,39 @@ class CssRoute
             }
         }
 
-        if (preg_match_all('/\[([^\]]+)\]/', $expr, $matches)) {
-            foreach ($matches[1] as $arrContent) {
-                if (preg_match_all("/'([^']+)'/", $arrContent, $classMatches)) {
-                    foreach ($classMatches[1] as $className) {
-                        $parts = preg_split('/\s+/', $className);
-                        foreach ($parts as $part) {
-                            $part = trim($part);
-                            if ($part && !str_starts_with($part, '$')) {
-                                $classes[$part] = true;
+        $depth = 0;
+        $current = '';
+        $length = strlen($expr);
+        
+        for ($i = 0; $i < $length; $i++) {
+            $char = $expr[$i];
+            
+            if ($char === '[') {
+                if ($depth > 0) {
+                    $current .= $char;
+                }
+                $depth++;
+            } elseif ($char === ']') {
+                $depth--;
+                if ($depth > 0) {
+                    $current .= $char;
+                } else {
+                    if (preg_match_all("/'([^']+)'/", $current, $classMatches)) {
+                        foreach ($classMatches[1] as $className) {
+                            $parts = preg_split('/\s+/', $className);
+                            foreach ($parts as $part) {
+                                $part = trim($part);
+                                if ($part && !str_starts_with($part, '$')) {
+                                    $classes[$part] = true;
+                                }
                             }
                         }
                     }
+                    $current = '';
+                }
+            } else {
+                if ($depth > 0) {
+                    $current .= $char;
                 }
             }
         }
