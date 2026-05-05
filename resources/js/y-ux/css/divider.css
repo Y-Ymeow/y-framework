@@ -1,0 +1,101 @@
+/* Divider 分割线 */
+.ux-divider {
+    --divider-color: var(--ux-border-color, #e5e7eb);
+    --divider-text-color: var(--ux-text-secondary, #6b7280);
+    --divider-primary-color: var(--ux-primary, #3b82f6);
+    --divider-success-color: var(--ux-success, #10b981);
+    --divider-warning-color: var(--ux-warning, #f59e0b);
+    --divider-danger-color: var(--ux-danger, #ef4444);
+}
+
+/* 水平分割线 */
+.ux-divider-horizontal {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 16px 0;
+    border-top: 1px solid var(--divider-color);
+}
+
+.ux-divider-horizontal::before,
+.ux-divider-horizontal::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--divider-color);
+}
+
+/* 带文字的分割线 */
+.ux-divider-with-text-center::before,
+.ux-divider-with-text-center::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--divider-color);
+}
+
+.ux-divider-with-text-left::before {
+    flex: 0.1;
+}
+
+.ux-divider-with-text-left::after {
+    flex: 1;
+}
+
+.ux-divider-with-text-right::before {
+    flex: 1;
+}
+
+.ux-divider-with-text-right::after {
+    flex: 0.1;
+}
+
+.ux-divider-text {
+    padding: 0 16px;
+    font-size: 14px;
+    color: var(--divider-text-color);
+    white-space: nowrap;
+}
+
+/* 垂直分割线 */
+.ux-divider-vertical {
+    display: inline-block;
+    width: 1px;
+    height: 1em;
+    margin: 0 8px;
+    vertical-align: middle;
+    border-left: 1px solid var(--divider-color);
+}
+
+/* 虚线样式 */
+.ux-divider-dashed.ux-divider-horizontal,
+.ux-divider-dashed.ux-divider-horizontal::before,
+.ux-divider-dashed.ux-divider-horizontal::after {
+    border-top-style: dashed;
+}
+
+.ux-divider-dashed.ux-divider-vertical {
+    border-left-style: dashed;
+}
+
+/* 颜色变体 */
+.ux-divider-primary {
+    --divider-color: var(--divider-primary-color);
+}
+
+.ux-divider-success {
+    --divider-color: var(--divider-success-color);
+}
+
+.ux-divider-warning {
+    --divider-color: var(--divider-warning-color);
+}
+
+.ux-divider-danger {
+    --divider-color: var(--divider-danger-color);
+}
+
+.ux-divider-primary .ux-divider-text,
+.ux-divider-success .ux-divider-text,
+.ux-divider-warning .ux-divider-text,
+.ux-divider-danger .ux-divider-text {
+    color: var(--divider-color);
+}

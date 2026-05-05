@@ -1,0 +1,65 @@
+.ux-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+}
+
+.ux-alert-success {
+    background-color: #d1fae5;
+    border-color: #6ee7b7;
+    color: #065f46;
+}
+
+.ux-alert-error {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.ux-alert-warning {
+    background-color: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.ux-alert-info {
+    background-color: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+}
+
+.ux-alert-icon {
+    flex-shrink: 0;
+    font-size: 1.25rem;
+}
+
+.ux-alert-content {
+    flex: 1;
+}
+
+.ux-alert-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.ux-alert-message {
+    font-size: 0.875rem;
+}
+
+.ux-alert-close {
+    flex-shrink: 0;
+    padding: 0.25rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.6;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.ux-alert-close:hover {
+    opacity: 1;
+}

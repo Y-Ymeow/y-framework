@@ -44,6 +44,7 @@ datalog/
 /public/build
 /public/storage
 /public/assets
+
 /datalog
 .atomcode/
 database/*.sqlite
@@ -52,12 +53,6 @@ src/statics/bun.lock
 src/statics/package-lock.json
 
 skeleton/
-admin/
-app/
-config/
-database/
-resources/
-public/
 storage/sessions/
 storage/sse/
 .phpunit.cache/test-results

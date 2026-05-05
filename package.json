@@ -1,0 +1,19 @@
+{
+  "name": "y-framework",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "idiomorph": "^0.3.0"
+  },
+  "dependencies": {
+    "bootstrap-icons": "^1.11.3",
+    "chart.js": "^4.4.0",
+    "qrcode": "^1.5.4"
+  }
+}

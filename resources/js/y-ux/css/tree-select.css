@@ -1,0 +1,283 @@
+/* TreeSelect 树形选择器 */
+.ux-tree-select {
+    --tree-select-border: #d1d5db;
+    --tree-select-radius: 6px;
+    --tree-select-bg: #fff;
+    --tree-select-width: 240px;
+
+    display: inline-block;
+    position: relative;
+    width: var(--tree-select-width);
+}
+
+/* 选择框 */
+.ux-tree-select-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--tree-select-border);
+    border-radius: var(--tree-select-radius);
+    background-color: var(--tree-select-bg);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 36px;
+}
+
+.ux-tree-select-selector:hover {
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-tree-select-open .ux-tree-select-selector {
+    border-color: var(--ux-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 显示文本 */
+.ux-tree-select-display {
+    flex: 1;
+    font-size: 14px;
+    color: #374151;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ux-tree-select-display.placeholder {
+    color: #9ca3af;
+}
+
+/* 搜索输入框 */
+.ux-tree-select-search {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: #374151;
+    outline: none;
+    padding: 0;
+    width: 100%;
+}
+
+.ux-tree-select-search:focus {
+    outline: none;
+}
+
+
+.ux-tree-select-search::placeholder {
+    color: #9ca3af;
+}
+
+/* 多选标签 */
+.ux-tree-select-multiple .ux-tree-select-selector {
+    flex-wrap: wrap;
+    padding: 4px 8px;
+}
+
+.ux-tree-select-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+}
+
+.ux-tree-select-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background-color: #f3f4f6;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #374151;
+}
+
+.ux-tree-select-tag-remove {
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.ux-tree-select-tag-remove:hover {
+    color: #ef4444;
+}
+
+/* 清除按钮 */
+.ux-tree-select-clear {
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.ux-tree-select-selector:hover .ux-tree-select-clear {
+    opacity: 1;
+}
+
+.ux-tree-select-clear:hover {
+    color: #ef4444;
+}
+
+/* 下拉箭头 */
+.ux-tree-select-arrow {
+    color: #9ca3af;
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+
+.ux-tree-select-open .ux-tree-select-arrow {
+    transform: rotate(180deg);
+}
+
+/* 禁用状态 */
+.ux-tree-select-disabled .ux-tree-select-selector {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.ux-tree-select-disabled .ux-tree-select-display {
+    color: #9ca3af;
+}
+
+/* 下拉面板 */
+.ux-tree-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background-color: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1050;
+    min-width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.2s;
+}
+
+.ux-tree-select-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 树形结构 */
+.ux-tree-select-tree {
+    padding: 8px 0;
+}
+
+.ux-tree-select-node {
+    position: relative;
+}
+
+.ux-tree-select-node-content {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ux-tree-select-node-content:hover {
+    background-color: #f3f4f6;
+}
+
+.ux-tree-select-node-content.selected {
+    background-color: #eff6ff;
+    color: var(--ux-primary, #3b82f6);
+}
+
+/* 展开/折叠图标 */
+.ux-tree-select-node-toggle {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    font-size: 10px;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ux-tree-select-node-toggle.expanded {
+    transform: rotate(90deg);
+}
+
+.ux-tree-select-node-toggle.leaf {
+    visibility: hidden;
+}
+
+/* 节点图标 */
+.ux-tree-select-node-icon {
+    margin-right: 6px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* 节点文本 */
+.ux-tree-select-node-title {
+    flex: 1;
+    font-size: 14px;
+    color: #374151;
+}
+
+.ux-tree-select-node-content.selected .ux-tree-select-node-title {
+    color: var(--ux-primary, #3b82f6);
+    font-weight: 500;
+}
+
+/* 子节点 */
+.ux-tree-select-children {
+    padding-left: 24px;
+}
+
+.ux-tree-select-children.collapsed {
+    display: none;
+}
+
+/* 空状态 */
+.ux-tree-select-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* 复选框 */
+.ux-tree-select-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #fff;
+    transition: all 0.2s;
+}
+
+.ux-tree-select-checkbox.checked {
+    background-color: var(--ux-primary, #3b82f6);
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-tree-select-checkbox.indeterminate {
+    background-color: var(--ux-primary, #3b82f6);
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-tree-select-checkbox.indeterminate::after {
+    content: '';
+    width: 8px;
+    height: 2px;
+    background-color: #fff;
+}

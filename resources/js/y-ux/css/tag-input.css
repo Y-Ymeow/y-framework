@@ -1,0 +1,130 @@
+/* TagInput 标签输入 */
+.ux-tag-input {
+    --tag-input-border: #d1d5db;
+    --tag-input-radius: 6px;
+    --tag-input-bg: #fff;
+    --tag-input-tag-bg: #f3f4f6;
+    --tag-input-tag-color: #374151;
+
+    display: inline-block;
+    width: 100%;
+}
+
+.ux-tag-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--tag-input-border);
+    border-radius: var(--tag-input-radius);
+    background-color: var(--tag-input-bg);
+    min-height: 36px;
+    cursor: text;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ux-tag-input-container:hover {
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-tag-input-focused .ux-tag-input-container {
+    border-color: var(--ux-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 标签 */
+.ux-tag-input-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background-color: var(--tag-input-tag-bg);
+    color: var(--tag-input-tag-color);
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ux-tag-input-tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    font-size: 11px;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+.ux-tag-input-tag-remove:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+/* 输入框 */
+.ux-tag-input-field {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: #374151;
+    outline: none;
+    padding: 4px 0;
+}
+
+.ux-tag-input-field:focus {
+    outline: none;
+}
+
+.ux-tag-input-field::placeholder {
+    color: #9ca3af;
+}
+
+/* 禁用状态 */
+.ux-tag-input-disabled .ux-tag-input-container {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.ux-tag-input-disabled .ux-tag-input-tag {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+}
+
+.ux-tag-input-disabled .ux-tag-input-tag-remove {
+    display: none;
+}
+
+/* 大尺寸 */
+.ux-tag-input-lg .ux-tag-input-container {
+    min-height: 44px;
+    padding: 6px 12px;
+}
+
+.ux-tag-input-lg .ux-tag-input-tag {
+    font-size: 14px;
+    padding: 4px 10px;
+}
+
+.ux-tag-input-lg .ux-tag-input-field {
+    font-size: 15px;
+}
+
+/* 小尺寸 */
+.ux-tag-input-sm .ux-tag-input-container {
+    min-height: 28px;
+    padding: 2px 6px;
+}
+
+.ux-tag-input-sm .ux-tag-input-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+}
+
+.ux-tag-input-sm .ux-tag-input-field {
+    font-size: 12px;
+}

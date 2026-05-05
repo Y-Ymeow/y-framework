@@ -1,0 +1,37 @@
+/* Breadcrumb */
+.ux-breadcrumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ux-breadcrumb-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.ux-breadcrumb-link {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.ux-breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.ux-breadcrumb-text {
+    color: #6b7280;
+}
+
+.ux-breadcrumb-item.active .ux-breadcrumb-text {
+    color: #374151;
+    font-weight: 500;
+}
+
+.ux-breadcrumb-separator {
+    margin: 0 0.5rem;
+    color: #9ca3af;
+}

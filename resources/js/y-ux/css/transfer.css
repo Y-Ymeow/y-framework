@@ -1,0 +1,195 @@
+/* Transfer 穿梭框 */
+.ux-transfer {
+    --transfer-border: #e5e7eb;
+    --transfer-bg: #fff;
+    --transfer-panel-width: 200px;
+    --transfer-panel-height: 300px;
+    --transfer-primary: var(--ux-primary, #3b82f6);
+
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 面板 */
+.ux-transfer-panel {
+    width: var(--transfer-panel-width);
+    height: var(--transfer-panel-height);
+    border: 1px solid var(--transfer-border);
+    border-radius: 8px;
+    background-color: var(--transfer-bg);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 头部 */
+.ux-transfer-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--transfer-border);
+    background-color: #f9fafb;
+    border-radius: 8px 8px 0 0;
+}
+
+.ux-transfer-panel-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.ux-transfer-panel-checkbox input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.ux-transfer-panel-title {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.ux-transfer-panel-count {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* 搜索框 */
+.ux-transfer-panel-search {
+    position: relative;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--transfer-border);
+}
+
+.ux-transfer-panel-search-input {
+    width: 100%;
+    padding: 6px 28px 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.ux-transfer-panel-search-input:focus {
+    border-color: var(--transfer-primary);
+}
+
+.ux-transfer-panel-search-icon {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* 列表 */
+.ux-transfer-panel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.ux-transfer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ux-transfer-item:hover {
+    background-color: #f3f4f6;
+}
+
+.ux-transfer-item.selected {
+    background-color: #eff6ff;
+}
+
+.ux-transfer-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.ux-transfer-item-text {
+    flex: 1;
+    font-size: 13px;
+    color: #374151;
+}
+
+.ux-transfer-item.selected .ux-transfer-item-text {
+    color: var(--transfer-primary);
+}
+
+/* 空状态 */
+.ux-transfer-panel-empty,
+.ux-transfer-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* 底部 */
+.ux-transfer-panel-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--transfer-border);
+    background-color: #f9fafb;
+    border-radius: 0 0 8px 8px;
+}
+
+/* 操作区 */
+.ux-transfer-operations {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ux-transfer-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--transfer-border);
+    background-color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #374151;
+    transition: all 0.2s;
+}
+
+.ux-transfer-btn:hover:not(:disabled) {
+    border-color: var(--transfer-primary);
+    color: var(--transfer-primary);
+}
+
+.ux-transfer-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 禁用状态 */
+.ux-transfer-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* 大尺寸 */
+.ux-transfer-lg .ux-transfer-panel {
+    width: 280px;
+    height: 400px;
+}
+
+/* 小尺寸 */
+.ux-transfer-sm .ux-transfer-panel {
+    width: 160px;
+    height: 240px;
+}

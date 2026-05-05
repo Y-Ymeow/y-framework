@@ -1,0 +1,344 @@
+/* DateRangePicker 日期范围选择器 */
+.ux-date-range-picker {
+    --date-range-picker-border: #d1d5db;
+    --date-range-picker-radius: 6px;
+    --date-range-picker-bg: #fff;
+    --date-range-picker-width: 320px;
+
+    display: inline-block;
+    position: relative;
+    width: var(--date-range-picker-width);
+}
+
+/* 输入框包装 */
+.ux-date-range-picker-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--date-range-picker-border);
+    border-radius: var(--date-range-picker-radius);
+    background-color: var(--date-range-picker-bg);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ux-date-range-picker-input-wrapper:hover {
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-date-range-picker-open .ux-date-range-picker-input-wrapper {
+    border-color: var(--ux-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 输入框 */
+.ux-date-range-picker-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+}
+
+.ux-date-range-picker-input:focus {
+    outline: none;
+}
+
+.ux-date-range-picker-input::placeholder {
+    color: #9ca3af;
+}
+
+/* 图标 */
+.ux-date-range-picker-icon {
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* 清除按钮 */
+.ux-date-range-picker-clear {
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.ux-date-range-picker-input-wrapper:hover .ux-date-range-picker-clear {
+    opacity: 1;
+}
+
+.ux-date-range-picker-clear:hover {
+    color: #ef4444;
+}
+
+/* 禁用状态 */
+.ux-date-range-picker-disabled .ux-date-range-picker-input-wrapper {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.ux-date-range-picker-disabled .ux-date-range-picker-input {
+    cursor: not-allowed;
+    color: #9ca3af;
+}
+
+/* 日历下拉面板 */
+.ux-date-range-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background-color: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1050;
+    padding: 16px;
+    min-width: 560px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.2s;
+}
+
+.ux-date-range-picker-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 双日历布局 */
+.ux-date-range-picker-calendars {
+    display: flex;
+    gap: 24px;
+}
+
+.ux-date-range-picker-calendar {
+    flex: 1;
+}
+
+.ux-date-range-picker-calendar-title {
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    color: #111827;
+    margin-bottom: 12px;
+}
+
+/* 选中范围样式 */
+.ux-date-range-picker-day.in-range {
+    background-color: #eff6ff;
+    color: var(--ux-primary, #3b82f6);
+}
+
+.ux-date-range-picker-day.range-start,
+.ux-date-range-picker-day.range-end {
+    background-color: var(--ux-primary, #3b82f6);
+    color: #fff;
+}
+
+/* 底部操作栏 */
+.ux-date-range-picker-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ux-date-range-picker-presets {
+    display: flex;
+    gap: 8px;
+}
+
+.ux-date-range-picker-preset {
+    font-size: 13px;
+    color: var(--ux-primary, #3b82f6);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.ux-date-range-picker-preset:hover {
+    background-color: #eff6ff;
+}
+
+.ux-date-range-picker-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 日历内部样式 */
+.ux-date-range-picker-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ux-date-range-picker-nav-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.ux-date-range-picker-nav-btn:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.ux-date-range-picker-calendar-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #111827;
+}
+
+.ux-date-range-picker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.ux-date-range-picker-weekday {
+    text-align: center;
+    font-size: 12px;
+    color: #9ca3af;
+    padding: 4px;
+}
+
+.ux-date-range-picker-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.ux-date-range-picker-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+}
+
+.ux-date-range-picker-day:hover:not(.disabled):not(.other-month) {
+    background-color: #f3f4f6;
+}
+
+.ux-date-range-picker-day.today {
+    border: 1px solid var(--ux-primary, #3b82f6);
+    color: var(--ux-primary, #3b82f6);
+}
+
+.ux-date-range-picker-day.selected,
+.ux-date-range-picker-day.range-start,
+.ux-date-range-picker-day.range-end {
+    background-color: var(--ux-primary, #3b82f6);
+    color: #fff;
+}
+
+.ux-date-range-picker-day.in-range {
+    background-color: #eff6ff;
+    color: var(--ux-primary, #3b82f6);
+}
+
+.ux-date-range-picker-day.other-month {
+    color: #d1d5db;
+}
+
+.ux-date-range-picker-day.disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.ux-date-range-picker-clear-btn {
+    padding: 4px 12px;
+    font-size: 13px;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ux-date-range-picker-clear-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* 时间选择器 */
+.ux-date-range-picker-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ux-date-range-picker-time select {
+    width: 56px;
+    height: 28px;
+    padding: 0 4px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #374151;
+    background-color: #fff;
+    cursor: pointer;
+    outline: none;
+    text-align: center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.ux-date-range-picker-time select:hover {
+    border-color: var(--ux-primary, #3b82f6);
+}
+
+.ux-date-range-picker-time select:focus {
+    border-color: var(--ux-primary, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.ux-date-range-picker-time-sep {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.ux-date-range-picker-confirm-btn {
+    font-size: 13px;
+    color: #fff;
+    background-color: var(--ux-primary, #3b82f6);
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ux-date-range-picker-confirm-btn:hover {
+    background-color: #2563eb;
+}

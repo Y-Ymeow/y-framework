@@ -1,0 +1,70 @@
+/* Empty 空状态 */
+.ux-empty {
+    --empty-icon-color: var(--ux-border-color, #e5e7eb);
+    --empty-text-color: var(--ux-text-secondary, #6b7280);
+    --empty-font-size: 14px;
+    --empty-icon-size: 120px;
+    --empty-margin: 32px 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: var(--empty-margin);
+    text-align: center;
+}
+
+/* 尺寸变体 */
+.ux-empty-sm {
+    --empty-icon-size: 80px;
+    --empty-font-size: 12px;
+    --empty-margin: 16px 0;
+}
+
+.ux-empty-lg {
+    --empty-icon-size: 160px;
+    --empty-font-size: 16px;
+    --empty-margin: 48px 0;
+}
+
+/* 图片区域 */
+.ux-empty-image {
+    width: var(--empty-icon-size);
+    height: auto;
+    margin-bottom: 16px;
+    color: var(--empty-icon-color);
+}
+
+.ux-empty-image svg,
+.ux-empty-image img {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+}
+
+/* 描述文字 */
+.ux-empty-description {
+    font-size: var(--empty-font-size);
+    color: var(--empty-text-color);
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+/* 额外内容 */
+.ux-empty-extra {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* 简单模式 - 只有文字和图标 */
+.ux-empty-simple {
+    --empty-icon-size: 48px;
+    --empty-font-size: 12px;
+    --empty-margin: 8px 0;
+}
+
+.ux-empty-simple .ux-empty-description {
+    margin-bottom: 0;
+}
