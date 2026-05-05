@@ -65,7 +65,9 @@ class ConfigManager
         }
 
         if (self::$defaults === null) {
-            $defaultsDir = dirname(__DIR__) . '/Config/defaults';
+            $base = self::resolveBasePath();
+            $p = new \Framework\Support\Paths($base);
+            $defaultsDir = $p->config();
             self::$defaults = [];
             if (is_dir($defaultsDir)) {
                 foreach (glob($defaultsDir . '/*.php') as $file) {
