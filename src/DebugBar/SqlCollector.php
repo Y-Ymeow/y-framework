@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Framework\DebugBar;
 
 use Framework\Foundation\Application;
-use Framework\Database\Connection;
-use Framework\Database\Model;
+use Framework\Database\Connection\Manager;
 
 class SqlCollector implements CollectorInterface
 {
@@ -41,14 +40,10 @@ class SqlCollector implements CollectorInterface
     {
         $connection = null;
         try {
-            $connection = Connection::get();
+            $app = Application::getInstance();
+            $manager = $app->make(Manager::class);
+            $connection = $manager->connection();
         } catch (\Throwable $e) {}
-
-        if (!$connection) {
-            try {
-                $connection = Model::getConnection();
-            } catch (\Throwable $e) {}
-        }
 
         if (!$connection) {
             return;
@@ -56,7 +51,7 @@ class SqlCollector implements CollectorInterface
 
         $rawQueries = $connection->getQueries();
         $this->totalTime = $connection->getTotalQueryTime();
-        
+
         $this->queries = array_map(function($q) {
             return [
                 'sql' => $q['sql'],
@@ -66,9 +61,6 @@ class SqlCollector implements CollectorInterface
         }, $rawQueries);
     }
 
-    /**
-     * 保持静态方法以兼容旧调用
-     */
     public static function register(): void
     {
         $debugBar = DebugBar::getInstance();

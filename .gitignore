@@ -60,3 +60,4 @@ resources/
 public/
 storage/sessions/
 storage/sse/
+.phpunit.cache/test-results

@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Framework\Database\Migration;
 
-use Framework\Database\Connection;
+use Framework\Database\Connection\Manager;
 use Framework\Database\Schema\Schema;
 
 abstract class Migration
 {
-    protected Connection $connection;
+    protected Manager $manager;
     protected Schema $schema;
 
-    public function __construct(Connection $connection)
+    public function __construct(Manager $manager)
     {
-        $this->connection = $connection;
-        $this->schema = new Schema($connection);
+        $this->manager = $manager;
+        $this->schema = new Schema($manager);
     }
 
     abstract public function up(): void;

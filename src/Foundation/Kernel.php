@@ -7,7 +7,9 @@ namespace Framework\Foundation;
 use Framework\Events\Hook;
 use Framework\Events\BootEvent;
 use Framework\Events\RequestEvent;
-use Framework\Events\ResponseEvent;
+use Framework\Events\ResponseCreatedEvent;
+use Framework\Events\ResponseSendingEvent;
+use Framework\Events\ResponseSentEvent;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
 use Framework\Http\Response\StreamedResponse;
@@ -69,16 +71,18 @@ class Kernel
 
         $response = $this->router->dispatch($request);
 
-        Hook::getInstance()->emit('response.created', [$response, $request]);
+        Hook::getInstance()->dispatch(new ResponseCreatedEvent($response, $request));
 
-        $response = Hook::getInstance()->filter('response.sending', $response, [$request]);
+        $sendingEvent = new ResponseSendingEvent($response, $request);
+        Hook::getInstance()->dispatch($sendingEvent);
+        $response = $sendingEvent->getResponse();
 
         return $response;
     }
 
     public function terminate(Request $request, Response|StreamedResponse $response): void
     {
-        Hook::getInstance()->emit('response.sent', [$response, $request]);
+        Hook::getInstance()->dispatch(new ResponseSentEvent($response, $request));
     }
 
     public function getRouter(): Router

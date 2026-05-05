@@ -24,9 +24,22 @@ class Hook implements EventDispatcherInterface
         self::$instance = $instance;
     }
 
-    public function on(string $eventName, callable $listener, int $priority = 0): void
+    public function on(string $eventName, callable $listener, int $priority = 0, int $acceptedArgs = -1): void
     {
-        $this->listeners[$eventName][$priority][] = $listener;
+        // 如果指定了 acceptedArgs，用闭包包装 listener 限制参数数量
+        $callback = $listener;
+        if ($acceptedArgs > 0) {
+            $callback = function (...$args) use ($listener, $acceptedArgs) {
+                return $listener(...array_slice($args, 0, $acceptedArgs));
+            };
+        }
+
+        // 存储 listener 信息（包含原始 callback 用于移除匹配）
+        $this->listeners[$eventName][$priority][] = [
+            'callback' => $callback,
+            'original' => $listener,
+            'acceptedArgs' => $acceptedArgs,
+        ];
 
         if (str_contains($eventName, '*')) {
             $this->wildcardPatterns[$eventName] = $this->compileWildcardPattern($eventName);
@@ -44,8 +57,10 @@ class Hook implements EventDispatcherInterface
         if (empty($this->listeners[$eventName])) return;
 
         foreach ($this->listeners[$eventName] as $priority => $listeners) {
-            foreach ($listeners as $key => $l) {
-                if ($l === $listener) {
+            foreach ($listeners as $key => $entry) {
+                // 匹配原始 callback 或包装后的 callback
+                $matched = ($entry['original'] === $listener) || ($entry['callback'] === $listener);
+                if ($matched) {
                     unset($this->listeners[$eventName][$priority][$key]);
                 }
             }
@@ -65,21 +80,27 @@ class Hook implements EventDispatcherInterface
         $direct = $this->listeners[$eventName] ?? [];
         $wildcard = $this->getWildcardListeners($eventName);
 
-        $all = array_merge($direct, $wildcard);
+        // 使用保留键的合并方式，避免 array_merge 重索引数字键导致优先级丢失
+        $all = $direct;
+        foreach ($wildcard as $priority => $listeners) {
+            $all[$priority] = array_merge($all[$priority] ?? [], $listeners);
+        }
 
         $sorted = [];
-        foreach ($all as $priority => $listeners) {
-            foreach ($listeners as $listener) {
-                $sorted[$priority][] = $listener;
+        foreach ($all as $priority => $entries) {
+            // 提取 callback（存储结构包含 callback/original/acceptedArgs）
+            foreach ($entries as $entry) {
+                $callback = is_array($entry) ? $entry['callback'] : $entry;
+                $sorted[$priority][] = $callback;
             }
         }
 
-        ksort($sorted);
+        ksort($sorted, SORT_NUMERIC);
 
         $result = [];
-        foreach ($sorted as $listeners) {
-            foreach ($listeners as $listener) {
-                $result[] = $listener;
+        foreach ($sorted as $callbacks) {
+            foreach ($callbacks as $callback) {
+                $result[] = $callback;
             }
         }
         return $result;
@@ -126,7 +147,10 @@ class Hook implements EventDispatcherInterface
         }
     }
 
-    public function filter(string $eventName, mixed $value, array $args = []): mixed
+    /**
+     * 内部 filter 实现（接受 variadic 参数）
+     */
+    public function runFilter(string $eventName, mixed $value, mixed ...$args): mixed
     {
         $this->fired[$eventName] = true;
 
@@ -137,6 +161,14 @@ class Hook implements EventDispatcherInterface
         }
 
         return $value;
+    }
+
+    /**
+     * 接口要求的 filter 方法（接受 array 参数）
+     */
+    public function filter(string $eventName, mixed $value, array $args = []): mixed
+    {
+        return $this->runFilter($eventName, $value, ...$args);
     }
 
     public function addSubscriber(EventSubscriberInterface $subscriber): void
@@ -174,7 +206,7 @@ class Hook implements EventDispatcherInterface
         return !empty($this->fired[$eventName]);
     }
 
-    public function clear(string $eventName): void
+    public function clearListeners(string $eventName): void
     {
         $this->off($eventName);
     }
@@ -209,12 +241,13 @@ class Hook implements EventDispatcherInterface
         foreach ($this->wildcardPatterns as $pattern => $regex) {
             if (preg_match($regex, $eventName)) {
                 if (isset($this->listeners[$pattern])) {
-                    foreach ($this->listeners[$pattern] as $priority => $listeners) {
+                    foreach ($this->listeners[$pattern] as $priority => $entries) {
                         if (!isset($matched[$priority])) {
                             $matched[$priority] = [];
                         }
-                        foreach ($listeners as $listener) {
-                            $matched[$priority][] = $listener;
+                        foreach ($entries as $entry) {
+                            $callback = is_array($entry) ? $entry['callback'] : $entry;
+                            $matched[$priority][] = $callback;
                         }
                     }
                 }
@@ -226,12 +259,12 @@ class Hook implements EventDispatcherInterface
 
     public static function addAction(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
     {
-        self::getInstance()->on($hook, $callback, $priority);
+        self::getInstance()->on($hook, $callback, $priority, $acceptedArgs);
     }
 
     public static function addFilter(string $hook, callable $callback, int $priority = 10, int $acceptedArgs = 1): void
     {
-        self::getInstance()->on($hook, $callback, $priority);
+        self::getInstance()->on($hook, $callback, $priority, $acceptedArgs);
     }
 
     public static function bind(string $hook, callable $callback, int $priority = 10): void
@@ -272,6 +305,11 @@ class Hook implements EventDispatcherInterface
     public static function removeFilter(string $hook, ?callable $callback = null, ?int $priority = null): void
     {
         self::getInstance()->off($hook, $callback);
+    }
+
+    public static function clear(string $hook): void
+    {
+        self::getInstance()->clearListeners($hook);
     }
 
     public static function reset(): void

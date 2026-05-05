@@ -5,40 +5,16 @@ declare(strict_types=1);
 namespace Framework\Database\Traits;
 
 use Framework\Database\Model;
+use Framework\Database\Scopes\SoftDeletingScope;
 
-/**
- * HasSoftDeletes 软删除 Trait
- *
- * 为 Model 提供软删除能力，不物理删除记录，而是设置 deleted_at 时间戳。
- *
- * ## 使用方式
- *
- * 1. 在 Model 中 use HasSoftDeletes
- * 2. 数据库需要有 deleted_at 字段（TIMESTAMP，nullable）
- *
- * @example
- * class User extends Model
- * {
- *     use \Framework\Database\Traits\HasSoftDeletes;
- *
- *     protected array $fillable = ['name', 'email'];
- * }
- *
- * // 软删除（设置 deleted_at）
- * $user->delete();
- *
- * // 恢复软删除
- * $user->restore();
- *
- * // 强制物理删除
- * $user->forceDelete();
- *
- * // 查询排除已软删除的记录
- * User::where('name', 'John')->get();  // 自动加 WHERE deleted_at IS NULL
- */
 trait HasSoftDeletes
 {
     protected string $deletedAtColumn = 'deleted_at';
+
+    public static function bootHasSoftDeletes(): void
+    {
+        static::addGlobalScope(new SoftDeletingScope());
+    }
 
     public function getDeletedAtColumn(): string
     {
@@ -59,7 +35,7 @@ trait HasSoftDeletes
 
     public function delete(): bool
     {
-        if ($this->fireModelEvent('deleting', true) === false) {
+        if ($this->fireModelEvent(Model::EVENT_DELETING, true) === false) {
             return false;
         }
 
@@ -71,7 +47,7 @@ trait HasSoftDeletes
             ->where($this->primaryKey, $this->getKey())
             ->update([$this->deletedAtColumn => $time]);
 
-        $this->fireModelEvent('deleted', false);
+        $this->fireModelEvent(Model::EVENT_DELETED, false);
 
         return true;
     }

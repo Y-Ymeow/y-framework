@@ -665,4 +665,9 @@ class Blueprint
     {
         return $this->foreignKeys;
     }
+
+    public function getPrimaryKey(): ?string
+    {
+        return $this->primaryKey;
+    }
 }

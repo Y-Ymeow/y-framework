@@ -87,11 +87,11 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use Framework\Database\Connection;
+use Framework\Database\Contracts\ConnectionInterface;
 
 class {$className}
 {
-    public function run(Connection \$db): void
+    public function run(ConnectionInterface \$db): void
     {
         \$db->table('table_name')->insert([
             'column' => 'value',

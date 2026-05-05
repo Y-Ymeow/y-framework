@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live;
 
+use Framework\Events\LiveActionEvent;
 use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
 use Framework\Http\Middleware\VerifyCsrfToken;
@@ -88,7 +89,9 @@ class LiveRequestHandler
             $this->collectActionResult($response, $result);
             $this->collectComponentOperations($response, $component);
 
-            $response = \Framework\Events\Hook::getInstance()->filter('live.action.completed', $response, [$component, app()->make(Request::class)]);
+            $event = new LiveActionEvent($response, $component, app()->make(Request::class));
+            \Framework\Events\Hook::getInstance()->dispatch($event);
+            $response = $event->getResponse();
 
             return Response::json($response);
         } catch (\Throwable $e) {

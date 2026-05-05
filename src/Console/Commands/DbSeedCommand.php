@@ -12,7 +12,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
-use Framework\Database\Connection;
+use Framework\Database\Connection\Manager;
+use Framework\Database\Contracts\ConnectionInterface;
 
 #[AsCommand(
     name: 'db:seed',
@@ -44,6 +45,9 @@ class DbSeedCommand extends Command
             $this->app->bootstrapProviders();
         }
 
+        $manager = $this->app->make(Manager::class);
+        $connection = $manager->connection($input->getOption('database'));
+
         $class = $input->getArgument('class') ?: 'DatabaseSeeder';
         $seedersPath = $this->app->basePath('database/seeders');
 
@@ -51,8 +55,6 @@ class DbSeedCommand extends Command
             $io->warning('No seeders directory found. Run make:seed first.');
             return Command::FAILURE;
         }
-
-        $connection = Connection::get($input->getOption('database'));
 
         if ($class === 'DatabaseSeeder') {
             $filePath = $seedersPath . '/DatabaseSeeder.php';
@@ -93,7 +95,7 @@ class DbSeedCommand extends Command
             }
         }
 
-        $fullClass = str_starts_with($class, 'Database\\Seeders\\') ? $class : 'Database\\Seeders\\' . $class;
+        $fullClass = str_starts_with($class, 'Database\Seeders\\') ? $class : 'Database\\Seeders\\' . $class;
         $shortName = str_replace('Database\\Seeders\\', '', $fullClass);
         $filePath = $path . '/' . str_replace('\\', '/', $shortName) . '.php';
 
@@ -120,11 +122,11 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use Framework\Database\Connection;
+use Framework\Database\Contracts\ConnectionInterface;
 
 class DatabaseSeeder
 {
-    public function run(Connection $db): void
+    public function run(ConnectionInterface $db): void
     {
         // 在此注册需要运行的 Seeder
         // (new UserSeeder())->run($db);

@@ -5,6 +5,15 @@ declare(strict_types=1);
 namespace Framework\Lifecycle;
 
 use Framework\Events\Hook;
+use Framework\Events\BootEvent;
+use Framework\Events\CollectorRegisteredEvent;
+use Framework\Events\RouteRegisteringEvent;
+use Framework\Events\RouteRegisteredEvent;
+use Framework\Events\ComponentRegisteringEvent;
+use Framework\Events\ComponentRegisteredEvent;
+use Framework\Events\ServiceRegisteringEvent;
+use Framework\Events\ServiceRegisteredEvent;
+use Framework\Events\ScheduleRegisteringEvent;
 
 class LifecycleManager
 {
@@ -35,7 +44,7 @@ class LifecycleManager
     public function registerCollector(string $name, CollectorInterface $collector): void
     {
         $this->collectors[$name] = $collector;
-        Hook::fire('collector.registered', $name, $collector);
+        Hook::getInstance()->dispatch(new CollectorRegisteredEvent($name, $collector));
     }
 
     public function getCollector(string $name): ?CollectorInterface
@@ -45,7 +54,7 @@ class LifecycleManager
 
     public function registerRoute(array $route): void
     {
-        Hook::fire('routes.registering', $route);
+        Hook::getInstance()->dispatch(new RouteRegisteringEvent($route));
 
         $collector = $this->getCollector('routes');
         if ($collector === null) {
@@ -55,13 +64,13 @@ class LifecycleManager
 
         if ($collector instanceof RouteCollector) {
             $collector->addRoute($route);
-            Hook::fire('routes.registered', $route);
+            Hook::getInstance()->dispatch(new RouteRegisteredEvent($route));
         }
     }
 
     public function registerComponent(array $component): void
     {
-        Hook::fire('components.registering', $component);
+        Hook::getInstance()->dispatch(new ComponentRegisteringEvent($component));
 
         $collector = $this->getCollector('components');
         if ($collector === null) {
@@ -71,13 +80,13 @@ class LifecycleManager
 
         if ($collector instanceof ComponentCollector) {
             $collector->addComponent($component);
-            Hook::fire('components.registered', $component);
+            Hook::getInstance()->dispatch(new ComponentRegisteredEvent($component));
         }
     }
 
     public function registerService(string $name, string $class, bool $singleton = false, ?string $alias = null): void
     {
-        Hook::fire('services.registering', $name, $class, $singleton);
+        Hook::getInstance()->dispatch(new ServiceRegisteringEvent($name, $class, $singleton));
 
         $collector = $this->getCollector('services');
         if ($collector === null) {
@@ -92,13 +101,13 @@ class LifecycleManager
 
         if ($collector instanceof ServiceCollector) {
             $collector->register($name, $class, $singleton, $alias);
-            Hook::fire('services.registered', $name, $class, $singleton);
+            Hook::getInstance()->dispatch(new ServiceRegisteredEvent($name, $class, $singleton));
         }
     }
 
     public function registerSchedule(array $schedule): void
     {
-        Hook::fire('schedules.registering', $schedule);
+        Hook::getInstance()->dispatch(new ScheduleRegisteringEvent($schedule));
 
         $scheduler = app()->make(\Framework\Scheduler\Scheduler::class);
         if ($scheduler) {
@@ -133,9 +142,9 @@ class LifecycleManager
     {
         if ($this->booted) return;
 
-        Hook::fire('app.booting');
+        Hook::getInstance()->dispatch(new BootEvent('app.booting'));
         $this->flushPending();
-        Hook::fire('app.booted');
+        Hook::getInstance()->dispatch(new BootEvent('app.booted'));
 
         $this->booted = true;
     }

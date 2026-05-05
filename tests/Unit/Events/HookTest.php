@@ -41,7 +41,7 @@ class HookTest extends \PHPUnit\Framework\TestCase
             return strtoupper($value);
         });
 
-        $result = Hook::filter('test.filter', 'hello');
+        $result = Hook::applyFilter('test.filter', 'hello');
         $this->assertEquals('HELLO', $result);
     }
 
@@ -55,7 +55,7 @@ class HookTest extends \PHPUnit\Framework\TestCase
             return $value . '2';
         }, 20);
 
-        $result = Hook::filter('test.filter', 'start');
+        $result = Hook::applyFilter('test.filter', 'start');
         $this->assertEquals('start12', $result);
     }
 

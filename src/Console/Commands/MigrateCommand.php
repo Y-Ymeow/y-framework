@@ -7,13 +7,13 @@ namespace Framework\Console\Commands;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
-use Framework\Database\Connection;
+use Framework\Database\Connection\Manager;
 use Framework\Database\Schema\Schema;
+use Framework\Database\Migration\DatabaseMigrationRepository;
 
 #[AsCommand(
     name: 'migrate',
@@ -46,15 +46,15 @@ class MigrateCommand extends Command
             $this->app->bootstrapProviders();
         }
 
-        $connection = $this->app->make(Connection::class);
-        $schema = new Schema($connection);
+        $manager = $this->app->make(Manager::class);
+        $repository = new DatabaseMigrationRepository($manager);
 
-        $this->ensureMigrationsTable($connection);
+        $repository->createRepository();
 
         if ($input->getOption('fresh')) {
             $io->warning('Dropping all tables...');
-            $this->dropAllTables($connection, $schema);
-            $this->ensureMigrationsTable($connection);
+            $this->dropAllTables($manager);
+            $repository->createRepository();
         }
 
         $migrationsPath = $this->app->basePath('database/migrations');
@@ -62,7 +62,7 @@ class MigrateCommand extends Command
             mkdir($migrationsPath, 0755, true);
         }
 
-        $migrations = $this->getPendingMigrations($connection, $migrationsPath);
+        $migrations = $this->getPendingMigrations($repository, $migrationsPath);
 
         if (empty($migrations)) {
             $io->success('Nothing to migrate.');
@@ -74,7 +74,7 @@ class MigrateCommand extends Command
             $migrations = array_slice($migrations, 0, $step);
         }
 
-        $batch = $this->getNextBatchNumber($connection);
+        $batch = $repository->getLastBatchNumber() + 1;
 
         foreach ($migrations as $file) {
             $io->text("Migrating: {$file}");
@@ -82,13 +82,10 @@ class MigrateCommand extends Command
             require_once $migrationsPath . '/' . $file;
 
             $className = $this->getClassNameFromFile($file);
-            $migration = new $className($connection);
+            $migration = new $className($manager);
             $migration->up();
 
-            $connection->insert('migrations', [
-                'migration' => $file,
-                'batch' => $batch,
-            ]);
+            $repository->log($file, $batch);
 
             $io->text("<info>Migrated:</info> {$file}");
         }
@@ -103,30 +100,9 @@ class MigrateCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function ensureMigrationsTable(Connection $connection): void
+    private function getPendingMigrations(DatabaseMigrationRepository $repository, string $path): array
     {
-        if ($connection->getDriverName() === 'sqlite') {
-            $sql = "CREATE TABLE IF NOT EXISTS migrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                migration VARCHAR(255) NOT NULL,
-                batch INT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )";
-        } else {
-            $sql = "CREATE TABLE IF NOT EXISTS `migrations` (
-                `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                `migration` VARCHAR(255) NOT NULL,
-                `batch` INT NOT NULL,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-        }
-
-        $connection->execute($sql);
-    }
-
-    private function getPendingMigrations(Connection $connection, string $path): array
-    {
-        $ran = $this->getRanMigrations($connection);
+        $ran = $repository->getRan();
         $files = glob($path . '/*.php');
         $migrations = [];
 
@@ -141,34 +117,25 @@ class MigrateCommand extends Command
         return $migrations;
     }
 
-    private function getRanMigrations(Connection $connection): array
-    {
-        $results = $connection->query("SELECT migration FROM migrations ORDER BY id");
-        return array_column($results, 'migration');
-    }
-
-    private function getNextBatchNumber(Connection $connection): int
-    {
-        $result = $connection->queryOne("SELECT MAX(batch) as max_batch FROM migrations");
-        return ($result['max_batch'] ?? 0) + 1;
-    }
-
     private function getClassNameFromFile(string $file): string
     {
         $name = pathinfo($file, PATHINFO_FILENAME);
         $parts = explode('_', $name);
         $className = '';
-        
+
         foreach (array_slice($parts, 4) as $part) {
             $className .= ucfirst($part);
         }
-        
+
         return "Database\\Migrations\\{$className}";
     }
 
-    private function dropAllTables(Connection $connection, Schema $schema): void
+    private function dropAllTables(Manager $manager): void
     {
-        if ($connection->getDriverName() === 'sqlite') {
+        $connection = $manager->connection();
+        $driver = $connection->getDriverName();
+
+        if ($driver === 'sqlite') {
             $tables = $connection->query("SELECT name AS table_name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
         } else {
             $tables = $connection->query("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()");

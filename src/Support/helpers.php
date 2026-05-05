@@ -293,18 +293,9 @@ function app(?string $name = null): mixed
     return $app;
 }
 
-/**
- * 获取数据库连接实例
- *
- * @param string|null $connection 连接名称
- * @return \Framework\Database\Connection
- *
- * @example db() 默认连接
- * @example db('tenant') 指定连接
- */
-function db(?string $connection = null): \Framework\Database\Connection
+function db(?string $connection = null): \Framework\Database\Contracts\ConnectionInterface
 {
-    return \Framework\Database\Connection::get($connection);
+    return \Framework\Database\Facades\DB::connection($connection);
 }
 
 /**

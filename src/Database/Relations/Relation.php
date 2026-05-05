@@ -30,4 +30,24 @@ abstract class Relation
     {
         return $this->parent->{$this->localKey};
     }
+
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getLocalKey(): string
+    {
+        return $this->localKey;
+    }
+
+    public function getRelated(): string
+    {
+        return $this->related;
+    }
+
+    public function getParent(): mixed
+    {
+        return $this->parent;
+    }
 }

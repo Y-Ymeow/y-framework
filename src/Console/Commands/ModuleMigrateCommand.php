@@ -12,7 +12,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
-use Framework\Database\Connection;
+use Framework\Database\Connection\Manager;
+use Framework\Database\Migration\DatabaseMigrationRepository;
 use Framework\Module\ModuleManager;
 
 #[AsCommand(
@@ -57,9 +58,10 @@ class ModuleMigrateCommand extends Command
         }
 
         $moduleName = $input->getArgument('module');
-        $connection = $this->app->make(Connection::class);
+        $manager = $this->app->make(Manager::class);
+        $repository = new DatabaseMigrationRepository($manager);
 
-        $this->ensureMigrationsTable($connection);
+        $repository->createRepository();
 
         if ($moduleName) {
             $module = $moduleManager->getModule($moduleName);
@@ -74,14 +76,14 @@ class ModuleMigrateCommand extends Command
         }
 
         if ($input->getOption('rollback')) {
-            return $this->rollbackModules($modules, $connection, $io);
+            return $this->rollbackModules($modules, $manager, $repository, $io);
         }
 
         if ($input->getOption('fresh')) {
-            return $this->freshModules($modules, $connection, $io);
+            return $this->freshModules($modules, $manager, $repository, $io);
         }
 
-        return $this->runModules($modules, $connection, $io);
+        return $this->runModules($modules, $manager, $repository, $io);
     }
 
     private function listModules(ModuleManager $manager, SymfonyStyle $io): int
@@ -119,7 +121,7 @@ class ModuleMigrateCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function runModules(array $modules, Connection $connection, SymfonyStyle $io): int
+    private function runModules(array $modules, Manager $manager, DatabaseMigrationRepository $repository, SymfonyStyle $io): int
     {
         $io->title('Running Module Migrations');
 
@@ -134,14 +136,14 @@ class ModuleMigrateCommand extends Command
 
             $io->section("Module: {$module->getName()}");
 
-            $pending = $this->getPendingMigrations($connection, $migrationPath, $module->getName());
+            $pending = $this->getPendingMigrations($repository, $migrationPath, $module->getName());
 
             if (empty($pending)) {
                 $io->text("Nothing to migrate for [{$module->getName()}].");
                 continue;
             }
 
-            $batch = $this->getNextBatchNumber($connection);
+            $batch = $repository->getLastBatchNumber() + 1;
 
             foreach ($pending as $file) {
                 $io->text("Migrating: {$file}");
@@ -154,13 +156,10 @@ class ModuleMigrateCommand extends Command
                     continue;
                 }
 
-                $migration = new $className($connection);
+                $migration = new $className($manager);
                 $migration->up();
 
-                $connection->insert('migrations', [
-                    'migration' => $this->getModuleMigrationKey($module->getName(), $file),
-                    'batch' => $batch,
-                ]);
+                $repository->log($this->getModuleMigrationKey($module->getName(), $file), $batch);
 
                 $io->text("<info>Migrated:</info> {$file}");
                 $total++;
@@ -173,7 +172,7 @@ class ModuleMigrateCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function rollbackModules(array $modules, Connection $connection, SymfonyStyle $io): int
+    private function rollbackModules(array $modules, Manager $manager, DatabaseMigrationRepository $repository, SymfonyStyle $io): int
     {
         $io->title('Rolling Back Module Migrations');
 
@@ -187,7 +186,7 @@ class ModuleMigrateCommand extends Command
 
             $io->section("Module: {$module->getName()}");
 
-            $ran = $this->getModuleRanMigrations($connection, $module->getName());
+            $ran = $this->getModuleRanMigrations($repository, $module->getName());
 
             if (empty($ran)) {
                 $io->text("Nothing to rollback for [{$module->getName()}].");
@@ -214,10 +213,10 @@ class ModuleMigrateCommand extends Command
                     continue;
                 }
 
-                $migration = new $className($connection);
+                $migration = new $className($manager);
                 $migration->down();
 
-                $connection->delete('migrations', 'migration = ?', [$key]);
+                $repository->delete($key);
 
                 $io->text("<info>Rolled back:</info> {$file}");
                 $total++;
@@ -230,41 +229,20 @@ class ModuleMigrateCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function freshModules(array $modules, Connection $connection, SymfonyStyle $io): int
+    private function freshModules(array $modules, Manager $manager, DatabaseMigrationRepository $repository, SymfonyStyle $io): int
     {
         $io->title('Fresh Module Migrations');
 
-        $this->rollbackModules($modules, $connection, $io);
+        $this->rollbackModules($modules, $manager, $repository, $io);
 
         $io->newLine();
 
-        return $this->runModules($modules, $connection, $io);
+        return $this->runModules($modules, $manager, $repository, $io);
     }
 
-    private function ensureMigrationsTable(Connection $connection): void
+    private function getPendingMigrations(DatabaseMigrationRepository $repository, string $path, string $moduleName): array
     {
-        if ($connection->getDriverName() === 'sqlite') {
-            $sql = "CREATE TABLE IF NOT EXISTS migrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                migration VARCHAR(255) NOT NULL,
-                batch INT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )";
-        } else {
-            $sql = "CREATE TABLE IF NOT EXISTS `migrations` (
-                `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                `migration` VARCHAR(255) NOT NULL,
-                `batch` INT NOT NULL,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-        }
-
-        $connection->execute($sql);
-    }
-
-    private function getPendingMigrations(Connection $connection, string $path, string $moduleName): array
-    {
-        $ran = $this->getModuleRanMigrations($connection, $moduleName);
+        $ran = $this->getModuleRanMigrations($repository, $moduleName);
         $ranFiles = array_map(fn($r) => $this->extractFileFromKey($r['migration']), $ran);
 
         $files = glob($path . '/*.php');
@@ -281,10 +259,11 @@ class ModuleMigrateCommand extends Command
         return $pending;
     }
 
-    private function getModuleRanMigrations(Connection $connection, string $moduleName): array
+    private function getModuleRanMigrations(DatabaseMigrationRepository $repository, string $moduleName): array
     {
+        $conn = $repository->getConnection();
         $prefix = "module:{$moduleName}:";
-        $results = $connection->query(
+        $results = $conn->query(
             "SELECT * FROM migrations WHERE migration LIKE ? ORDER BY id",
             [$prefix . '%']
         );
@@ -300,12 +279,6 @@ class ModuleMigrateCommand extends Command
     {
         $parts = explode(':', $key, 3);
         return $parts[2] ?? $key;
-    }
-
-    private function getNextBatchNumber(Connection $connection): int
-    {
-        $result = $connection->queryOne("SELECT MAX(batch) as max_batch FROM migrations");
-        return ($result['max_batch'] ?? 0) + 1;
     }
 
     private function getClassNameFromFile(string $file, string $migrationPath): ?string

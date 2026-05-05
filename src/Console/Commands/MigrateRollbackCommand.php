@@ -11,7 +11,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Framework\Foundation\Application;
-use Framework\Database\Connection;
+use Framework\Database\Connection\Manager;
+use Framework\Database\Migration\DatabaseMigrationRepository;
 
 #[AsCommand(
     name: 'migrate:rollback',
@@ -39,13 +40,18 @@ class MigrateRollbackCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $io->title('Rolling Back Migrations');
 
-        $connection = $this->app->make(Connection::class);
+        if (!$this->app->isBooted()) {
+            $this->app->bootstrapProviders();
+        }
+
+        $manager = $this->app->make(Manager::class);
+        $repository = new DatabaseMigrationRepository($manager);
         $migrationsPath = $this->app->basePath('database/migrations');
 
         $batch = (int)$input->getOption('batch');
         $step = (int)$input->getOption('step');
 
-        $migrations = $this->getMigrationsToRollback($connection, $batch, $step);
+        $migrations = $this->getMigrationsToRollback($repository, $batch, $step);
 
         if (empty($migrations)) {
             $io->success('Nothing to rollback.');
@@ -59,10 +65,10 @@ class MigrateRollbackCommand extends Command
             require_once $migrationsPath . '/' . $file;
 
             $className = $this->getClassNameFromFile($file);
-            $migrationInstance = new $className($connection);
+            $migrationInstance = new $className($manager);
             $migrationInstance->down();
 
-            $connection->delete('migrations', 'migration = ?', [$file]);
+            $repository->delete($file);
 
             $io->text("<info>Rolled back:</info> {$file}");
         }
@@ -73,8 +79,10 @@ class MigrateRollbackCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function getMigrationsToRollback(Connection $connection, int $batch, int $step): array
+    private function getMigrationsToRollback(DatabaseMigrationRepository $repository, int $batch, int $step): array
     {
+        $connection = $repository->getConnection();
+
         if ($batch > 0) {
             return $connection->query(
                 "SELECT * FROM migrations WHERE batch = ? ORDER BY id DESC",
@@ -106,11 +114,11 @@ class MigrateRollbackCommand extends Command
         $name = pathinfo($file, PATHINFO_FILENAME);
         $parts = explode('_', $name);
         $className = '';
-        
+
         foreach (array_slice($parts, 4) as $part) {
             $className .= ucfirst($part);
         }
-        
+
         return "Database\\Migrations\\{$className}";
     }
 }

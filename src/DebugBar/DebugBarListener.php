@@ -6,6 +6,9 @@ namespace Framework\DebugBar;
 
 use Framework\Component\Live\LiveEventBus;
 use Framework\Events\Hook;
+use Framework\Events\ResponseCreatedEvent;
+use Framework\Events\ResponseSendingEvent;
+use Framework\Events\LiveActionEvent;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
 use Framework\Http\Response\StreamedResponse;
@@ -30,7 +33,7 @@ class DebugBarListener
         Hook::getInstance()->on('live.action.completed', [$this, 'onLiveActionCompleted'], 10);
     }
 
-    public function onResponseCreated(Response|StreamedResponse $response, Request $request): void
+    public function onResponseCreated(ResponseCreatedEvent $event): void
     {
         if (!Application::isDebug()) return;
 
@@ -41,25 +44,28 @@ class DebugBarListener
         $this->debugBar->collect();
     }
 
-    public function onResponseSending(Response|StreamedResponse $response, Request $request): Response|StreamedResponse
+    public function onResponseSending(ResponseSendingEvent $event): void
     {
-        if (!Application::isDebug()) return $response;
-        if ($response instanceof StreamedResponse) return $response;
-        if ($response instanceof StreamResponse) return $response;
-        if ($response instanceof SseResponse) return $response;
+        $response = $event->getResponse();
+        $request = $event->getRequest();
+
+        if (!Application::isDebug()) return;
+        if ($response instanceof StreamedResponse) return;
+        if ($response instanceof StreamResponse) return;
+        if ($response instanceof SseResponse) return;
 
         if ($request->ajax() || str_contains($request->getRequestUri(), '/live')) {
-            return $response;
+            return;
         }
 
         $contentType = $response->getHeader('Content-Type', '');
 
         if (!str_contains($contentType, 'text/html')) {
-            return $response;
+            return;
         }
 
         if ($response->getStatus() !== 200) {
-            return $response;
+            return;
         }
 
         $content = $response->getContent();
@@ -77,13 +83,15 @@ class DebugBarListener
         }
 
         $response->setContent($content);
-
-        return $response;
     }
 
-    public function onLiveActionCompleted(array $response, \Framework\Component\Live\LiveComponent $component, Request $request): array
+    public function onLiveActionCompleted(LiveActionEvent $event): void
     {
-        if (!Application::isDebug()) return $response;
+        $response = $event->getResponse();
+        $component = $event->getComponent();
+        $request = $event->getRequest();
+
+        if (!Application::isDebug()) return;
 
         $requestBody = [
             '_component' => $request->input('_component'),
@@ -207,7 +215,7 @@ class DebugBarListener
             }
         }
 
-        return $response;
+        $event->setResponse($response);
     }
 
     protected function mergeSnapshots(array $previous, array $new): array
