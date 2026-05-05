@@ -232,10 +232,6 @@ class Builder implements QueryBuilderInterface
 
     public function whereExists(QueryBuilderInterface $query): self
     {
-        if (!$query instanceof self) {
-            throw new \InvalidArgumentException('whereExists requires a Builder instance');
-        }
-
         $this->wheres[] = new ExistsWhereExpression($query, boolean: 'AND', not: false);
 
         return $this;
@@ -243,10 +239,6 @@ class Builder implements QueryBuilderInterface
 
     public function whereNotExists(QueryBuilderInterface $query): self
     {
-        if (!$query instanceof self) {
-            throw new \InvalidArgumentException('whereNotExists requires a Builder instance');
-        }
-
         $this->wheres[] = new ExistsWhereExpression($query, boolean: 'AND', not: true);
 
         return $this;
@@ -568,7 +560,7 @@ class Builder implements QueryBuilderInterface
             'current_page' => $page,
             'last_page' => (int) ceil($total / $perPage),
             'from' => $offset + 1,
-            'to' => min($offset + $perPage, $total),
+            'to' => (int) min($offset + $perPage, $total),
         ];
     }
 
