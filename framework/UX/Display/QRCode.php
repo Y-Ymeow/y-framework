@@ -92,6 +92,17 @@ class QRCode extends UXComponent
             };
             return QRCode;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-qrcode {
+    display: inline-block;
+    line-height: 0;
+}
+.ux-qrcode-canvas {
+    display: block;
+}
+CSS
+        );
     }
 
     /**

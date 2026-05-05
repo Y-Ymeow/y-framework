@@ -18,9 +18,9 @@
   "autoload": {
     "psr-4": {
       "Framework\\": "framework/",
-      "Modules\\": "modules/",
-      "App\\": "app/",
       "Admin\\": "admin/",
+      "App\\": "app/",
+      "Modules\\": "modules/",
       "Support\\": "support/",
       "Database\\": "database/",
       "Services\\": "services/",

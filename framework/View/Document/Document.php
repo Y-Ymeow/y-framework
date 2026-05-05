@@ -184,10 +184,10 @@ class Document
         $csrfToken = $session->token();
 
         $html = '<!DOCTYPE html>';
-        $html .= '<html lang="' . htmlspecialchars($this->lang) . '">';
+        $html .= '<html lang="' . htmlspecialchars($this->lang ?: $config->getLang()) . '">';
 
         $html .= '<head>';
-        foreach ($this->meta as [$name, $content]) {
+        foreach (array_merge($config->getMeta(), $this->meta) as [$name, $content]) {
             if ($name === 'charset') {
                 $html .= '<meta charset="' . htmlspecialchars($content) . '">';
             } elseif ($name === 'viewport') {
@@ -196,7 +196,7 @@ class Document
                 $html .= '<meta name="' . htmlspecialchars($name) . '" content="' . htmlspecialchars($content) . '">';
             }
         }
-        $html .= '<title>' . htmlspecialchars($this->title) . '</title>';
+        $html .= '<title>' . htmlspecialchars($this->title ?: $config->getTitle()) . '</title>';
         $html .= '<meta name="csrf-token" content="' . htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') . '">';
         $html .= $this->assets->renderCss();
 

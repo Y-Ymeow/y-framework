@@ -42,8 +42,10 @@ class Translator
     public static function load(string $locale): void
     {
         $dir = self::$basePath . "/{$locale}";
+
         if (!is_dir($dir)) return;
 
+        // 加载根目录下的翻译文件（如 messages.php, pagination.php）
         foreach (glob("{$dir}/*.php") as $file) {
             $key = basename($file, '.php');
             $messages = require $file;
@@ -52,6 +54,21 @@ class Translator
                     self::$translations[$locale] = [];
                 }
                 self::$translations[$locale][$key] = $messages;
+            }
+        }
+
+        // 加载子目录（命名空间）下的翻译文件（如 ux/datatable.php）
+        foreach (glob("{$dir}/*", GLOB_ONLYDIR) as $subdir) {
+            $namespace = basename($subdir);
+            foreach (glob("{$subdir}/*.php") as $file) {
+                $key = basename($file, '.php');
+                $messages = require $file;
+                if (is_array($messages)) {
+                    if (!isset(self::$translations[$locale][$namespace])) {
+                        self::$translations[$locale][$namespace] = [];
+                    }
+                    self::$translations[$locale][$namespace][$key] = $messages;
+                }
             }
         }
     }
@@ -74,6 +91,29 @@ class Translator
 
     private static function findTranslation(string $key, string $locale): ?string
     {
+        // 检查是否使用命名空间格式：namespace:key（如 ux:datatable.empty_data）
+        if (str_contains($key, ':')) {
+            [$namespace, $remainder] = explode(':', $key, 2);
+            
+            // 命名空间不存在，返回 null
+            if (!isset(self::$translations[$locale][$namespace])) {
+                return null;
+            }
+            
+            // 解析文件名和嵌套键（如 datatable.empty_data → file=datatable, key=empty_data）
+            $parts = explode('.', $remainder);
+            $file = array_shift($parts);
+            $nestedKey = implode('.', $parts);
+            
+            if (!isset(self::$translations[$locale][$namespace][$file])) {
+                return null;
+            }
+            
+            $message = Arr::get(self::$translations[$locale][$namespace][$file], $nestedKey);
+            return is_string($message) ? $message : null;
+        }
+        
+        // 默认格式：file.key（如 messages.welcome 或 pagination.showing）
         $parts = explode('.', $key);
         $file = array_shift($parts);
         $nestedKey = implode('.', $parts);
@@ -88,8 +128,15 @@ class Translator
 
     private static function replaceParameters(string $message, array $replace): string
     {
+        // 按参数名长度从长到短排序，避免前缀冲突
+        uksort($replace, fn($a, $b) => strlen($b) <=> strlen($a));
+
         foreach ($replace as $key => $value) {
-            $message = str_replace(':' . $key, (string) $value, $message);
+            $value = (string) $value;
+            // 支持 :key 格式（如 :from, :total）
+            $message = preg_replace('/:' . preg_quote($key, '/') . '(?!\w)/', $value, $message);
+            // 支持 {key} 格式（如 {from}, {total}）
+            $message = str_replace('{' . $key . '}', $value, $message);
         }
         return $message;
     }
@@ -153,7 +200,14 @@ class Translator
         $result = [];
         foreach ($keys as $key) {
             if (is_string($key)) {
-                $result[$key] = self::get($key, [], $locale);
+                $result[$key] = self::get($key, [], $locale);   
+                continue;             
+            }
+
+            if (is_array($key)) {
+                $data = $key;
+                $key = $data['key'] . ' ' . ($data['params'] ?? '');
+                $result[$key] = self::get($data['key'], json_decode($data['params'] ?? '{}', true), $locale);
             }
         }
         return $result;

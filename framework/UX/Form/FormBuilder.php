@@ -28,6 +28,9 @@ class FormBuilder extends UXComponent
     protected bool $multipart = false;
     protected ?string $submitLabel = null;
     protected array $liveBind = [];
+    protected int $columns = 1;
+    protected ?string $currentSection = null;
+    protected array $sections = [];
 
     /**
      * 设置表单提交方法
@@ -129,11 +132,11 @@ class FormBuilder extends UXComponent
      */
     public function text(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'text',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -147,11 +150,11 @@ class FormBuilder extends UXComponent
      */
     public function email(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'email',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -165,11 +168,11 @@ class FormBuilder extends UXComponent
      */
     public function password(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'password',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -183,11 +186,11 @@ class FormBuilder extends UXComponent
      */
     public function number(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'number',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -201,11 +204,11 @@ class FormBuilder extends UXComponent
      */
     public function textarea(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'textarea',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -219,11 +222,11 @@ class FormBuilder extends UXComponent
      */
     public function richEditor(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'richEditor',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -238,12 +241,12 @@ class FormBuilder extends UXComponent
      */
     public function select(string $name, string $label, array $options = [], array $selectOptions = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'select',
             'name' => $name,
             'label' => $label,
             'options' => $selectOptions,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -257,11 +260,11 @@ class FormBuilder extends UXComponent
      */
     public function checkbox(string $name, string $label, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'checkbox',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -276,12 +279,12 @@ class FormBuilder extends UXComponent
      */
     public function radio(string $name, string $label, array $choices, array $options = []): static
     {
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'radio',
             'name' => $name,
             'label' => $label,
             'choices' => $choices,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -296,11 +299,11 @@ class FormBuilder extends UXComponent
     public function file(string $name, string $label, array $options = []): static
     {
         $this->multipart = true;
-        $this->fields[] = array_merge([
+        $this->addField(array_merge([
             'type' => 'file',
             'name' => $name,
             'label' => $label,
-        ], $options);
+        ], $options));
         return $this;
     }
 
@@ -313,11 +316,11 @@ class FormBuilder extends UXComponent
      */
     public function hidden(string $name, string $value): static
     {
-        $this->fields[] = [
+        $this->addField([
             'type' => 'hidden',
             'name' => $name,
             'value' => $value,
-        ];
+        ]);
         return $this;
     }
 
@@ -332,6 +335,33 @@ class FormBuilder extends UXComponent
     {
         $this->liveBind[$field] = $property;
         return $this;
+    }
+
+    public function columns(int $cols): static
+    {
+        $this->columns = max(1, min(4, $cols));
+        return $this;
+    }
+
+    public function section(string $title, ?string $description = null): static
+    {
+        $this->currentSection = $title;
+        $this->sections[$title] = [
+            'title' => $title,
+            'description' => $description,
+            'fields' => [],
+        ];
+        return $this;
+    }
+
+    protected function addField(array $field): void
+    {
+        $field['_section'] = $this->currentSection;
+        $this->fields[] = $field;
+
+        if ($this->currentSection !== null && isset($this->sections[$this->currentSection])) {
+            $this->sections[$this->currentSection]['fields'][] = $field;
+        }
     }
 
     /**
@@ -364,12 +394,50 @@ class FormBuilder extends UXComponent
             $formEl->attr('enctype', 'multipart/form-data');
         }
 
-        foreach ($this->fields as $field) {
-            $formEl->child($this->renderField($field));
+        if (!empty($this->sections)) {
+            foreach ($this->sections as $section) {
+                $sectionEl = Element::make('div')->class('ux-form-section', 'mb-8');
+
+                $headerEl = Element::make('div')->class('ux-form-section-header', 'mb-4', 'pb-3', 'border-b', 'border-gray-200');
+                $headerEl->child(
+                    Element::make('h3')->class('text-lg', 'font-semibold', 'text-gray-900')->text($section['title'])
+                );
+                if ($section['description']) {
+                    $headerEl->child(
+                        Element::make('p')->class('text-sm', 'text-gray-500', 'mt-1')->text($section['description'])
+                    );
+                }
+                $sectionEl->child($headerEl);
+
+                $gridEl = $this->buildGrid();
+                foreach ($section['fields'] as $field) {
+                    $gridEl->child($this->renderField($field));
+                }
+                $sectionEl->child($gridEl);
+
+                $formEl->child($sectionEl);
+            }
+
+            $orphanFields = array_filter($this->fields, function ($f) {
+                return !isset($f['_section']) || $f['_section'] === null;
+            });
+            if (!empty($orphanFields)) {
+                $gridEl = $this->buildGrid();
+                foreach ($orphanFields as $field) {
+                    $gridEl->child($this->renderField($field));
+                }
+                $formEl->child($gridEl);
+            }
+        } else {
+            $gridEl = $this->buildGrid();
+            foreach ($this->fields as $field) {
+                $gridEl->child($this->renderField($field));
+            }
+            $formEl->child($gridEl);
         }
 
         if ($this->submitLabel) {
-            $btnGroupEl = Element::make('div')->class('ux-form-group');
+            $btnGroupEl = Element::make('div')->class('ux-form-group', 'pt-4', 'border-t', 'border-gray-200');
             $btnGroupEl->child(
                 Button::make()
                     ->label($this->submitLabel)
@@ -380,6 +448,19 @@ class FormBuilder extends UXComponent
         }
 
         return $formEl;
+    }
+
+    protected function buildGrid(): Element
+    {
+        $gridEl = Element::make('div');
+        if ($this->columns > 1) {
+            $gridEl->class('grid', 'gap-4');
+            $colsMap = [2 => 'grid-cols-2', 3 => 'grid-cols-3', 4 => 'grid-cols-4'];
+            $gridEl->class($colsMap[$this->columns] ?? 'grid-cols-2');
+        } else {
+            $gridEl->class('space-y-0');
+        }
+        return $gridEl;
     }
 
     private function renderField(array $field): Element

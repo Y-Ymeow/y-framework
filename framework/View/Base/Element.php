@@ -372,9 +372,26 @@ class Element
      * // 自动从语言包加载并显示翻译后的文本
      * @view-example-end
      */
-    public function intl(string $key): static
+    public function intl(string $key, array $params = [], ?string $defaultText = null): static
     {
         $this->attrs['data-intl'] = $key;
+        if (!empty($params)) {
+            $this->attrs['data-intl-params'] = json_encode($params);
+        }
+        $content = t($key, $params) ?? $defaultText;
+        $this->text($content);
+        return $this;
+    }
+
+    public function intlAttr(string $attr, string $key, array $params = [], ?string $defaultText = null): static
+    {
+        $this->attrs['data-intl'] = $key;
+        $this->attrs['data-intl-attr'] = $attr;
+        if (!empty($params)) {
+            $this->attrs['data-intl-params'] = json_encode($params);
+        }
+        $content = t($key, $params) ?? $defaultText;
+        $this->attrs[$attr] = $content;
         return $this;
     }
 
@@ -549,14 +566,6 @@ class Element
 
         if (isset($this->attrs['onclick'])) {
             unset($this->attrs['onclick']);
-        }
-
-        if (isset($this->attrs['data-intl'])) {
-            $intlKey = $this->attrs['data-intl'];
-            $translated = \Framework\Intl\Translator::get($intlKey);
-            $this->textContent = $translated;
-            $this->htmlContent = null;
-            $this->children = [];
         }
 
         $attrs = $this->attrString($this->attrs);

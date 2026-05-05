@@ -181,7 +181,8 @@ class StatCard extends UXComponent
         $headerEl = Element::make('div')->class('ux-stat-card-header');
         $headerEl->child(Element::make('span')->class('ux-stat-card-title')->text($this->title));
         if ($this->icon) {
-            $headerEl->child(Element::make('span')->class('ux-stat-card-icon')->html($this->icon));
+            $iconClass = str_starts_with($this->icon, 'bi-') ? 'bi ' . $this->icon : $this->icon;
+            $headerEl->child(Element::make('i')->class($iconClass, 'ux-stat-card-icon'));
         }
         $bodyEl->child($headerEl);
 

@@ -80,8 +80,16 @@ class ConnectionFactory
             return $path;
         }
 
+        $path = str_replace('__STORAGE_PATH__', paths()->storage(), $path);
+        $path = str_replace('__BASE_PATH__', paths()->base(), $path);
+
         if (!str_starts_with($path, '/')) {
-            $path = getcwd() . '/' . $path;
+            $path = paths()->base() . '/' . $path;
+        }
+
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
         }
 
         return $path;

@@ -22,9 +22,9 @@ class Kernel
 
     public function handle(): int
     {
-        $app = \Framework\Foundation\Application::class;
-        $this->discoverCommands(dirname(__DIR__, 2) . '/src/Console/Commands', 'Framework\\Console\\Commands');
-        $this->discoverCommands(dirname(__DIR__, 2) . '/app/Commands', 'App\\Commands');
+        $basePath = $this->app->basePath();
+        $this->discoverCommands($basePath . '/framework/Console/Commands', 'Framework\\Console\\Commands');
+        $this->discoverCommands($basePath . '/app/Commands', 'App\\Commands');
 
         foreach ($this->commands as $command) {
             $this->application->add($command);

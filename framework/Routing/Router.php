@@ -253,11 +253,11 @@ class Router
         if ($method !== 'HEAD') {
             $allowed = $this->getAllowedMethods($path);
             if (!empty($allowed)) {
-                return new Response('Method Not Allowed', 405, ['Allow' => implode(', ', $allowed)]);
+                return new Response(\Framework\Error\ErrorPage::render(405), 405, ['Allow' => implode(', ', $allowed)]);
             }
         }
 
-        return $this->sendContent(Element::make('h1')->text('404 Not Found'), 404);
+        return $this->sendContent(Element::make('div')->html(\Framework\Error\ErrorPage::renderElement(404)), 404);
     }
 
     public function getRouteByName(string $name): ?Route
@@ -311,6 +311,10 @@ class Router
         if (is_array($handler)) {
             [$classOrInstance, $methodName] = $handler;
             $instance = is_object($classOrInstance) ? $classOrInstance : $this->app->make($classOrInstance);
+
+            if ($instance instanceof LiveComponent && $methodName === '__invoke') {
+                $methodName = '_invoke';
+            }
 
             $ref = new \ReflectionMethod($instance, $methodName);
             $args = $this->resolveArguments($ref, $request, $params);
@@ -398,6 +402,9 @@ class Router
             return $this->sendContent($result, 200);
         }
         if ($result instanceof LiveComponent || $result instanceof Element || $result instanceof UXComponent) {
+            if ($result instanceof LiveComponent) {
+                $result->_invoke();
+            }
             return $this->sendContent($result, 200);
         }
         return $this->sendContent(Element::make('div')->text('No content'), 204);

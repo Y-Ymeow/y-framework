@@ -37,6 +37,11 @@ class CssCollector
 
         if (function_exists('\\cache')) {
             \cache()->set('css_snippet:' . $id, $css, 3600);
+            $ids = \cache()->get('css_snippet_ids') ?: [];
+            if (!in_array($id, $ids, true)) {
+                $ids[] = $id;
+                \cache()->set('css_snippet_ids', $ids, 3600);
+            }
         }
 
         return $this;
@@ -71,6 +76,25 @@ class CssCollector
     public function getSnippetIds(): array
     {
         return array_keys($this->loaded);
+    }
+
+    public function loadFromCache(): self
+    {
+        if (!function_exists('\\cache')) return $this;
+
+        $ids = \cache()->get('css_snippet_ids');
+        if (!is_array($ids)) return $this;
+
+        foreach ($ids as $id) {
+            if (isset($this->loaded[$id])) continue;
+            $cached = \cache()->get('css_snippet:' . $id);
+            if ($cached) {
+                $this->snippets[$id] = $cached;
+                $this->loaded[$id] = true;
+            }
+        }
+
+        return $this;
     }
 
     public function collect(): string

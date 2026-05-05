@@ -17,6 +17,7 @@ export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-uxModel',
     'data-ux-action',
     'data-intl',
+    'data-intl-params',
     'data-navigate',
     'data-navigate-fragment',
     'data-navigate-replace',

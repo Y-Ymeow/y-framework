@@ -73,6 +73,10 @@ abstract class LiveComponent
 
     public function toHtml(): string
     {
+        if (!$this->mountCalled) {
+            $this->_invoke();
+        }
+
         $state = $this->serializeState();
         $publicProps = $this->getPublicProperties();
 
@@ -179,6 +183,10 @@ abstract class LiveComponent
 
     public function _invoke(array $params = []): void
     {
+        if ($this->mountCalled) {
+            return;
+        }
+        $this->mountCalled = true;
         $this->routeParams = $params;
         $this->injectProps();
         $this->mount();

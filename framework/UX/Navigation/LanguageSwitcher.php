@@ -136,20 +136,69 @@ class LanguageSwitcher extends UXComponent
 
     protected function init(): void
     {
-        $this->registerJs('language-switcher', '
-            return {
-                init(el) {
-                    el.querySelectorAll("[data-lang-btn]").forEach(btn => {
-                        btn.addEventListener("click", () => {
-                            const locale = btn.dataset.langBtn;
-                            if (window.$locale) {
-                                window.$locale(locale);
-                            }
-                        });
-                    });
-                }
-            };
-        ');
+        $this->registerCss(<<<'CSS'
+.ux-lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+}
+.ux-lang-switcher-pill {
+    border-radius: 9999px;
+}
+.ux-lang-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.ux-lang-btn:not(:last-child) {
+    border-right: 1px solid #d1d5db;
+}
+.ux-lang-btn:hover {
+    background: #f9fafb;
+    color: #374151;
+}
+.ux-lang-btn-active {
+    background: #3b82f6;
+    color: #fff;
+}
+.ux-lang-btn-active:hover {
+    background: #2563eb;
+    color: #fff;
+}
+.ux-lang-btn-outline {
+    background: transparent;
+    border: 1px solid #d1d5db;
+}
+.ux-lang-btn-outline:not(:last-child) {
+    border-right: 1px solid #d1d5db;
+}
+.ux-lang-btn-outline.ux-lang-btn-active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+.ux-lang-btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+.ux-lang-btn-lg {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+.ux-lang-btn-pill {
+    border-radius: 9999px;
+}
+CSS
+        );
     }
 
     protected function toElement(): Element
@@ -162,18 +211,16 @@ class LanguageSwitcher extends UXComponent
 
             $btn = Element::make('button')
                 ->attr('type', 'button')
-                ->data('lang-btn', $locale)
+                ->attr('data-on:click', "locale = '{$locale}';\$locale('{$locale}')")
                 ->class('ux-lang-btn')
-                ->class("ux-lang-btn-{$this->size}");
+                ->class("ux-lang-btn-{$this->size}")
+                ->bindAttr('class', "{'ux-lang-btn-active': locale === '{$locale}'}");
 
             if ($this->variant === 'outline') {
                 $btn->class('ux-lang-btn-outline');
             }
             if ($this->pill) {
                 $btn->class('ux-lang-btn-pill');
-            }
-            if ($isActive) {
-                $btn->class('ux-lang-btn-active');
             }
 
             $btn->text($this->getLabel($locale));
@@ -183,6 +230,7 @@ class LanguageSwitcher extends UXComponent
         $wrapper = Element::make('div')
             ->class('ux-lang-switcher')
             ->class($this->pill ? 'ux-lang-switcher-pill' : '')
+            ->attr('data-state', '{"locale": "' . $currentLocale . '"}')
             ->children(...$buttons);
 
         return $this->buildElement($wrapper);

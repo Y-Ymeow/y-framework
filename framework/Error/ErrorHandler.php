@@ -322,16 +322,6 @@ HTML;
 
     public static function renderProduction(int $code): string
     {
-        $titles = [
-            400 => 'Bad Request', 401 => 'Unauthorized', 403 => 'Forbidden',
-            404 => 'Not Found', 405 => 'Method Not Allowed',
-            500 => 'Internal Server Error', 503 => 'Service Unavailable',
-        ];
-        $title = $titles[$code] ?? 'Error';
-        return <<<HTML
-<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{$code} {$title}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;display:flex;align-items:center;justify-content:center;min-height:100vh}.err{text-align:center;padding:2rem}.err-code{font-size:8rem;font-weight:900;color:#e2e8f0;line-height:1}.err-title{font-size:1.5rem;font-weight:700;margin-top:0.5rem;color:#64748b}</style></head>
-<body><div class="err"><div class="err-code">{$code}</div><div class="err-title">{$title}</div></div></body></html>
-HTML;
+        return ErrorPage::render($code);
     }
 }

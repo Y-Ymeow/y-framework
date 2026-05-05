@@ -33,13 +33,7 @@ return [
         'max' => '此字段不能超过 :max 个字符。',
         'unique' => '此值已被使用。',
     ],
-    
-    'pagination' => [
-        'previous' => '上一页',
-        'next' => '下一页',
-        'showing' => '显示 :from 到 :to，共 :total 条',
-    ],
-    
+
     'auth' => [
         'failed' => '账号或密码错误。',
         'throttle' => '登录尝试次数过多，请在 :seconds 秒后重试。',
@@ -48,4 +42,39 @@ return [
     ],
     
     'items' => '项',
+
+    'actions' => '操作',
+
+    'ux' => [
+        'empty_data' => '暂无数据',
+        'search' => '搜索',
+        'please_select_records' => '请选择要操作的记录',
+        'selected_count' => ':count 项已选择',
+        'batch_actions' => '批量操作',
+        'cancel_selection' => '取消选择',
+        'select_file' => '选择文件',
+        'no_file_selected' => '未选择文件',
+        'on' => '开',
+        'off' => '关',
+        'click_or_drag_to_upload' => '点击或拖拽文件上传',
+    ],
+
+    'editor' => [
+        'bold' => '粗体',
+        'italic' => '斜体',
+        'underline' => '下划线',
+        'strike' => '删除线',
+        'heading' => '标题',
+        'quote' => '引用',
+        'code' => '代码',
+        'list' => '列表',
+        'link' => '链接',
+        'image' => '图片',
+        'undo' => '撤销',
+        'redo' => '重做',
+        'clear' => '清除格式',
+        'placeholder' => '变量',
+        'emoji' => '表情',
+        'mention' => '提及',
+    ],
 ];

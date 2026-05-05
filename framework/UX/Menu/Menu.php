@@ -24,6 +24,141 @@ class Menu extends UXComponent
     protected string $direction = 'vertical';
     protected array $items = [];
 
+    protected function init(): void
+    {
+        $this->registerCss(<<<'CSS'
+.ux-menu {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ux-menu.horizontal {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+}
+.ux-menu-item {
+    margin-bottom: 2px;
+}
+.ux-menu-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s, color 0.15s;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ux-menu-link:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+.ux-menu-item-active > .ux-menu-link,
+.ux-menu-item-active .ux-menu-link {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 500;
+}
+.ux-menu-item-active > .ux-menu-link .ux-menu-icon,
+.ux-menu-item-active .ux-menu-link .ux-menu-icon {
+    color: #3b82f6;
+}
+.ux-menu-group {
+    margin-top: 0.5rem;
+}
+.ux-menu-group-header {
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    outline: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+.ux-menu-group-header:hover {
+    background-color: #f9fafb;
+}
+.ux-menu-arrow {
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+.ux-menu-group.open .ux-menu-arrow {
+    transform: rotate(90deg);
+}
+.ux-menu-submenu {
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    padding-top: 2px;
+    padding-left: 0.5rem;
+    margin: 0;
+    margin-bottom: 0.5rem;
+}
+.ux-menu-group:not(.open) .ux-menu-submenu {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+}
+.ux-menu-group.open .ux-menu-submenu {
+    max-height: 500px;
+    opacity: 1;
+}
+.ux-menu-divider {
+    border-top: 1px solid #f3f4f6;
+    margin: 0.5rem 0.75rem;
+}
+.ux-menu-icon {
+    flex-shrink: 0;
+    width: 1em;
+    text-align: center;
+}
+.ux-menu-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+CSS
+        );
+
+        $this->registerJs('menu', <<<'JS'
+return {
+    _bound: false,
+    init() {
+        if (this._bound) return;
+        this._bound = true;
+        document.addEventListener('click', function(e) {
+            var header = e.target.closest('.ux-menu-group-header');
+            if (!header) return;
+            var group = header.closest('.ux-menu-group');
+            if (!group) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var isOpen = group.classList.contains('open');
+            if (isOpen) {
+                group.classList.remove('open');
+                header.setAttribute('aria-expanded', 'false');
+            } else {
+                group.classList.add('open');
+                header.setAttribute('aria-expanded', 'true');
+            }
+        });
+    }
+};
+JS
+        );
+    }
+
     /**
      * 设置菜单方向
      * @param string $dir 方向：horizontal/vertical
@@ -56,14 +191,14 @@ class Menu extends UXComponent
 
     /**
      * 添加菜单项
-     * @param string $label 显示文字
+     * @param string|array $label 显示文字
      * @param string|null $href 链接地址
      * @param string|null $icon 图标类名（可省略 bi- 前缀）
      * @param bool $active 是否激活状态
      * @return static
      * @ux-example Menu::make()->item('首页', '/', 'home', true)
      */
-    public function item(string $label, ?string $href = null, ?string $icon = null, bool $active = false): static
+    public function item(string|array $label, ?string $href = null, ?string $icon = null, bool $active = false): static
     {
         $this->items[] = [
             'type'   => 'item',
@@ -104,7 +239,7 @@ class Menu extends UXComponent
      * @param bool $active 是否激活状态
      * @return static
      */
-    public function subitem(string $label, ?string $href = null, ?string $icon = null, bool $active = false): static
+    public function subitem(string|array $label, ?string $href = null, ?string $icon = null, bool $active = false): static
     {
         $last = count($this->items) - 1;
         if ($last >= 0 && $this->items[$last]['type'] === 'group') {
@@ -145,12 +280,10 @@ class Menu extends UXComponent
         $el = new Element('ul');
         $this->buildElement($el);
 
-        $el->class('ux-menu', 'list-none', 'm-0', 'p-0');
+        $el->class('ux-menu', 'list-none');
 
         if ($this->direction === 'horizontal') {
-            $el->class('flex', 'flex-row', 'items-center', 'gap-1');
-        } else {
-            $el->class('flex', 'flex-col', 'gap-0.5');
+            $el->class('horizontal');
         }
 
         foreach ($this->items as $item) {
@@ -180,21 +313,12 @@ class Menu extends UXComponent
         $link = Element::make('a')
             ->class(
                 'ux-menu-link',
-                'flex',
-                'items-center',
-                'gap-2',
-                'px-3',
-                'py-2',
                 'text-sm',
                 'text-gray-600',
-                'rounded',
-                'hover:bg-gray-100',
-                'hover:text-gray-900',
-                'transition-colors'
+                'hover:text-gray-900'
             )
             ->attr('href', $href)
             ->data('navigate', '')
-            // 核心：利用 data-navigate 系统的自动高亮功能
             ->data('active-target', '.ux-menu-item')
             ->data('active-class', 'ux-menu-item-active');
 
@@ -209,8 +333,16 @@ class Menu extends UXComponent
             );
         }
 
+        $params = [];
+        $defaultText = '';
+        if (is_array($item['label'])) {
+            $item['label'] = $item['label'][0];
+            $params = is_array($item['label'][1]) ? $item['label'][1] : [];
+            $defaultText = $item['label'][2] ?? '';
+        }
+
         $link->child(
-            Element::make('span')->class('ux-menu-label', 'truncate')->text($item['label'])
+            Element::make('span')->class('ux-menu-label', 'truncate')->intl($item['label'], $params, $defaultText)
         );
 
         $li->child($link);
@@ -224,37 +356,18 @@ class Menu extends UXComponent
             $li->class('open');
         }
 
-        // Group header
         $header = Element::make('button')
             ->class(
                 'ux-menu-group-header',
-                'w-full',
-                'flex',
-                'items-center',
-                'justify-between',
-                'px-3',
-                'py-2',
-                'mx-2',
                 'text-xs',
                 'font-semibold',
                 'text-gray-500',
                 'uppercase',
                 'tracking-wider',
-                'hover:text-gray-700',
-                'hover:bg-gray-50',
-                'rounded',
-                'transition-colors'
+                'hover:text-gray-700'
             )
             ->attr('type', 'button')
             ->attr('aria-expanded', $group['open'] ? 'true' : 'false');
-
-        if ($this->liveAction) {
-            $header->liveAction($this->liveAction, $this->liveEvent ?? 'click');
-            $header->data('action-params', json_encode([
-                'id'   => $group['id'],
-                'open' => !$group['open'],
-            ], JSON_UNESCAPED_UNICODE));
-        }
 
         $headerLeft = Element::make('span')->class('flex', 'items-center', 'gap-2');
 
@@ -266,7 +379,7 @@ class Menu extends UXComponent
         }
 
         $headerLeft->child(
-            Element::make('span')->class('ux-menu-label')->text($group['label'])
+            Element::make('span')->class('ux-menu-label')->intl($group['label'])
         );
         $header->child($headerLeft);
 
@@ -276,12 +389,8 @@ class Menu extends UXComponent
         );
         $li->child($header);
 
-        // Submenu
         $submenu = Element::make('ul')
-            ->class('ux-menu-submenu', 'list-none', 'm-0', 'p-0', 'space-y-0.5', 'px-2', 'mb-2');
-        if (!$group['open']) {
-            $submenu->class('hidden');
-        }
+            ->class('ux-menu-submenu', 'list-none');
 
         foreach ($group['children'] as $child) {
             $submenu->child($this->renderItem($child));

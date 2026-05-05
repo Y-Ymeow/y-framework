@@ -1,9 +1,7 @@
-// Intl System - 国际化支持
 import { initDirectives } from '../y-directive/directives.js';
 
 let currentLocale = document.documentElement.lang || 'en';
 let translations = {};
-let localeCallbacks = [];
 
 export function initIntl() {
     collectIntlElements();
@@ -12,11 +10,8 @@ export function initIntl() {
     });
 }
 
-// 暴露 $locale 供指令系统使用
-// 用法: $locale('zh') 或 $locale() 自动切换
 window.$locale = function(locale) {
     if (!locale) {
-        // 自动切换: zh <-> en
         locale = currentLocale === 'zh' ? 'en' : 'zh';
     }
     switchLocale(locale);
@@ -33,6 +28,7 @@ function collectIntlElements() {
 
 export async function switchLocale(locale) {
     const keys = collectIntlKeys();
+
     if (keys.length === 0) return;
 
     try {
@@ -51,8 +47,10 @@ export async function switchLocale(locale) {
         currentLocale = data.locale;
         translations = data.translations;
 
-        applyTranslations();
+        document.cookie = 'locale=' + locale + ';path=/;max-age=31536000;samesite=Lax';
         document.documentElement.lang = currentLocale;
+
+        applyTranslations();
 
         window.dispatchEvent(new CustomEvent('y:locale-changed', {
             detail: { locale: currentLocale, translations }
@@ -65,15 +63,32 @@ export async function switchLocale(locale) {
 function collectIntlKeys() {
     const keys = new Set();
     document.querySelectorAll('[data-intl]').forEach(el => {
-        const key = el.dataset.intl;
+        let key = el.dataset.intl;
+        if (el.dataset.intlParams) {
+            key = {
+                key,
+                params: el.dataset.intlParams,
+            };
+        }
         if (key) keys.add(key);
     });
     return Array.from(keys);
 }
 
+
+
 function applyTranslations() {
     document.querySelectorAll('[data-intl]').forEach(el => {
-        const key = el.dataset.intl;
+        let key = el.dataset.intl;
+        if (el.dataset.intlParams) {
+            key = key + ' ' + el.dataset.intlParams;
+        }
+
+        if (el.dataset.intlAttr) {
+            el.setAttribute(el.dataset.intlAttr, translations[key]);
+            return;
+        }
+
         if (key && translations[key] !== undefined) {
             el.textContent = translations[key];
         }

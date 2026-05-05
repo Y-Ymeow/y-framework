@@ -18,6 +18,8 @@ return [
         \Framework\Auth\AuthServiceProvider::class,
         \Framework\Queue\QueueServiceProvider::class,
         \Framework\Scheduler\SchedulerServiceProvider::class,
+
+        \Admin\Services\AdminServiceProvider::class,
     ],
 
     'debug_providers' => [
@@ -25,9 +27,6 @@ return [
     ],
 
     'modules' => [
-        \Framework\Module\User\UserModule::class,
-        \Framework\Module\Notification\NotificationModule::class,
-        // \Framework\Module\Mail\MailModule::class,
     ],
 
     'aliases' => [],
@@ -35,6 +34,8 @@ return [
     'middleware' => [
         'web' => [],
         'api' => [],
-        'admin' => [],
+        'admin' => [
+            \Framework\Http\Middleware\AdminAuthenticate::class,
+        ],
     ],
 ];

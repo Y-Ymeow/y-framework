@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin\Live;
+namespace Admin\Contracts\Live;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
-use Framework\Admin\AdminManager;
-use Framework\Admin\Resource\ResourceInterface;
-use Framework\Admin\Resource\BaseResource;
+use Admin\Contracts\Resource\ResourceInterface;
+use Admin\Contracts\Resource\BaseResource;
+use Admin\Services\AdminManager;
 use Framework\UX\Data\DataTable;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
@@ -144,8 +144,17 @@ class AdminListPage extends LiveComponent
         $wrapper = Element::make('div')->class('admin-list');
 
         $title = $resource::getTitle();
+        $params = [];
+        $defaultText = '';
+
+        if (is_array($title)) {
+            $params = $title[1] ?? [];
+            $defaultText = $title[2] ?? '';
+            $title = $title[0];
+        }
+
         $headerEl = Element::make('div')->class('admin-list-header');
-        $headerEl->child(Element::make('h1')->class('admin-list-title')->text($title));
+        $headerEl->child(Element::make('h1')->class('admin-list-title')->intl($title, $params, $defaultText));
 
         $prefix = AdminManager::getPrefix();
         $name = $resource::getName();

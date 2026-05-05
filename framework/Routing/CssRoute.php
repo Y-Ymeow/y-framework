@@ -37,7 +37,7 @@ class CssRoute
 
     public function handle(Request $request): Response
     {
-        $css = $this->generate();
+        $css = $this->generate($request);
 
         return new Response($css, 200, [
             'Content-Type' => 'text/css; charset=utf-8',
@@ -48,7 +48,7 @@ class CssRoute
         ]);
     }
 
-    private function generate(): string
+    private function generate(Request $request): string
     {
         if (!$this->debug && is_file($this->outputPath)) {
             $css = file_get_contents($this->outputPath);
@@ -65,7 +65,22 @@ class CssRoute
             }
         }
 
-        $snippets = CssCollector::getInstance()->collect();
+        $collector = CssCollector::getInstance();
+
+        $snippetsParam = $request->query('snippets');
+        if ($snippetsParam) {
+            $ids = explode(',', $snippetsParam);
+            foreach ($ids as $id) {
+                $id = trim($id);
+                if ($id) {
+                    $collector->getSnippet($id);
+                }
+            }
+        }
+
+        $collector->loadFromCache();
+
+        $snippets = $collector->collect();
         if (!empty($snippets)) {
             $css .= "\n/* === Component CSS Snippets === */\n\n";
             $css .= $snippets;
@@ -77,133 +92,53 @@ class CssRoute
     private function scanForUsedClasses(): array
     {
         $classes = [];
-        $scanDirs = [
-            __DIR__ . '/../../src/Admin',
-            __DIR__ . '/../../src/UX',
-            $this->basePath . '/admin',
-            $this->basePath . '/app',
-        ];
+        $scanDirs = $this->getScanDirs();
 
         foreach ($scanDirs as $scanDir) {
             $files = $this->findPhpFiles($scanDir);
             foreach ($files as $file) {
                 $content = file_get_contents($file);
-
-                // Match ->class(...) calls — both single and multi-argument forms
-                // e.g. ->class('a b', 'c') or ->class("a", "b", "c")
-                if (preg_match_all('/->class\s*\(([^)]+)\)/s', $content, $matches)) {
-                    foreach ($matches[1] as $argsString) {
-                        if (preg_match_all('/[\'"]([^\'"]*)[\'"]/', $argsString, $argMatches)) {
-                            foreach ($argMatches[1] as $classString) {
-                                $parts = preg_split('/\s+/', $classString);
-                                foreach ($parts as $part) {
-                                    $part = trim($part);
-                                    if ($part && !str_starts_with($part, '$') && !str_contains($part, '{{')) {
-                                        $classes[$part] = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (preg_match_all('/class\s*=\s*["\']((?:[^"\']|\[[^\]]*\])+)["\']/', $content, $matches)) {
-                    foreach ($matches[1] as $classString) {
-                        $parts = preg_split('/\s+/', $classString);
-                        foreach ($parts as $part) {
-                            $part = trim($part);
-                            if ($part && !str_starts_with($part, '$') && !str_contains($part, '{{')) {
-                                $classes[$part] = true;
-                            }
-                        }
-                    }
-                }
-
-                if (preg_match_all('/->dataClass\s*\(\s*"((?:[^"\\\\]|\\\\.)*)"\s*\)/s', $content, $matches)) {
-                    foreach ($matches[1] as $expr) {
-                        $this->extractClassesFromExpr($expr, $classes);
-                    }
-                }
-
-                if (preg_match_all('/->bindAttr\s*\(\s*"class"\s*,\s*"((?:[^"\\\\]|\\\\.)*)"\s*\)/s', $content, $matches)) {
-                    foreach ($matches[1] as $expr) {
-                        $this->extractClassesFromExpr($expr, $classes);
-                    }
-                }
-
-                if (preg_match_all('/\[\'classes\'\]\s*=>\s*\[([^\]]+)\]/s', $content, $matches)) {
-                    foreach ($matches[1] as $classesList) {
-                        if (preg_match_all('/[\'"]([^\'"]+)[\'"]/', $classesList, $classMatches)) {
-                            foreach ($classMatches[1] as $classString) {
-                                $parts = preg_split('/\s+/', $classString);
-                                foreach ($parts as $part) {
-                                    $part = trim($part);
-                                    if ($part && !str_starts_with($part, '$') && !str_contains($part, '{{')) {
-                                        $classes[$part] = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                $this->extractAllClassesFromString($content, $classes);
             }
         }
 
-        foreach (CSSEngine::$alwaysGenerated as $cls) {
+        $alwaysGenerated = config('css.always_generated', CSSEngine::$alwaysGenerated);
+        foreach ($alwaysGenerated as $cls) {
             $classes[$cls] = true;
         }
 
         return $classes;
     }
 
-    private function extractClassesFromExpr(string $expr, array &$classes): void
+    private function getScanDirs(): array
     {
-        if (preg_match_all("/'([^']+)'\s*:/", $expr, $matches)) {
-            foreach ($matches[1] as $className) {
-                $parts = preg_split('/\s+/', $className);
-                foreach ($parts as $part) {
-                    $part = trim($part);
-                    if ($part && !str_starts_with($part, '$')) {
-                        $classes[$part] = true;
-                    }
-                }
-            }
+        $configuredDirs = config('css.scan_dirs', []);
+        $dirs = [];
+
+        foreach ($configuredDirs as $dir) {
+            $dirs[] = $this->basePath . '/' . $dir;
         }
 
-        $depth = 0;
-        $current = '';
-        $length = strlen($expr);
+        return $dirs;
+    }
 
-        for ($i = 0; $i < $length; $i++) {
-            $char = $expr[$i];
+    private function extractAllClassesFromString(string $content, array &$classes): void
+    {
+        preg_match_all('/[\'"]([^\'"]*)[\'"]/', $content, $stringMatches);
 
-            if ($char === '[') {
-                if ($depth > 0) {
-                    $current .= $char;
+        foreach ($stringMatches[1] as $string) {
+            preg_match_all('/[a-zA-Z][a-zA-Z0-9_:.!-]{1,59}/', $string, $tokenMatches);
+
+            foreach ($tokenMatches[0] as $token) {
+                if (!str_contains($token, '-') && !str_contains($token, ':')) {
+                    continue;
                 }
-                $depth++;
-            } elseif ($char === ']') {
-                $depth--;
-                if ($depth > 0) {
-                    $current .= $char;
-                } else {
-                    if (preg_match_all("/'([^']+)'/", $current, $classMatches)) {
-                        foreach ($classMatches[1] as $className) {
-                            $parts = preg_split('/\s+/', $className);
-                            foreach ($parts as $part) {
-                                $part = trim($part);
-                                if ($part && !str_starts_with($part, '$')) {
-                                    $classes[$part] = true;
-                                }
-                            }
-                        }
-                    }
-                    $current = '';
+
+                if (preg_match('/^(?:namespace|use|class|function|return|static|public|private|protected|new|extends|implements|interface|abstract|final|const|var|require|include|echo|print|throw|try|catch|finally|if|else|elseif|for|foreach|while|do|switch|case|break|continue|default|array|true|false|null|self|parent|void|string|int|float|bool|mixed|object|iterable|callable|never)$/', $token)) {
+                    continue;
                 }
-            } else {
-                if ($depth > 0) {
-                    $current .= $char;
-                }
+
+                $classes[$token] = true;
             }
         }
     }

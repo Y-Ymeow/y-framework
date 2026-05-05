@@ -125,6 +125,8 @@ export async function navigate(url, options = {}) {
                     : document.querySelector(`[data-navigate-fragment="${fragment.name}"]`);
                 if (target) bindNavigateLinks(target);
             });
+
+            applyActiveState(url);
         };
 
         if (document.startViewTransition) {
@@ -172,4 +174,39 @@ function replaceNavigateHtml(target, html) {
 
     // 4. 重新绑定导航链接
     bindNavigateLinks(target);
+}
+
+export function applyActiveState(url) {
+    document.querySelectorAll('[data-active-class]').forEach(el => {
+        const activeClass = el.dataset.activeClass;
+        const targetSelector = el.dataset.activeTarget;
+        if (!activeClass) return;
+
+        const target = targetSelector ? el.closest(targetSelector) : el.parentElement;
+        if (!target) return;
+
+        const href = el.getAttribute('href') || '';
+        let isActive = false;
+
+        if (href && href !== 'javascript:;') {
+            var normalizedUrl = url.replace(/\/+$/, '') || '/';
+            var normalizedHref = href.replace(/\/+$/, '') || '/';
+            if (normalizedUrl === normalizedHref) {
+                isActive = true;
+            }
+        }
+
+        if (isActive) {
+            target.classList.add(...activeClass.split(/\s+/));
+        } else {
+            target.classList.remove(...activeClass.split(/\s+/));
+        }
+    });
+}
+
+// 初始加载时也应用
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        applyActiveState(window.location.pathname);
+    });
 }

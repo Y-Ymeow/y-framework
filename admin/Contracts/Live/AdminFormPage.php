@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin\Live;
+namespace Admin\Contracts\Live;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
-use Framework\Admin\AdminManager;
-use Framework\Admin\Resource\ResourceInterface;
-use Framework\Admin\Resource\BaseResource;
+use Admin\Services\AdminManager;
+use Admin\Contracts\Resource\ResourceInterface;
+use Admin\Contracts\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\View\Base\Element;
 use Framework\UX\UXComponent;

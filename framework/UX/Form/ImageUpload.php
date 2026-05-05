@@ -344,7 +344,7 @@ class ImageUpload extends FormField
             Element::make('i')->class('bi bi-cloud-arrow-up ux-image-upload-icon')
         );
         $hint->child(
-            Element::make('p')->class('ux-image-upload-text')->text(t('ux.click_or_drag_to_upload'))
+            Element::make('p')->class('ux-image-upload-text')->intl('ux:image-upload.click_or_drag_to_upload')
         );
         $hint->child(
             Element::make('p')->class('ux-image-upload-desc')

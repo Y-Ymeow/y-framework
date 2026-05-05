@@ -97,6 +97,91 @@ class Accordion extends UXComponent
             };
             return Accordion;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-accordion {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+.ux-accordion-item {
+    border-bottom: 1px solid #e5e7eb;
+}
+.ux-accordion-item:last-child {
+    border-bottom: none;
+}
+.ux-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    transition: background-color 0.15s;
+}
+.ux-accordion-header:hover {
+    background-color: #f9fafb;
+}
+.ux-accordion-icon {
+    display: inline-flex;
+    width: 1.25rem;
+    height: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+.ux-accordion-icon::after {
+    content: "";
+    border-right: 2px solid #9ca3af;
+    border-bottom: 2px solid #9ca3af;
+    width: 0.5rem;
+    height: 0.5rem;
+    transform: rotate(-45deg);
+    transition: transform 0.2s ease;
+}
+.ux-accordion-item.open .ux-accordion-icon::after {
+    transform: rotate(45deg);
+}
+.ux-accordion-collapse {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+.ux-accordion-collapse.show {
+    max-height: 500px;
+}
+.ux-accordion-body {
+    padding: 0.75rem 1rem 1rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.6;
+}
+.ux-accordion-dark {
+    border-color: #374151;
+}
+.ux-accordion-dark .ux-accordion-header {
+    background: #1f2937;
+    color: #f9fafb;
+}
+.ux-accordion-dark .ux-accordion-header:hover {
+    background: #374151;
+}
+.ux-accordion-dark .ux-accordion-body {
+    background: #111827;
+    color: #d1d5db;
+}
+.ux-accordion-dark .ux-accordion-item {
+    border-bottom-color: #374151;
+}
+CSS
+        );
     }
 
     /**

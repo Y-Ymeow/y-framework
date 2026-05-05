@@ -176,6 +176,74 @@ class Popover extends UXComponent
             };
             return Popover;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-popover-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.ux-popover {
+    position: fixed;
+    z-index: 1050;
+    min-width: 10rem;
+    max-width: 20rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.95);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+.ux-popover.show {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+.ux-popover-arrow {
+    position: absolute;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    transform: rotate(45deg);
+}
+.ux-popover[data-placement="top"] .ux-popover-arrow {
+    bottom: -0.3rem;
+    border-top: none;
+    border-left: none;
+}
+.ux-popover[data-placement="bottom"] .ux-popover-arrow {
+    top: -0.3rem;
+    border-bottom: none;
+    border-right: none;
+}
+.ux-popover[data-placement="left"] .ux-popover-arrow {
+    right: -0.3rem;
+    border-bottom: none;
+    border-left: none;
+}
+.ux-popover[data-placement="right"] .ux-popover-arrow {
+    left: -0.3rem;
+    border-top: none;
+    border-right: none;
+}
+.ux-popover-title {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+}
+.ux-popover-content {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+CSS
+        );
     }
 
     /**

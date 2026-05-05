@@ -90,8 +90,8 @@ class SwitchField extends FormField
 
         $switchLabelEl->child($inputEl);
         $switchLabelEl->child(Element::make('span')->class('ux-switch-slider'));
-        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-on')->text($this->onText ?: t('ux.on')));
-        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-off')->text($this->offText ?: t('ux.off')));
+        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-on')->text($this->onText ?: t('ux:switch.on')));
+        $switchLabelEl->child(Element::make('span')->class('ux-switch-label-off')->text($this->offText ?: t('ux:switch.off')));
 
         $groupEl->child($switchLabelEl);
 

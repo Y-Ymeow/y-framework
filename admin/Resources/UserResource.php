@@ -1,20 +1,23 @@
 <?php
 
-namespace App\Admin\Resources;
+namespace Admin\Resources;
 
-use Framework\Admin\Attribute\AdminResource;
-use Framework\Admin\Resource\BaseResource;
+use Admin\Contracts\Resource\AdminResource;
+use Admin\Contracts\Resource\BaseResource;
+use Admin\Auth\User;
+use Admin\Auth\Role;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
-use Framework\Auth\User;
 
 #[AdminResource(
     name: 'users',
     model: User::class,
     title: '用户管理',
-    icon: 'heroicon.users',
+    icon: 'people',
+    group: 'admin.system',
+    sort: 51,
 )]
 class UserResource extends BaseResource
 {
@@ -28,9 +31,9 @@ class UserResource extends BaseResource
         return User::class;
     }
 
-    public static function getTitle(): string
+    public static function getTitle(): string|array
     {
-        return t('admin.user_management');
+        return ['admin:users.title', [], '用户管理'];
     }
 
     public static function getRoutePrefix(): ?string
@@ -40,26 +43,28 @@ class UserResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', t('admin.fields.name'), ['required' => true])
-            ->email('email', t('email'), ['required' => true])
-            ->select('role', t('admin.fields.role'), [], [
-                'admin' => t('admin.roles.admin'),
-                'editor' => t('admin.roles.editor'),
-                'viewer' => t('admin.roles.viewer'),
+        $form->text('name', t('admin:users.name'), ['required' => true])
+            ->email('email', t('admin:users.email'), ['required' => true]);
+
+        $form->section(t('admin:users.role'));
+        $roles = Role::all();
+        foreach ($roles as $role) {
+            $form->checkbox("role_{$role['id']}", $role['name'], [
+                'value' => (string)$role['id'],
             ]);
+        }
     }
 
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('name', t('admin.fields.name'))
-            ->column('email', t('email'))
-            ->column('role', t('admin.fields.role'))
-            ->column('created_at', t('admin.fields.created_at'))
+            ->column('name', t('admin:users.name'))
+            ->column('email', t('admin:users.email'))
+            ->column('created_at', t('admin:users.created_at'))
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()
-                        ->label(t('edit'))
+                        ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
                         ->liveAction('editRow')
@@ -70,14 +75,14 @@ class UserResource extends BaseResource
 
     public function getListBeforeTable(): mixed
     {
-        return Element::make('div')->class('admin-list-stats')->text(t('admin.user_management'));
+        return Element::make('div')->class('admin-list-stats')->intl('admin:users.title');
     }
 
     public function getFormHeader(bool $isEdit, ?object $record = null): mixed
     {
         if ($isEdit && $record) {
             return Element::make('div')->class('admin-form-info')
-                ->child(Element::make('p')->text(t('admin.last_modified') . ': ' . ($record->updated_at ?? t('admin.unknown'))));
+                ->child(Element::make('p')->intl('admin:users.last_modified') . ': ' . ($record->updated_at ?? t('admin.unknown')));
         }
         return null;
     }

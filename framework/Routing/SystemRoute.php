@@ -98,7 +98,7 @@ class SystemRoute
     {
         $path = $path ?? '';
         if (empty($path) || $path === '/') {
-            return new Response('Not Found', 404);
+            return new Response(\Framework\Error\ErrorPage::render(404), 404);
         }
 
         $distPath = \Framework\Support\Asset::distPath();

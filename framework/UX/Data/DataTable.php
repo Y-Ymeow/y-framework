@@ -721,7 +721,7 @@ class DataTable extends UXComponent
 
         if ($this->pagination) {
             $this->applyPaginationLive();
-            $wrapper->child($this->pagination->toElement());
+            $wrapper->child($this->pagination);
         }
 
         return $wrapper;
@@ -839,7 +839,7 @@ class DataTable extends UXComponent
         }
 
         if ($this->rowActionsCallback) {
-            $tr->child(Element::make('th')->class('ux-data-table-cell ux-data-table-th')->text(t('actions')));
+            $tr->child(Element::make('th')->class('ux-data-table-cell ux-data-table-th')->intl('actions'));
         }
 
         $thead->child($tr);
@@ -863,13 +863,14 @@ class DataTable extends UXComponent
             if ($this->selectable) {
                 $colspan++;
             }
-            $emptyText = $this->emptyText ?? t('ux.empty_data');
+            $colspan++;
+
             $tr = Element::make('tr')->class('ux-data-table-row ux-data-table-empty');
             $td = Element::make('td')
                 ->class('ux-data-table-cell ux-data-table-empty-cell')
                 ->attr('colspan', (string)$colspan)
                 ->child(
-                    Element::make('div')->class('ux-data-table-empty-content')->text($emptyText)
+                    Element::make('div')->class('ux-data-table-empty-content')->intl('ux:datatable.empty_data', [],  $this->emptyText)
                 );
             $tr->child($td);
             $tbody->child($tr);
@@ -1030,7 +1031,7 @@ class DataTable extends UXComponent
             ->attr('type', 'text')
             ->attr('name', 'search')
             ->class('ux-data-table-search-input')
-            ->attr('placeholder', $this->searchPlaceholder ?? t('ux.search') . '...');
+            ->intlAttr('placeholder', 'ux:datatable.search');
 
         if ($this->searchValue) {
             $input->attr('value', $this->searchValue);
@@ -1046,7 +1047,7 @@ class DataTable extends UXComponent
         $btn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-data-table-search-btn')
-            ->text(t('ux.search'));
+            ->intl('ux:datatable.search');
 
         if ($action) {
             $btn->liveAction($action, 'click');

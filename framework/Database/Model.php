@@ -15,6 +15,8 @@ use Framework\Database\Relations\BelongsTo;
 use Framework\Database\Relations\BelongsToMany;
 use Framework\Database\Relations\HasMany;
 use Framework\Database\Relations\HasOne;
+use Framework\Database\Relations\MorphMany;
+use Framework\Database\Relations\MorphTo;
 use Framework\Database\Scopes\Scope;
 use Framework\Support\Collection;
 
@@ -762,7 +764,8 @@ abstract class Model implements ArrayAccess, ModelInterface
         }
 
         $method = $event;
-        if (method_exists($this, $method)) {
+        $staticEventMethods = ['creating', 'created', 'updating', 'updated', 'saving', 'saved', 'deleting', 'deleted', 'retrieved'];
+        if (method_exists($this, $method) && !in_array($method, $staticEventMethods, true)) {
             $result = $this->$method();
             if ($halt && $result === false) {
                 return false;
@@ -940,6 +943,16 @@ abstract class Model implements ArrayAccess, ModelInterface
         $relatedPivotKey ??= (new $related())->getForeignKey();
 
         return new BelongsToMany($related, $table, $foreignPivotKey, $relatedPivotKey, $this);
+    }
+
+    public function morphMany(string $related, string $morphType, string $morphId): MorphMany
+    {
+        return new MorphMany($related, $morphType, $morphId, $this);
+    }
+
+    public function morphTo(string $morphType, string $morphId): MorphTo
+    {
+        return new MorphTo($morphType, $morphId, $this);
     }
 
     protected function getForeignKey(): string

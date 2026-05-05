@@ -210,6 +210,180 @@ class TreeSelect extends UXComponent
             };
             return TreeSelect;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-tree-select {
+    position: relative;
+    display: inline-block;
+    min-width: 12rem;
+}
+.ux-tree-select-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.ux-tree-select-selector {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: #fff;
+    cursor: pointer;
+    min-height: 2.25rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ux-tree-select-selector:hover {
+    border-color: #9ca3af;
+}
+.ux-tree-select-open .ux-tree-select-selector {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.ux-tree-select-display {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #374151;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ux-tree-select-display.placeholder {
+    color: #9ca3af;
+}
+.ux-tree-select-search {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    color: #374151;
+    background: transparent;
+    padding: 0;
+    min-width: 0;
+}
+.ux-tree-select-search::placeholder {
+    color: #9ca3af;
+}
+.ux-tree-select-clear {
+    display: inline-flex;
+    align-items: center;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 0.75rem;
+    transition: color 0.15s;
+}
+.ux-tree-select-clear:hover {
+    color: #6b7280;
+}
+.ux-tree-select-arrow {
+    display: inline-flex;
+    align-items: center;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+    transition: transform 0.2s;
+}
+.ux-tree-select-open .ux-tree-select-arrow {
+    transform: rotate(180deg);
+}
+.ux-tree-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    margin-top: 0.25rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-height: 16rem;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+.ux-tree-select-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.ux-tree-select-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.8125rem;
+}
+.ux-tree-select-tree {
+    padding: 0.25rem 0;
+}
+.ux-tree-select-node {
+    font-size: 0.8125rem;
+}
+.ux-tree-select-node-content {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    color: #374151;
+    transition: background-color 0.1s;
+}
+.ux-tree-select-node-content:hover {
+    background: #f9fafb;
+}
+.ux-tree-select-node.selected > .ux-tree-select-node-content {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+.ux-tree-select-node-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.ux-tree-select-node-toggle.leaf {
+    visibility: hidden;
+}
+.ux-tree-select-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.125rem;
+    font-size: 0.625rem;
+    color: #fff;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.ux-tree-select-checkbox.checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+.ux-tree-select-node-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ux-tree-select-children {
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+.ux-tree-select-children.collapsed {
+    max-height: 0;
+    overflow: hidden;
+}
+CSS
+        );
     }
 
     /**

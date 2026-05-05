@@ -89,8 +89,8 @@ declare(strict_types=1);
 
 namespace {$namespace};
 
-use Framework\Admin\Attribute\AdminResource;
-use Framework\Admin\Resource\BaseResource;
+use Admin\Contracts\Attribute\AdminResource;
+use Admin\Contracts\Resource\BaseResource;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\UX\Data\DataTableColumn;

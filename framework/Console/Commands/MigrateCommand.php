@@ -103,12 +103,13 @@ class MigrateCommand extends Command
     private function getPendingMigrations(DatabaseMigrationRepository $repository, string $path): array
     {
         $ran = $repository->getRan();
+        $ranWithExt = array_map(fn($m) => str_ends_with($m, '.php') ? $m : $m . '.php', $ran);
         $files = glob($path . '/*.php');
         $migrations = [];
 
         foreach ($files as $file) {
             $name = basename($file);
-            if (!in_array($name, $ran)) {
+            if (!in_array($name, $ranWithExt)) {
                 $migrations[] = $name;
             }
         }

@@ -2,6 +2,10 @@
 
 return [
     'routes' => [
+        'app/',
+        'admin/',
+        'framework/Ux/',
+        'framework/View/',
     ],
 
     'middleware' => [

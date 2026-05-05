@@ -233,7 +233,7 @@ class DataGrid extends UXComponent
         }
 
         if (empty($this->dataSource)) {
-            $emptyText = $this->emptyText ?? t('ux.empty_data');
+            $emptyText = $this->emptyText ?? t('ux:data-grid.empty_data');
             $gridEl->child(
                 Element::make('div')
                     ->class('ux-data-grid-empty')

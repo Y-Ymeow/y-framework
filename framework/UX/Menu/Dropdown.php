@@ -59,6 +59,94 @@ class Dropdown extends UXComponent
             };
             return Dropdown;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-dropdown {
+    position: relative;
+    display: inline-flex;
+}
+.ux-dropdown-menu {
+    position: absolute;
+    z-index: 50;
+    min-width: 12rem;
+    padding: 0.25rem 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+.ux-dropdown.ux-open .ux-dropdown-menu,
+.ux-dropdown-hover:hover .ux-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.ux-dropdown-bottom-start .ux-dropdown-menu {
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+}
+.ux-dropdown-bottom-end .ux-dropdown-menu {
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+}
+.ux-dropdown-top-start .ux-dropdown-menu {
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 0.25rem;
+    transform: translateY(-4px);
+}
+.ux-dropdown-top-end .ux-dropdown-menu {
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 0.25rem;
+    transform: translateY(-4px);
+}
+.ux-dropdown.ux-open .ux-dropdown-menu,
+.ux-dropdown-hover:hover .ux-dropdown-menu {
+    transform: translateY(0);
+}
+.ux-dropdown-item {
+    display: block;
+}
+.ux-dropdown-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: #374151;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.1s;
+}
+.ux-dropdown-link:hover {
+    background-color: #f9fafb;
+    color: #111827;
+}
+.ux-dropdown-divider {
+    border-top: 1px solid #f3f4f6;
+    margin: 0.25rem 0;
+}
+.ux-dropdown-arrow::after {
+    content: "";
+    display: inline-block;
+    margin-left: 0.375rem;
+    vertical-align: middle;
+    border-top: 4px solid currentColor;
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+}
+.ux-dropdown-trigger {
+    cursor: pointer;
+}
+CSS
+        );
     }
 
     /**

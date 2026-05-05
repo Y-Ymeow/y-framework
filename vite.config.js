@@ -2,14 +2,14 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-    base: '/_framework/',
+    base: process.env.NODE_ENV === 'development' ? '/' : '/_framework/',
     build: {
-        outDir: './dist',
+        outDir: './public/build',
         manifest: true,
         rollupOptions: {
             input: {
-                ui: resolve(__dirname, 'ui.js'),
-                ux: resolve(__dirname, 'ux.js'),
+                ui: './resources/js/ui.js',
+                ux: './resources/js/ux.js',
             },
             output: {
                 entryFileNames: 'js/[name].min.js',

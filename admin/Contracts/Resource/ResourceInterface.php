@@ -1,6 +1,6 @@
 <?php
 
-namespace Framework\Admin\Resource;
+namespace Admin\Contracts\Resource;
 
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
@@ -9,7 +9,7 @@ interface ResourceInterface
 {
     public static function getName(): string;
     public static function getModel(): string;
-    public static function getTitle(): string;
+    public static function getTitle(): string|array;
     /**
      * 获取资源定义的路由
      */

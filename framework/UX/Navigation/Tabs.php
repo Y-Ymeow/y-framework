@@ -56,6 +56,80 @@ class Tabs extends UXComponent
             };
             return Tabs;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-tabs {
+    font-size: 0.875rem;
+}
+.ux-tabs-nav {
+    display: flex;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+.ux-tabs-pills .ux-tabs-nav {
+    border-bottom: none;
+    gap: 0.25rem;
+    background: #f3f4f6;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    display: inline-flex;
+}
+.ux-tabs-justified .ux-tabs-nav {
+    display: flex;
+}
+.ux-tabs-justified .ux-tabs-item {
+    flex: 1;
+    text-align: center;
+}
+.ux-tabs-item {
+    margin-bottom: -1px;
+}
+.ux-tabs-pills .ux-tabs-item {
+    margin-bottom: 0;
+}
+.ux-tabs-link {
+    display: block;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+    white-space: nowrap;
+}
+.ux-tabs-link:hover {
+    color: #374151;
+}
+.ux-tabs-item.active .ux-tabs-link {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+}
+.ux-tabs-pills .ux-tabs-link {
+    border-bottom: none;
+    border-radius: 0.375rem;
+}
+.ux-tabs-pills .ux-tabs-item.active .ux-tabs-link {
+    background: #3b82f6;
+    color: #fff;
+    border-bottom-color: transparent;
+}
+.ux-tabs-content {
+    padding: 1rem 0;
+}
+.ux-tabs-pane {
+    display: none;
+}
+.ux-tabs-pane.active {
+    display: block;
+}
+CSS
+        );
     }
 
     /**

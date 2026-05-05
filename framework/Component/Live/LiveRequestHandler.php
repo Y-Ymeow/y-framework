@@ -204,6 +204,12 @@ class LiveRequestHandler
         $locale = $request->input('locale', '');
         if (!empty($locale)) {
             \Framework\Intl\Translator::setLocale($locale);
+            setcookie('locale', $locale, [
+                'expires' => time() + 60 * 60 * 24 * 365,
+                'path' => '/',
+                'httponly' => false,
+                'samesite' => 'Lax',
+            ]);
         }
 
         $translations = \Framework\Intl\Translator::getMany($keys);

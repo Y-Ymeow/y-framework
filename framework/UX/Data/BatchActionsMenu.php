@@ -139,7 +139,7 @@ class BatchActionsMenu
         $left = Element::make('div')->class('ux-batch-actions-left');
 
         if ($this->visible && !empty($this->selectedKeys)) {
-            $countText = str_replace('{count}', (string)count($this->selectedKeys), $this->selectCountText ?: t('ux.selected_count', ['count' => count($this->selectedKeys)]));
+            $countText = str_replace('{count}', (string)count($this->selectedKeys), $this->selectCountText ?: t('ux:batch-actions.selected_count', ['count' => count($this->selectedKeys)]));
             $left->child(Element::make('span')->class('ux-batch-actions-count')->text($countText));
 
             $dropdown = Element::make('div')->class('ux-batch-actions-dropdown');
@@ -147,7 +147,7 @@ class BatchActionsMenu
             $triggerBtn = Element::make('button')
                 ->attr('type', 'button')
                 ->class('ux-batch-actions-trigger')
-                ->text(t('ux.batch_actions'));
+                ->intl('ux:batch-actions.batch_actions');
 
             $triggerIcon = Element::make('i')->class('bi bi-chevron-down', 'ux-batch-actions-trigger-arrow');
             $triggerBtn->child($triggerIcon);
@@ -185,7 +185,7 @@ class BatchActionsMenu
             $dropdown->child($menu);
             $left->child($dropdown);
         } else {
-            $left->child(Element::make('span')->class('ux-batch-actions-empty')->text($this->emptyText ?: t('ux.please_select_records')));
+            $left->child(Element::make('span')->class('ux-batch-actions-empty')->text($this->emptyText ?: t('ux:batch-actions.please_select_records')));
         }
 
         $wrapper->child($left);
@@ -193,7 +193,7 @@ class BatchActionsMenu
         $cancelBtn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-batch-actions-cancel')
-            ->text(t('ux.cancel_selection'));
+            ->intl('ux:batch-actions.cancel_selection');
         $cancelBtn->data('action', 'cancelSelection');
         $wrapper->child($cancelBtn);
 

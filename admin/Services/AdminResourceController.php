@@ -2,27 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin;
-
-use Framework\Http\Request\Request;
-use Framework\Http\Response\Response;
-use Framework\Routing\Attribute\Route;
-use Framework\Admin\Live\AdminListPage;
-use Framework\Admin\Live\AdminFormPage;
-use Framework\Admin\Live\AdminLayout;
-use Framework\Routing\Attribute\RouteGroup;
-use Framework\View\Element\Container;
-use Framework\View\Element\Link;
-use Framework\View\Element\Listing;
-use Framework\View\Element\Text;
+namespace Admin\Services;
 
 class AdminResourceController
 {
-    public function dashboard(): Response
-    {
-        return \Admin\Pages\DashboardPage::renderPage();
-    }
-
     public static function indexUrl(string $resource): string
     {
         return "/admin/{$resource}";

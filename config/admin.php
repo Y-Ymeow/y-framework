@@ -15,7 +15,7 @@ return [
     |
     */
     'pages' => [
-        'dashboard' => \Framework\Admin\Pages\DashboardPage::class,
-        'login' => \Framework\Admin\Pages\LoginPage::class,
+        'dashboard' => \Admin\Pages\DashboardPage::class,
+        'login' => \Admin\Pages\LoginPage::class,
     ],
 ];

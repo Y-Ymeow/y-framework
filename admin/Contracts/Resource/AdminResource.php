@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin\Attribute;
+namespace Admin\Contracts\Resource;
 
 #[\Attribute(\Attribute::TARGET_CLASS)]
 class AdminResource
@@ -15,5 +15,6 @@ class AdminResource
         public ?string $routePrefix = null,
         public array $middleware = [],
         public string $group = '',
+        public int $sort = 50,
     ) {}
 }

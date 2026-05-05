@@ -414,48 +414,48 @@ if (!function_exists('locale')) {
 if (!function_exists('recordUrl')) {
     function recordUrl(string $resource, int $id): string
     {
-        return \Framework\Admin\AdminResourceController::recordUrl($resource, $id);
+        return \Admin\Services\AdminResourceController::recordUrl($resource, $id);
     }
 }
 
 if (!function_exists('recordDeleteUrl')) {
     function recordDeleteUrl(string $resource, mixed $id): string
     {
-        return \Framework\Admin\AdminResourceController::deleteUrl($resource, $id);
+        return \Admin\Services\AdminResourceController::deleteUrl($resource, $id);
     }
 }
 
 if (!function_exists('recordEditUrl')) {
     function recordEditUrl(string $resource, mixed $id): string
     {
-        return \Framework\Admin\AdminResourceController::editUrl($resource, $id);
+        return \Admin\Services\AdminResourceController::editUrl($resource, $id);
     }
 }
 
 if (!function_exists('recordCreateUrl')) {
     function recordCreateUrl(string $resource): string
     {
-        return \Framework\Admin\AdminResourceController::createUrl($resource);
+        return \Admin\Services\AdminResourceController::createUrl($resource);
     }
 }
 
 if (!function_exists('recordIndexUrl')) {
     function recordIndexUrl(string $resource): string
     {
-        return \Framework\Admin\AdminResourceController::indexUrl($resource);
+        return \Admin\Services\AdminResourceController::indexUrl($resource);
     }
 }
 
 if (!function_exists('recordCustomUrl')) {
     function recordCustomUrl(string $resource, string $action): string
     {
-        return \Framework\Admin\AdminResourceController::customUrl($resource, $action);
+        return \Admin\Services\AdminResourceController::customUrl($resource, $action);
     }
 }
 
 if (!function_exists('recordCustomRecordUrl')) {
     function recordCustomRecordUrl(string $resource, mixed $id, string $action): string
     {
-        return \Framework\Admin\AdminResourceController::customRecordUrl($resource, $id, $action);
+        return \Admin\Services\AdminResourceController::customRecordUrl($resource, $id, $action);
     }
 }

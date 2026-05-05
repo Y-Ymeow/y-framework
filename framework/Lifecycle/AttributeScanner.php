@@ -52,8 +52,8 @@ class AttributeScanner
 
     private function scanAdminPageAttributes(ReflectionClass $reflection): void
     {
-        if ($reflection->isSubclassOf(\Framework\Admin\Page\PageInterface::class) && !$reflection->isAbstract()) {
-            \Framework\Admin\AdminManager::registerPage($reflection->getName());
+        if ($reflection->isSubclassOf(\Admin\Contracts\Page\PageInterface::class) && !$reflection->isAbstract()) {
+            \Admin\Services\AdminManager::registerPage($reflection->getName());
         }
     }
 
@@ -76,16 +76,16 @@ class AttributeScanner
 
     private function scanAdminResourceAttributes(ReflectionClass $reflection): void
     {
-        $classAttrs = $reflection->getAttributes(\Framework\Admin\Attribute\AdminResource::class);
+        $classAttrs = $reflection->getAttributes(\Admin\Contracts\Resource\AdminResource::class);
         if (empty($classAttrs)) {
             return;
         }
 
         $adminAttr = $classAttrs[0]->newInstance();
-        
+
         // 注册到 AdminManager
         // 路由由 AdminManager::registerRoutes 统一注册
-        \Framework\Admin\AdminManager::registerResource($reflection->getName());
+        \Admin\Services\AdminManager::registerResource($reflection->getName());
     }
 
     private function scanHookAttributes(ReflectionClass $reflection): void

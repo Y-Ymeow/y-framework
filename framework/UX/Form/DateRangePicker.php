@@ -374,6 +374,215 @@ class DateRangePicker extends UXComponent
             };
             return DateRangePicker;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-date-range-picker {
+    position: relative;
+    display: inline-block;
+}
+.ux-date-range-picker-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.ux-date-range-picker-input-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: #fff;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.ux-date-range-picker-input-wrapper:hover {
+    border-color: #9ca3af;
+}
+.ux-date-range-picker-open .ux-date-range-picker-input-wrapper {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.ux-date-range-picker-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    color: #374151;
+    background: transparent;
+    cursor: pointer;
+    min-width: 10rem;
+}
+.ux-date-range-picker-input::placeholder {
+    color: #9ca3af;
+}
+.ux-date-range-picker-icon {
+    color: #9ca3af;
+    padding: 0 0.25rem;
+}
+.ux-date-range-picker-clear {
+    display: inline-flex;
+    align-items: center;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 0.75rem;
+    transition: color 0.15s;
+}
+.ux-date-range-picker-clear:hover {
+    color: #6b7280;
+}
+.ux-date-range-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    margin-top: 0.25rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+.ux-date-range-picker-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.ux-date-range-picker-calendars {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+}
+.ux-date-range-picker-calendar {
+    min-width: 16rem;
+}
+.ux-date-range-picker-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.ux-date-range-picker-calendar-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+}
+.ux-date-range-picker-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: none;
+    border-radius: 0.25rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+.ux-date-range-picker-nav-btn:hover {
+    background: #f3f4f6;
+}
+.ux-date-range-picker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 0.25rem;
+}
+.ux-date-range-picker-weekday {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    padding: 0.25rem 0;
+}
+.ux-date-range-picker-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+.ux-date-range-picker-day {
+    text-align: center;
+    padding: 0.25rem 0;
+    border: none;
+    background: none;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+.ux-date-range-picker-day:hover:not(:disabled) {
+    background: #f3f4f6;
+}
+.ux-date-range-picker-day.other-month {
+    color: #d1d5db;
+}
+.ux-date-range-picker-day.today {
+    font-weight: 600;
+    color: #3b82f6;
+}
+.ux-date-range-picker-day.range-start,
+.ux-date-range-picker-day.range-end {
+    background: #3b82f6;
+    color: #fff;
+}
+.ux-date-range-picker-day.in-range {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+.ux-date-range-picker-day.disabled {
+    color: #e5e7eb;
+    cursor: not-allowed;
+}
+.ux-date-range-picker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid #f3f4f6;
+}
+.ux-date-range-picker-time {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.ux-date-range-picker-time-hour,
+.ux-date-range-picker-time-minute,
+.ux-date-range-picker-time-second {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+    outline: none;
+}
+.ux-date-range-picker-time-sep {
+    color: #9ca3af;
+}
+.ux-date-range-picker-actions {
+    display: flex;
+    gap: 0.375rem;
+}
+.ux-date-range-picker-today-btn,
+.ux-date-range-picker-confirm-btn {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    background: #fff;
+    font-size: 0.75rem;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.ux-date-range-picker-confirm-btn {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+.ux-date-range-picker-confirm-btn:hover {
+    background: #2563eb;
+}
+CSS
+        );
     }
 
     /**

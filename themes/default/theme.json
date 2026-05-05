@@ -1,0 +1,30 @@
+{
+    "name": "Default Theme",
+    "version": "1.0.0",
+    "author": "Admin",
+    "description": "默认主题",
+    "settings": {
+        "primary_color": {
+            "type": "color",
+            "default": "#3b82f6",
+            "label": "主色调"
+        },
+        "font_family": {
+            "type": "select",
+            "default": "system",
+            "options": ["system", "serif", "sans-serif"],
+            "label": "字体"
+        },
+        "sidebar_position": {
+            "type": "select",
+            "default": "left",
+            "options": ["left", "right"],
+            "label": "侧边栏位置"
+        },
+        "show_breadcrumb": {
+            "type": "switch",
+            "default": true,
+            "label": "显示面包屑"
+        }
+    }
+}

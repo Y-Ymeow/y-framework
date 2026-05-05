@@ -91,6 +91,107 @@ class Modal extends UXComponent
             };
             return Modal;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 5vh;
+    overflow-y: auto;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s;
+}
+.ux-modal-open {
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+}
+.ux-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+}
+.ux-modal-dialog {
+    position: relative;
+    width: auto;
+    margin: 0 auto;
+    pointer-events: auto;
+    transform: translateY(-20px) scale(0.97);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ux-modal-open .ux-modal-dialog {
+    transform: translateY(0) scale(1);
+}
+.ux-modal-centered {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 2rem);
+    padding-top: 0;
+}
+.ux-modal-content {
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+.ux-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.ux-modal-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+.ux-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.15s;
+}
+.ux-modal-close:hover {
+    color: #374151;
+}
+.ux-modal-body {
+    padding: 1.5rem;
+}
+.ux-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.ux-modal-sm .ux-modal-dialog { max-width: 24rem; }
+.ux-modal-md .ux-modal-dialog { max-width: 32rem; }
+.ux-modal-lg .ux-modal-dialog { max-width: 48rem; }
+.ux-modal-xl .ux-modal-dialog { max-width: 64rem; }
+.ux-modal-fullscreen .ux-modal-dialog {
+    max-width: 100%;
+    margin: 0;
+    height: 100%;
+}
+.ux-modal-fullscreen .ux-modal-content {
+    border-radius: 0;
+    height: 100%;
+}
+CSS
+        );
     }
 
     /**

@@ -74,7 +74,13 @@ class LanguageSwitcherLive extends LiveComponent
         if (in_array($locale, $this->locales, true)) {
             $this->locale = $locale;
             Translator::setLocale($locale);
-            $this->refresh('language-switcher');
+            setcookie('locale', $locale, [
+                'expires' => time() + 60 * 60 * 24 * 365,
+                'path' => '/',
+                'httponly' => false,
+                'samesite' => 'Lax',
+            ]);
+            $this->operation('reload');
         }
     }
 

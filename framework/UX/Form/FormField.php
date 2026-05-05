@@ -35,6 +35,92 @@ abstract class FormField extends UXComponent
     protected ?string $error = null;
     protected bool $invalid = false;
 
+    protected function init(): void
+    {
+        $this->registerCss(<<<'CSS'
+.ux-form-group {
+    margin-bottom: 1rem;
+}
+.ux-form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.375rem;
+}
+.ux-form-required {
+    color: #ef4444;
+    margin-left: 0.125rem;
+}
+.ux-form-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ux-form-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.ux-form-input:disabled {
+    background: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+.ux-form-input::placeholder {
+    color: #9ca3af;
+}
+.ux-field-invalid {
+    border-color: #ef4444 !important;
+}
+.ux-field-invalid:focus {
+    box-shadow: 0 0 0 2px rgba(239,68,68,0.15) !important;
+}
+.ux-form-help {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.375rem;
+}
+.ux-form-error {
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 0.375rem;
+}
+.ux-form-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #374151;
+}
+.ux-form-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #374151;
+}
+.ux-form-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.ux-form-radio-inline {
+    display: inline-flex;
+}
+CSS
+        );
+    }
+
     /**
      * 设置字段名称
      * @param string $name 字段名

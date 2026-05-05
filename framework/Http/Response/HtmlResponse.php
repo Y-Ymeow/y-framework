@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Framework\Http\Response;
 
+use Framework\Component\Live\LiveComponent;
 use Framework\Foundation\AppEnvironment;
 use Framework\View\Document\Document;
 
-/**
- * HTML 响应
- */
 class HtmlResponse extends Response
 {
     public function __construct(mixed $html, int $status = 200, array $headers = [])
     {
+        if ($html instanceof LiveComponent) {
+            $html->_invoke();
+        }
+
         $doc = Document::make();
         $content = $doc->main($html)->render();
 

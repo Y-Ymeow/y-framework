@@ -200,6 +200,150 @@ class Transfer extends UXComponent
             };
             return Transfer;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-transfer {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+.ux-transfer-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.ux-transfer-panel {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 14rem;
+    max-height: 20rem;
+    overflow: hidden;
+}
+.ux-transfer-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    background: #f9fafb;
+    font-size: 0.8125rem;
+}
+.ux-transfer-panel-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+.ux-transfer-panel-title {
+    font-weight: 500;
+    color: #374151;
+}
+.ux-transfer-panel-count {
+    margin-left: auto;
+    color: #9ca3af;
+}
+.ux-transfer-panel-search {
+    position: relative;
+    padding: 0.375rem 0.5rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.ux-transfer-panel-search-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem 0.25rem 1.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.ux-transfer-panel-search-input:focus {
+    border-color: #3b82f6;
+}
+.ux-transfer-panel-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 0.75rem;
+}
+.ux-transfer-panel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+.ux-transfer-panel-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.8125rem;
+}
+.ux-transfer-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: #374151;
+    transition: background-color 0.1s;
+}
+.ux-transfer-item:hover {
+    background: #f9fafb;
+}
+.ux-transfer-item.selected {
+    background: #eff6ff;
+}
+.ux-transfer-item-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.ux-transfer-item-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+.ux-transfer-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ux-transfer-panel-footer {
+    border-top: 1px solid #f3f4f6;
+    padding: 0.375rem 0.75rem;
+    background: #f9fafb;
+}
+.ux-transfer-operations {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+}
+.ux-transfer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.ux-transfer-btn:hover:not(:disabled) {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+.ux-transfer-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+CSS
+        );
     }
 
     /**

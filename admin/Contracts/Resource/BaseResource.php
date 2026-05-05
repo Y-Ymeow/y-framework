@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin\Resource;
+namespace Admin\Contracts\Resource;
 
 use Framework\Events\Hook;
 use Framework\UX\Form\FormBuilder;
@@ -48,7 +48,7 @@ abstract class BaseResource implements ResourceInterface
         return static::resolveDefaultModel();
     }
 
-    public static function getTitle(): string
+    public static function getTitle(): string|array
     {
         return static::resolveDefaultTitle();
     }
@@ -60,17 +60,17 @@ abstract class BaseResource implements ResourceInterface
             "admin.resource.{$name}" => [
                 'method' => 'GET',
                 'path' => "/{$name}",
-                'handler' => \Framework\Admin\Live\AdminListPage::resource($name),
+                'handler' => \Admin\Contracts\Live\AdminListPage::resource($name),
             ],
             "admin.resource.{$name}.create" => [
                 'method' => 'GET',
                 'path' => "/{$name}/create",
-                'handler' => \Framework\Admin\Live\AdminFormPage::resource($name),
+                'handler' => \Admin\Contracts\Live\AdminFormPage::resource($name),
             ],
             "admin.resource.{$name}.edit" => [
                 'method' => 'GET',
                 'path' => "/{$name}/{id}/edit",
-                'handler' => \Framework\Admin\Live\AdminFormPage::resource($name),
+                'handler' => \Admin\Contracts\Live\AdminFormPage::resource($name),
             ],
         ];
     }
@@ -100,7 +100,7 @@ abstract class BaseResource implements ResourceInterface
                 $page->named("admin-res-{$resourceName}-{$shortName}");
             }
 
-            $layout = new \Framework\Admin\Live\AdminLayout();
+            $layout = new \Admin\Contracts\Live\AdminLayout();
             $layout->activeMenu = $resourceName;
             $layout->setContent($page);
 
@@ -283,11 +283,11 @@ abstract class BaseResource implements ResourceInterface
     protected static function resolveDefaultModel(): string
     {
         $reflection = new \ReflectionClass(static::class);
-        $attrs = $reflection->getAttributes(\Framework\Admin\Attribute\AdminResource::class);
+        $attrs = $reflection->getAttributes(\Admin\Contracts\Resource\AdminResource::class);
 
         if (!empty($attrs)) {
-            $args = $attrs[0]->getArguments();
-            return $args['model'] ?? $args[1] ?? '';
+            $attr = $attrs[0]->newInstance();
+            return $attr->model;
         }
 
         return '';
@@ -296,11 +296,11 @@ abstract class BaseResource implements ResourceInterface
     protected static function resolveDefaultTitle(): string
     {
         $reflection = new \ReflectionClass(static::class);
-        $attrs = $reflection->getAttributes(\Framework\Admin\Attribute\AdminResource::class);
+        $attrs = $reflection->getAttributes(\Admin\Contracts\Resource\AdminResource::class);
 
         if (!empty($attrs)) {
-            $args = $attrs[0]->getArguments();
-            return $args['title'] ?? $args[2] ?? static::resolveDefaultName();
+            $attr = $attrs[0]->newInstance();
+            return $attr->title ?: static::resolveDefaultName();
         }
 
         return static::resolveDefaultName();

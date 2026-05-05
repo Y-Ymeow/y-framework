@@ -54,6 +54,9 @@ function getFullScope(el, state) {
             // 3. 回退到 $ 自身引用（用于 $.locale 这种写法）
             if (key === '$') return this; 
 
+            // 4. 回退到全局对象（如 $locale, $dispatch 等）
+            if (key in window) return window[key];
+
             return undefined;
         },
         set(target, key, value) {

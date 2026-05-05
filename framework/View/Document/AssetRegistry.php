@@ -96,8 +96,9 @@ class AssetRegistry
         if (\Framework\Support\Asset::isDev()) {
             $this->js('http://localhost:5173/@vite/client', true, 'vite-client', true);
         }
-        $this->js(dist('ui.js'), true, 'ui-js', true);
-        foreach (dist_css('ui.js') as $index => $cssUrl) {
+
+        $this->js(dist('./resources/js/ui.js'), true, 'ui-js', true);
+        foreach (dist_css('./resources/css/ui.js') as $index => $cssUrl) {
             $this->css($cssUrl, 'dist-ui-css-' . $index);
         }
         return $this;
@@ -105,8 +106,8 @@ class AssetRegistry
 
     public function ux(): self
     {
-        $this->js(dist('ux.js'), true, 'ux-js', true);
-        foreach (dist_css('ux.js') as $index => $cssUrl) {
+        $this->js(dist('./resources/js/ux.js'), true, 'ux-js', true);
+        foreach (dist_css('./resources/css/ux.js') as $index => $cssUrl) {
             $this->css($cssUrl, 'dist-ux-css-' . $index);
         }
         return $this;
@@ -115,9 +116,20 @@ class AssetRegistry
     public function renderCss(): string
     {
         $html = '';
+        $snippetIds = CssCollector::getInstance()->getSnippetIds();
+
         foreach ($this->cssFiles as $css) {
             $id = $css['id'] ? ' id="' . htmlspecialchars($css['id']) . '"' : '';
-            $html .= '<link rel="stylesheet" href="' . htmlspecialchars($css['href']) . '"' . $id . '>';
+            $href = $css['href'];
+
+            if ($css['id'] === 'generated-css' && !empty($snippetIds)) {
+                $ids = implode(',', $snippetIds);
+                $v = substr(md5($ids), 0, 8);
+                $sep = str_contains($href, '?') ? '&' : '?';
+                $href .= $sep . 'snippets=' . urlencode($ids) . '&v=' . $v;
+            }
+
+            $html .= '<link rel="stylesheet" href="' . htmlspecialchars($href) . '"' . $id . '>';
         }
         return $html;
     }

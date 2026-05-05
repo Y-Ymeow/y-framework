@@ -28,8 +28,9 @@ class Asset
 
     public static function distPath(): string
     {
+        var_dump(base_path('public/build/.vite/manifest.json'), self::$distPath);
         if (self::$distPath === null) {
-            $composerPath = self::resolveVendorPath() . '/y-framework/dist';
+            $composerPath = base_path('public/build/.vite/manifest.json');
             $srcDir = dirname((new \ReflectionClass(self::class))->getFileName(), 2);
             $devPath = $srcDir . '/statics/dist';
 
@@ -56,10 +57,13 @@ class Asset
     public static function vite(string $entry): string
     {
         if (self::isDev()) {
-            return 'http://localhost:5173/' . ltrim($entry, '/');
+            $key = basename($entry);
+            $srcPath = self::ENTRY_MAP[$key] ?? $entry;
+            return 'http://localhost:5173/' . ltrim($srcPath, '/');
         }
 
         $manifestPath = base_path('public/build/.vite/manifest.json');
+        var_dump($manifestPath);
 
         if (!is_file($manifestPath)) {
             return '/build/' . $entry;
@@ -112,10 +116,20 @@ class Asset
         return array_unique($css);
     }
 
+    /**
+     * Vite 入口名称 -> 开发服务器文件路径映射
+     */
+    private const ENTRY_MAP = [
+        'ui.js'  => 'resources/js/ui.js',
+        'ux.js'  => 'resources/js/ux.js',
+    ];
+
     public static function dist(string $entry): string
     {
         if (self::isDev()) {
-            return 'http://localhost:5173/' . ltrim($entry, '/');
+            $key = basename($entry);
+            $srcPath = self::ENTRY_MAP[$key] ?? $entry;
+            return 'http://localhost:5173/' . ltrim($srcPath, '/');
         }
 
         $manifestPath = self::distPath() . '/.vite/manifest.json';

@@ -1,9 +1,12 @@
 <?php
 
-namespace Framework\Admin;
+namespace Admin\Services;
 
-use Framework\Admin\Resource\ResourceInterface;
-use Framework\Admin\Page\PageInterface;
+use Admin\Contracts\Resource\ResourceInterface;
+use Admin\Contracts\Page\PageInterface;
+use Admin\Pages\DashboardPage;
+use Admin\Pages\LoginPage;
+use Admin\Auth\AuthManager;
 use Framework\Component\Live\LiveComponent;
 
 class AdminManager
@@ -60,9 +63,6 @@ class AdminManager
         return static::$prefix;
     }
 
-    /**
-     * 从配置加载 admin 页面
-     */
     public static function bootFromConfig(): void
     {
         if (static::$booted) {
@@ -78,6 +78,10 @@ class AdminManager
             static::$pages[$name] = $class;
         }
 
+        static::registerPage(DashboardPage::class);
+        static::registerPage(LoginPage::class);
+        static::registerPage(\Admin\Pages\SettingPage::class);
+
         static::$booted = true;
     }
 
@@ -87,15 +91,23 @@ class AdminManager
 
         $prefix = static::getPrefix();
 
-        // 注册仪表盘路由
-        $dashboardClass = static::$pages['dashboard'] ?? \Admin\Pages\DashboardPage::class;
-        $router->addRoute('GET', $prefix, [$dashboardClass, 'render'], 'admin.dashboard');
+        if (isset(static::$pages['dashboard'])) {
+            $dashboardClass = static::$pages['dashboard'];
+            $router->addRoute('GET', $prefix, [$dashboardClass, '__invoke'], 'admin.dashboard');
+            $router->addRoute('GET', $prefix . '/dashboard', [$dashboardClass, '__invoke'], 'admin.dashboard.alias');
+        }
 
-        // 注册登录页面路由（不需要 layout）
         if (isset(static::$pages['login'])) {
             $loginClass = static::$pages['login'];
-            $router->addRoute('GET', $prefix . '/login', [$loginClass, 'render'], 'admin.login');
+            $router->addRoute('GET', $prefix . '/login', [$loginClass, '__invoke'], 'admin.login');
+            $router->addRoute('POST', $prefix . '/login', [$loginClass, '__invoke'], 'admin.login.handle');
         }
+
+        $router->addRoute('GET', $prefix . '/logout', function () {
+            $auth = app()->make(AuthManager::class);
+            $auth->logout();
+            return new \Framework\Http\Response\RedirectResponse('/admin/login');
+        }, 'admin.logout');
 
         foreach (static::$resources as $resourceClass) {
             $routes = $resourceClass::getRoutes();
@@ -123,7 +135,7 @@ class AdminManager
                     $router->addRoute($method, $path, $handler, $routeName);
                 }
             } else {
-                $router->addRoute('GET', $prefix . '/' . $name, [$pageClass, 'render'], 'admin.page.' . $name);
+                $router->addRoute('GET', $prefix . '/' . $name, [$pageClass, '__invoke'], 'admin.page.' . $name);
             }
         }
     }

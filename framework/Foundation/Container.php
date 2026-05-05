@@ -59,6 +59,14 @@ class Container
         return isset($this->bindings[$id]) || isset($this->instances[$id]) || class_exists($id);
     }
 
+    public function make(string $id, array $parameters = []): mixed
+    {
+        if (empty($parameters)) {
+            return $this->get($id);
+        }
+        return $this->makeWith($id, $parameters);
+    }
+
     public function singleton(string $id, mixed $concrete = null): void
     {
         if ($concrete === null) {

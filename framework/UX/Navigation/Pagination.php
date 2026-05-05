@@ -167,7 +167,7 @@ class Pagination extends UXComponent
                 return new Element('span');
             }
             // 否则显示一个空的列表占位，或者只显示统计信息
-            $navEl->child(Element::make('div')->class('ux-pagination-info')->text(t('pagination.showing', ['from' => 1, 'to' => $this->total, 'total' => $this->total])));
+            $navEl->child(Element::make('div')->class('ux-pagination-info')->intl('ux:pagination.showing', ['from' => 1, 'to' => $this->total, 'total' => $this->total]));
         }
 
         if (!empty($this->perPageOptions) || $this->showPerPage) {
@@ -199,9 +199,9 @@ class Pagination extends UXComponent
             $select->data('action-params', json_encode([$this->perPageParam => '__value__']));
         }
 
-        $wrapper->child(Element::make('span')->class('ux-pagination-perpage-label')->text(t('pagination.per_page')));
+        $wrapper->child(Element::make('span')->class('ux-pagination-perpage-label')->intl('ux:pagination.per_page'));
         $wrapper->child($select);
-        $wrapper->child(Element::make('span')->class('ux-pagination-perpage-suffix')->text(t('pagination.items')));
+        $wrapper->child(Element::make('span')->class('ux-pagination-perpage-suffix')->intl('ux:pagination.items'));
 
         return $wrapper;
     }

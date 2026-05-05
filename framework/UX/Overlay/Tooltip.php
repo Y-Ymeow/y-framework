@@ -112,6 +112,88 @@ class Tooltip extends UXComponent
             };
             return Tooltip;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.ux-tooltip {
+    position: absolute;
+    z-index: 1060;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: #fff;
+    background: #1f2937;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    max-width: var(--tooltip-max-width, 14rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s;
+    pointer-events: none;
+}
+.ux-tooltip.show {
+    opacity: 1;
+    visibility: visible;
+}
+.ux-tooltip[data-placement="top"] {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.375rem;
+}
+.ux-tooltip[data-placement="bottom"] {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 0.375rem;
+}
+.ux-tooltip[data-placement="left"] {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 0.375rem;
+}
+.ux-tooltip[data-placement="right"] {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 0.375rem;
+}
+.ux-tooltip[data-arrow="true"]::after {
+    content: "";
+    position: absolute;
+    width: 0.375rem;
+    height: 0.375rem;
+    background: #1f2937;
+    transform: rotate(45deg);
+}
+.ux-tooltip[data-placement="top"][data-arrow="true"]::after {
+    bottom: -0.1875rem;
+    left: 50%;
+    margin-left: -0.1875rem;
+}
+.ux-tooltip[data-placement="bottom"][data-arrow="true"]::after {
+    top: -0.1875rem;
+    left: 50%;
+    margin-left: -0.1875rem;
+}
+.ux-tooltip[data-placement="left"][data-arrow="true"]::after {
+    right: -0.1875rem;
+    top: 50%;
+    margin-top: -0.1875rem;
+}
+.ux-tooltip[data-placement="right"][data-arrow="true"]::after {
+    left: -0.1875rem;
+    top: 50%;
+    margin-top: -0.1875rem;
+}
+CSS
+        );
     }
 
     /**

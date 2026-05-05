@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Framework\Admin\Page;
+namespace Admin\Contracts\Page;
 
-use Framework\Admin\Live\AdminLayout;
+use Admin\Contracts\Live\AdminLayout;
 use Framework\Http\Response\Response;
 
 abstract class BasePage implements PageInterface

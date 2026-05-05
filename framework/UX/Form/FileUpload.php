@@ -116,8 +116,8 @@ class FileUpload extends FormField
             Element::make('label')
                 ->class('ux-file-label')
                 ->children(
-                    Element::make('span')->class('ux-file-button')->text(t('ux.select_file')),
-                    Element::make('span')->class('ux-file-name')->text(t('ux.no_file_selected'))
+                    Element::make('span')->class('ux-file-button')->intl('ux:file-upload.select_file'),
+                    Element::make('span')->class('ux-file-name')->intl('ux:file-upload.no_file_selected')
                 )
         );
 

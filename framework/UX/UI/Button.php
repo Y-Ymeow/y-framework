@@ -38,6 +38,161 @@ class Button extends UXComponent
     protected bool $navigate = false;
     protected ?string $navigateFragment = null;
 
+    protected function init(): void
+    {
+        $this->registerCss(<<<'CSS'
+.ux-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+}
+.ux-btn:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+.ux-btn:disabled, .ux-btn-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.ux-btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+.ux-btn-primary:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+.ux-btn-secondary {
+    background: #6b7280;
+    color: #fff;
+    border-color: #6b7280;
+}
+.ux-btn-secondary:hover:not(:disabled) {
+    background: #4b5563;
+    border-color: #4b5563;
+}
+.ux-btn-danger {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+}
+.ux-btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+.ux-btn-success {
+    background: #22c55e;
+    color: #fff;
+    border-color: #22c55e;
+}
+.ux-btn-success:hover:not(:disabled) {
+    background: #16a34a;
+    border-color: #16a34a;
+}
+.ux-btn-warning {
+    background: #f59e0b;
+    color: #fff;
+    border-color: #f59e0b;
+}
+.ux-btn-warning:hover:not(:disabled) {
+    background: #d97706;
+    border-color: #d97706;
+}
+.ux-btn-outline {
+    background: transparent;
+}
+.ux-btn-outline.ux-btn-primary {
+    color: #3b82f6;
+    border-color: #3b82f6;
+}
+.ux-btn-outline.ux-btn-primary:hover:not(:disabled) {
+    background: #3b82f6;
+    color: #fff;
+}
+.ux-btn-outline.ux-btn-secondary {
+    color: #6b7280;
+    border-color: #6b7280;
+}
+.ux-btn-outline.ux-btn-secondary:hover:not(:disabled) {
+    background: #6b7280;
+    color: #fff;
+}
+.ux-btn-outline.ux-btn-danger {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+.ux-btn-outline.ux-btn-danger:hover:not(:disabled) {
+    background: #ef4444;
+    color: #fff;
+}
+.ux-btn-outline.ux-btn-success {
+    color: #22c55e;
+    border-color: #22c55e;
+}
+.ux-btn-outline.ux-btn-success:hover:not(:disabled) {
+    background: #22c55e;
+    color: #fff;
+}
+.ux-btn-outline.ux-btn-warning {
+    color: #f59e0b;
+    border-color: #f59e0b;
+}
+.ux-btn-outline.ux-btn-warning:hover:not(:disabled) {
+    background: #f59e0b;
+    color: #fff;
+}
+.ux-btn-sm {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.8125rem;
+}
+.ux-btn-lg {
+    padding: 0.625rem 1.25rem;
+    font-size: 1rem;
+}
+.ux-btn-block {
+    display: flex;
+    width: 100%;
+}
+.ux-btn-loading {
+    pointer-events: none;
+}
+.ux-btn-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: ux-btn-spin 0.6s linear infinite;
+}
+@keyframes ux-btn-spin {
+    to { transform: rotate(360deg); }
+}
+.ux-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    font-size: 1em;
+}
+.ux-btn-label {
+    display: inline-flex;
+}
+CSS
+        );
+    }
+
     /**
      * 设置按钮文本
      * @param string $label 按钮文字

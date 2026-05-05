@@ -263,6 +263,159 @@ class Calendar extends UXComponent
             };
             return Calendar;
         ');
+
+        $this->registerCss(<<<'CSS'
+.ux-calendar {
+    width: 20rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+    overflow: hidden;
+    font-size: 0.875rem;
+}
+.ux-calendar-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.ux-calendar-fullscreen {
+    width: 100%;
+}
+.ux-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.ux-calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.ux-calendar-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    background: none;
+    border-radius: 0.25rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+.ux-calendar-nav-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+.ux-calendar-title {
+    font-weight: 600;
+    color: #111827;
+    min-width: 6rem;
+    text-align: center;
+}
+.ux-calendar-mode {
+    display: flex;
+    gap: 0.125rem;
+    background: #f3f4f6;
+    border-radius: 0.25rem;
+    padding: 0.125rem;
+}
+.ux-calendar-mode-btn {
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: transparent;
+    border-radius: 0.125rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.ux-calendar-mode-btn.active {
+    background: #fff;
+    color: #374151;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.ux-calendar-body {
+    padding: 0.5rem;
+}
+.ux-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+    margin-bottom: 0.25rem;
+}
+.ux-calendar-weekday {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #9ca3af;
+    padding: 0.375rem 0;
+}
+.ux-calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+.ux-calendar-day {
+    text-align: center;
+    padding: 0.375rem 0;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: #374151;
+    transition: background-color 0.1s;
+}
+.ux-calendar-day:hover {
+    background: #f3f4f6;
+}
+.ux-calendar-day.other-month {
+    color: #d1d5db;
+}
+.ux-calendar-day.today {
+    font-weight: 600;
+    color: #3b82f6;
+}
+.ux-calendar-day.selected {
+    background: #3b82f6;
+    color: #fff;
+}
+.ux-calendar-day.selected:hover {
+    background: #2563eb;
+}
+.ux-calendar-day.disabled {
+    color: #e5e7eb;
+    cursor: not-allowed;
+}
+.ux-calendar-day.disabled:hover {
+    background: transparent;
+}
+.ux-calendar-months {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+.ux-calendar-month {
+    text-align: center;
+    padding: 0.625rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: #374151;
+    transition: background-color 0.1s;
+}
+.ux-calendar-month:hover {
+    background: #f3f4f6;
+}
+.ux-calendar-month.selected {
+    background: #3b82f6;
+    color: #fff;
+}
+.ux-calendar-month.disabled {
+    color: #e5e7eb;
+    cursor: not-allowed;
+}
+CSS
+        );
     }
 
     /**

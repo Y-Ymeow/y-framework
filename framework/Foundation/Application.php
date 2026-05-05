@@ -145,12 +145,17 @@ class Application
         $this->moduleManager = new ModuleManager($this);
         $this->container->instance(ModuleManager::class, $this->moduleManager);
 
-        $this->registerFrameworkModules();
+        // 1. 自动扫描 app/ 目录，注册用户 Module
+        $this->registerUserModules();
 
+        // 2. 注册用户 ServiceProvider（来自 config/app.php）
         $providers = config('app.providers', []);
         foreach ($providers as $providerClass) {
             $this->register(new $providerClass($this));
         }
+
+        // 3. 注册 Module（来自 config/app.php）
+        $this->registerUserModulesFromConfig();
 
         if (self::isDebug()) {
             $debugProviders = config('app.debug_providers', []);
@@ -164,14 +169,84 @@ class Application
         $this->boot();
 
         $this->moduleManager->boot();
+
+        // 4. 扫描 app/ 目录中的 Attribute 路由
+        $this->scanAttributeRoutes();
     }
 
-    private function registerFrameworkModules(): void
+    /**
+     * 自动扫描 app/Modules 目录，注册用户 Module
+     */
+    private function registerUserModules(): void
+    {
+        $appModulesPath = $this->basePath('/app/Modules');
+        if (!is_dir($appModulesPath)) return;
+
+        foreach (glob($appModulesPath . '/*Module.php') as $file) {
+            $class = $this->getModuleClassFromFile($file);
+            if ($class && is_subclass_of($class, \Framework\Module\BaseModule::class)) {
+                $this->moduleManager->register(new $class());
+            }
+        }
+    }
+
+    /**
+     * 从配置文件注册 Module
+     */
+    private function registerUserModulesFromConfig(): void
     {
         $modules = config('app.modules', []);
 
         foreach ($modules as $moduleClass) {
             $this->moduleManager->register(new $moduleClass());
+        }
+    }
+
+    /**
+     * 从文件获取 Module 类名
+     */
+    private function getModuleClassFromFile(string $file): ?string
+    {
+        $contents = file_get_contents($file);
+        if (preg_match('/namespace\\s+([^;]+);/', $contents, $matches)) {
+            $namespace = trim($matches[1]);
+        } else {
+            return null;
+        }
+
+        // 提取文件名中的类名
+        $fileName = basename($file, '.php');
+        
+        return $namespace . '\\' . $fileName;
+    }
+
+    /**
+     * 扫描 app/ 目录中的 Attribute 路由
+     */
+    private function scanAttributeRoutes(): void
+    {
+        $scanDirs = config('app.scan_dirs', []);
+        
+        foreach ($scanDirs as $dir) {
+            $path = $this->basePath('/' . $dir);
+            if (!is_dir($path)) continue;
+
+            foreach (glob($path . '/*.php') as $file) {
+                $this->scanFileForRoutes($file);
+            }
+        }
+    }
+
+    /**
+     * 扫描单个文件中的路由 Attribute
+     */
+    private function scanFileForRoutes(string $file): void
+    {
+        $contents = file_get_contents($file);
+        
+        // 简单的 Attribute 扫描（生产环境应使用反射）
+        if (preg_match_all('/#\\[Route\\(([^\\]]+)\\)\\]/', $contents, $matches)) {
+            // 路由已注册到 Router（由 LifecycleManager 处理）
         }
     }
 
