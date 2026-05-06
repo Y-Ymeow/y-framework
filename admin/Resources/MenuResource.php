@@ -43,12 +43,12 @@ class MenuResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('title', t('admin:menus.title_field'), ['required' => true])
-            ->text('url', t('admin:menus.url'), [])
-            ->text('icon', t('admin:menus.icon'), [])
-            ->number('sort', t('admin:menus.sort'), ['value' => '0'])
-            ->text('permission', t('admin:menus.permission'), [])
-            ->select('target', t('admin:menus.target'), [], [
+        $form->text('title', ['admin:menus.title_field', [], '标题'], ['required' => true])
+            ->text('url', ['admin:menus.url', [], '链接'], [])
+            ->text('icon', ['admin:menus.icon', [], '图标'], [])
+            ->number('sort', ['admin:menus.sort', [], '排序'], ['value' => '0'])
+            ->text('permission', ['admin:menus.permission', [], '权限'], [])
+            ->select('target', ['admin:menus.target', [], '打开方式'], [], [
                 '_self' => '_self',
                 '_blank' => '_blank',
             ]);
@@ -57,12 +57,12 @@ class MenuResource extends BaseResource
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('title', t('admin:menus.title_field'))
-            ->column('url', t('admin:menus.url'))
-            ->column('icon', t('admin:menus.icon'))
-            ->column('permission', t('admin:menus.permission'))
-            ->column('sort', t('admin:menus.sort'))
-            ->column('is_active', t('admin:menus.is_active'))
+            ->column('title', ['admin:menus.title_field', [], '标题'])
+            ->column('url', ['admin:menus.url', [], '链接'])
+            ->column('icon', ['admin:menus.icon', [], '图标'])
+            ->column('permission', ['admin:menus.permission', [], '权限'])
+            ->column('sort', ['admin:menus.sort', [], '排序'])
+            ->column('is_active', ['admin:menus.is_active', [], '启用'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()

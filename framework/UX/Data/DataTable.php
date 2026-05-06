@@ -80,7 +80,7 @@ class DataTable extends UXComponent
      * @return static
      * @ux-example DataTable::make()->column('name', '姓名')->column('email', '邮箱', null, ['sortable' => true])
      */
-    public function column(string $dataKey, string $title, ?\Closure $render = null, array $options = []): static
+    public function column(string $dataKey, string|array $title, ?\Closure $render = null, array $options = []): static
     {
         $this->columns[] = array_merge([
             'dataKey' => $dataKey,
@@ -634,6 +634,17 @@ class DataTable extends UXComponent
         return isset($this->editableColumns[$columnKey]);
     }
 
+    protected function resolveTitleElement(string|array $title): Element
+    {
+        if (is_array($title)) {
+            $key = $title[0];
+            $params = is_array($title[1] ?? null) ? $title[1] : [];
+            $default = $title[2] ?? '';
+            return Element::make('span')->intl($key, $params, $default);
+        }
+        return Element::make('span')->text($title);
+    }
+
     protected function toElement(): Element
     {
         $wrapper = new Element('div');
@@ -805,7 +816,7 @@ class DataTable extends UXComponent
                 }
 
                 $sortWrapper = Element::make('div')->class('ux-data-table-sort-wrapper');
-                $sortWrapper->child(Element::make('span')->class('ux-data-table-sort-title')->text($col['title']));
+                $sortWrapper->child(Element::make('span')->class('ux-data-table-sort-title')->child($this->resolveTitleElement($col['title'])));
 
                 $sortIcon = Element::make('span')->class('ux-data-table-sort-icon');
 
@@ -833,7 +844,7 @@ class DataTable extends UXComponent
                     ], JSON_UNESCAPED_UNICODE));
                 }
             } else {
-                $th->text($col['title']);
+                $th->child($this->resolveTitleElement($col['title']));
             }
             $tr->child($th);
         }
@@ -1117,7 +1128,7 @@ class DataTable extends UXComponent
         $countSpan = Element::make('span')->class('ux-batch-actions-count')->text('');
         $left->child($countSpan);
 
-        $emptySpan = Element::make('span')->class('ux-batch-actions-empty')->text($this->emptyText ?? '请选择要操作的记录');
+        $emptySpan = Element::make('span')->class('ux-batch-actions-empty')->intl('ux:datatable.select_to_operate', [], $this->emptyText ?? '请选择要操作的记录');
         $left->child($emptySpan);
 
         $dropdown = Element::make('div')->class('ux-batch-actions-dropdown');
@@ -1126,7 +1137,7 @@ class DataTable extends UXComponent
         $triggerBtn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-batch-actions-trigger')
-            ->text('批量操作');
+            ->child(Element::make('span')->intl('ux:datatable.batch_actions', [], '批量操作'));
 
         $triggerIcon = Element::make('i')->class('bi bi-chevron-down ux-batch-actions-trigger-arrow');
         $triggerBtn->child($triggerIcon);
@@ -1174,7 +1185,7 @@ class DataTable extends UXComponent
         $cancelBtn = Element::make('button')
             ->attr('type', 'button')
             ->class('ux-batch-actions-cancel')
-            ->text('取消选择');
+            ->child(Element::make('span')->intl('ux:datatable.cancel_selection', [], '取消选择'));
         $cancelBtn->data('ux-action', 'cancelSelection');
         $cancelBtn->data('action-event', 'click');
         $actionsContainer->child($cancelBtn);

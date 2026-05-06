@@ -41,18 +41,18 @@ class MediaResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('title', t('admin:media.title_field'), [])
-            ->text('alt', t('admin:media.alt'), [])
-            ->file('file', t('admin:media.upload'), []);
+        $form->text('title', ['admin:media.title_field', [], '标题'], [])
+            ->text('alt', ['admin:media.alt', [], '替代文本'], [])
+            ->file('file', ['admin:media.upload', [], '上传'], []);
     }
 
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('filename', t('admin:media.filename'))
-            ->column('mime_type', t('admin:media.mime_type'))
-            ->column('size', t('admin:media.size'))
-            ->column('created_at', t('admin:media.created_at'))
+            ->column('filename', ['admin:media.filename', [], '文件名'])
+            ->column('mime_type', ['admin:media.mime_type', [], '类型'])
+            ->column('size', ['admin:media.size', [], '大小'])
+            ->column('created_at', ['admin:media.created_at', [], '创建时间'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()

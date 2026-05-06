@@ -19,9 +19,9 @@ class SettingPage implements PageInterface
         return 'settings';
     }
 
-    public static function getTitle(): string
+    public static function getTitle(): string|array
     {
-        return t('admin.settings.title');
+        return ['admin.settings.title', [], '系统设置'];
     }
 
     public static function getIcon(): string
@@ -89,11 +89,14 @@ class SettingPage implements PageInterface
 
         $tabs = Tabs::make();
 
-        foreach ($groups as $group) {
-            $definitions = OptionsRegistry::getDefinitionsByGroup($group);
-            $tabContent = $this->renderGroupForm($group, $definitions, $values);
-            $tabId = 'settings-tab-' . md5($group);
-            $tabs->item($group, $tabContent, $tabId);
+        foreach ($groups as $groupKey) {
+            $definitions = OptionsRegistry::getDefinitionsByGroup($groupKey);
+            $firstDef = reset($definitions);
+            $groupDef = $firstDef['group'] ?? ['admin.settings.general', [], '常规'];
+            $groupLabel = is_array($groupDef) ? $groupDef : [$groupDef, [], $groupDef];
+            $tabContent = $this->renderGroupForm($groupKey, $definitions, $values);
+            $tabId = 'settings-tab-' . md5($groupKey);
+            $tabs->item($groupLabel, $tabContent, $tabId);
         }
 
         $wrapper->child($tabs);

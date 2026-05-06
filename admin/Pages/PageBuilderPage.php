@@ -22,9 +22,9 @@ class PageBuilderPage implements PageInterface
         return 'pages';
     }
 
-    public static function getTitle(): string
+    public static function getTitle(): string|array
     {
-        return t('admin.pages');
+        return ['admin.pages', [], '页面管理'];
     }
 
     public static function getIcon(): string
@@ -165,14 +165,14 @@ class PageBuilderPage implements PageInterface
             ->action('/admin/pages')
             ->columns(2)
             ->hidden('action', 'create_page')
-            ->text('name', t('admin.fields.name'), ['required' => true, 'help' => '类名，如 AboutPage'])
-            ->text('route', 'Route', ['required' => true, 'help' => '路由路径，如 /about'])
-            ->select('template', '模板', [], [
-                'blank' => '空白页',
-                'list' => '列表页',
-                'detail' => '详情页',
-                'form' => '表单页',
-                'landing' => '着陆页',
+            ->text('name', t('admin.fields.name'), ['required' => true, 'help' => t('admin:pages.help_class_name', [], '类名，如 AboutPage')])
+            ->text('route', 'Route', ['required' => true, 'help' => t('admin:pages.help_route_path', [], '路由路径，如 /about')])
+            ->select('template', t('admin:pages.template', [], '模板'), [], [
+                'blank' => t('admin:pages.template_blank', [], '空白页'),
+                'list' => t('admin:pages.template_list', [], '列表页'),
+                'detail' => t('admin:pages.template_detail', [], '详情页'),
+                'form' => t('admin:pages.template_form', [], '表单页'),
+                'landing' => t('admin:pages.template_landing', [], '着陆页'),
             ])
             ->submitLabel(t('admin.create'));
 

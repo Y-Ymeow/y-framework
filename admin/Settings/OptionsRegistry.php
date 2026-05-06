@@ -68,9 +68,10 @@ class OptionsRegistry
 
         $groups = [];
         foreach (static::$optionDefinitions as $key => $def) {
-            $group = $def['group'] ?? t('admin.settings.general');
-            if (!in_array($group, $groups, true)) {
-                $groups[] = $group;
+            $group = $def['group'] ?? ['admin.settings.general', [], '常规'];
+            $groupKey = is_array($group) ? $group[0] : $group;
+            if (!in_array($groupKey, $groups, true)) {
+                $groups[] = $groupKey;
             }
         }
         return $groups;
@@ -84,7 +85,9 @@ class OptionsRegistry
 
         $result = [];
         foreach (static::$optionDefinitions as $key => $def) {
-            if (($def['group'] ?? t('admin.settings.general')) === $group) {
+            $defGroup = $def['group'] ?? ['admin.settings.general', [], '常规'];
+            $defGroupKey = is_array($defGroup) ? $defGroup[0] : $defGroup;
+            if ($defGroupKey === $group) {
                 $result[$key] = $def;
             }
         }

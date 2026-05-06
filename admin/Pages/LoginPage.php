@@ -7,11 +7,9 @@ namespace Admin\Pages;
 use Admin\Auth\AuthManager;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
-use Framework\UX\UI\Card;
 use Framework\UX\UI\Button;
 use Framework\UX\Form\Input;
 use Framework\UX\Form\Checkbox;
-use Framework\UX\Layout\Grid;
 use Framework\View\Base\Element;
 
 class LoginPage extends LiveComponent
@@ -52,16 +50,18 @@ class LoginPage extends LiveComponent
 
     public function render(): Element
     {
-        $wrapper = Grid::make()
-            ->cols(1)
-            ->alignCenter()
-            ->class('admin-login', 'min-h-screen', 'bg-gray-50');
+        $wrapper = Element::make('div')
+            ->class('admin-login', 'min-h-screen', 'bg-gray-50', 'flex', 'items-center', 'justify-center');
 
-        $card = Card::make()
-            ->title(t('admin.admin_panel'))
-            ->subtitle(t('admin.login_prompt'))
-            ->variant('bordered')
-            ->class('w-full', 'max-w-md', 'p-8');
+        $card = Element::make('div')
+            ->class('w-full', 'max-w-md', 'bg-white', 'rounded-lg', 'shadow-md', 'border', 'p-8');
+
+        $card->child(
+            Element::make('h2')->class('text-2xl', 'font-bold', 'text-center', 'mb-2')->intl('admin.admin_panel', [], '管理后台')
+        );
+        $card->child(
+            Element::make('p')->class('text-sm', 'text-gray-500', 'text-center', 'mb-6')->intl('admin.login_prompt', [], '请登录您的账户')
+        );
 
         $form = Element::make('form')
             ->class('space-y-6')

@@ -8,6 +8,7 @@ use Admin\Pages\DashboardPage;
 use Admin\Pages\LoginPage;
 use Admin\Auth\AuthManager;
 use Framework\Component\Live\LiveComponent;
+use Framework\Http\Middleware\AdminAuthenticate;
 
 class AdminManager
 {
@@ -91,12 +92,6 @@ class AdminManager
 
         $prefix = static::getPrefix();
 
-        if (isset(static::$pages['dashboard'])) {
-            $dashboardClass = static::$pages['dashboard'];
-            $router->addRoute('GET', $prefix, [$dashboardClass, '__invoke'], 'admin.dashboard');
-            $router->addRoute('GET', $prefix . '/dashboard', [$dashboardClass, '__invoke'], 'admin.dashboard.alias');
-        }
-
         if (isset(static::$pages['login'])) {
             $loginClass = static::$pages['login'];
             $router->addRoute('GET', $prefix . '/login', [$loginClass, '__invoke'], 'admin.login');
@@ -109,35 +104,47 @@ class AdminManager
             return new \Framework\Http\Response\RedirectResponse('/admin/login');
         }, 'admin.logout');
 
-        foreach (static::$resources as $resourceClass) {
-            $routes = $resourceClass::getRoutes();
-            foreach ($routes as $name => $config) {
-                $method = $config['method'] ?? 'GET';
-                $path = $prefix . $config['path'];
-                $handler = $config['handler'];
-
-                $router->addRoute($method, $path, $handler, $name);
-            }
-        }
-
-        foreach (static::$pages as $name => $pageClass) {
-            if (in_array($name, ['dashboard', 'login'], true)) {
-                continue;
+        $router->group([
+            'prefix' => $prefix,
+            'middleware' => [AdminAuthenticate::class],
+            'name' => 'admin',
+        ], function (\Framework\Routing\Router $router) {
+            if (isset(static::$pages['dashboard'])) {
+                $dashboardClass = static::$pages['dashboard'];
+                $router->addRoute('GET', '/', [$dashboardClass, '__invoke'], 'dashboard');
+                $router->addRoute('GET', '/dashboard', [$dashboardClass, '__invoke'], 'dashboard.alias');
             }
 
-            if (method_exists($pageClass, 'getRoutes')) {
-                $routes = $pageClass::getRoutes();
-                foreach ($routes as $routeName => $config) {
+            foreach (static::$resources as $resourceClass) {
+                $routes = $resourceClass::getRoutes();
+                foreach ($routes as $name => $config) {
                     $method = $config['method'] ?? 'GET';
-                    $path = $prefix . $config['path'];
+                    $path = $config['path'];
                     $handler = $config['handler'];
 
-                    $router->addRoute($method, $path, $handler, $routeName);
+                    $router->addRoute($method, $path, $handler, $name);
                 }
-            } else {
-                $router->addRoute('GET', $prefix . '/' . $name, [$pageClass, '__invoke'], 'admin.page.' . $name);
             }
-        }
+
+            foreach (static::$pages as $name => $pageClass) {
+                if (in_array($name, ['dashboard', 'login'], true)) {
+                    continue;
+                }
+
+                if (method_exists($pageClass, 'getRoutes')) {
+                    $routes = $pageClass::getRoutes();
+                    foreach ($routes as $routeName => $config) {
+                        $method = $config['method'] ?? 'GET';
+                        $path = $config['path'];
+                        $handler = $config['handler'];
+
+                        $router->addRoute($method, $path, $handler, $routeName);
+                    }
+                } else {
+                    $router->addRoute('GET', '/' . $name, [$pageClass, '__invoke'], 'page.' . $name);
+                }
+            }
+        });
     }
 
     public static function brand(string $title): void

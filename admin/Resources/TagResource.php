@@ -15,7 +15,7 @@ use Framework\UX\UI\Button;
     model: Tag::class,
     title: '标签管理',
     icon: 'tag',
-    group: '内容管理',
+    group: 'admin.content',
     sort: 13,
 )]
 class TagResource extends BaseResource
@@ -42,15 +42,15 @@ class TagResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', t('admin:tags.name'), ['required' => true])
-            ->text('slug', t('admin:tags.slug'), []);
+        $form->text('name', ['admin:tags.name', [], '名称'], ['required' => true])
+            ->text('slug', ['admin:tags.slug', [], '标识'], []);
     }
 
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('name', t('admin:tags.name'))
-            ->column('slug', t('admin:tags.slug'))
+            ->column('name', ['admin:tags.name', [], '名称'])
+            ->column('slug', ['admin:tags.slug', [], '标识'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()

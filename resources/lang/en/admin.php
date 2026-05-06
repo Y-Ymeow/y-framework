@@ -193,4 +193,11 @@ return [
         'mail_encryption' => 'Encryption',
         'mail_encryption_desc' => 'SMTP connection encryption method',
     ],
+
+    'groups' => [
+        'system' => 'System Management',
+        'security' => 'Security Management',
+        'performance' => 'Performance Management',
+        'content' => 'Content Management',
+    ]
 ];

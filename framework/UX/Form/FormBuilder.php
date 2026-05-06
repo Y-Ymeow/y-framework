@@ -130,7 +130,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->text('name', '姓名')
      */
-    public function text(string $name, string $label, array $options = []): static
+    public function text(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'text',
@@ -148,7 +148,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->email('email', '邮箱')
      */
-    public function email(string $name, string $label, array $options = []): static
+    public function email(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'email',
@@ -166,7 +166,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->password('password', '密码')
      */
-    public function password(string $name, string $label, array $options = []): static
+    public function password(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'password',
@@ -184,7 +184,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->number('age', '年龄')
      */
-    public function number(string $name, string $label, array $options = []): static
+    public function number(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'number',
@@ -202,7 +202,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->textarea('content', '内容')
      */
-    public function textarea(string $name, string $label, array $options = []): static
+    public function textarea(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'textarea',
@@ -220,7 +220,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->richEditor('content', '内容')
      */
-    public function richEditor(string $name, string $label, array $options = []): static
+    public function richEditor(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'richEditor',
@@ -239,7 +239,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->select('city', '城市', [], ['Beijing' => '北京'])
      */
-    public function select(string $name, string $label, array $options = [], array $selectOptions = []): static
+    public function select(string $name, string|array $label, array $options = [], array $selectOptions = []): static
     {
         $this->addField(array_merge([
             'type' => 'select',
@@ -258,7 +258,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->checkbox('agree', '同意协议')
      */
-    public function checkbox(string $name, string $label, array $options = []): static
+    public function checkbox(string $name, string|array $label, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'checkbox',
@@ -277,7 +277,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->radio('gender', '性别', ['male' => '男', 'female' => '女'])
      */
-    public function radio(string $name, string $label, array $choices, array $options = []): static
+    public function radio(string $name, string|array $label, array $choices, array $options = []): static
     {
         $this->addField(array_merge([
             'type' => 'radio',
@@ -296,7 +296,7 @@ class FormBuilder extends UXComponent
      * @return static
      * @ux-example FormBuilder::make()->file('avatar', '头像')
      */
-    public function file(string $name, string $label, array $options = []): static
+    public function file(string $name, string|array $label, array $options = []): static
     {
         $this->multipart = true;
         $this->addField(array_merge([
@@ -343,7 +343,7 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
-    public function section(string $title, ?string $description = null): static
+    public function section(string|array $title, ?string $description = null): static
     {
         $this->currentSection = $title;
         $this->sections[$title] = [
@@ -400,7 +400,7 @@ class FormBuilder extends UXComponent
 
                 $headerEl = Element::make('div')->class('ux-form-section-header', 'mb-4', 'pb-3', 'border-b', 'border-gray-200');
                 $headerEl->child(
-                    Element::make('h3')->class('text-lg', 'font-semibold', 'text-gray-900')->text($section['title'])
+                    Element::make('h3')->class('text-lg', 'font-semibold', 'text-gray-900')->child($this->resolveLabelElement($section['title']))
                 );
                 if ($section['description']) {
                     $headerEl->child(
@@ -483,7 +483,7 @@ class FormBuilder extends UXComponent
             $labelEl = Element::make('label')
                 ->class('ux-form-label')
                 ->attr('for', $name)
-                ->text($label);
+                ->child($this->resolveLabelElement($label));
 
             if ($field['required'] ?? false) {
                 $labelEl->child(Element::make('span')->class('ux-form-required')->text('*'));
@@ -572,7 +572,7 @@ class FormBuilder extends UXComponent
                     $checkboxInputEl->attr('checked', '');
                 }
                 $checkboxLabelEl->child($checkboxInputEl);
-                $checkboxLabelEl->child(Element::make('span')->text($label));
+                $checkboxLabelEl->child($this->resolveLabelElement($label));
                 $groupEl->child($checkboxLabelEl);
                 break;
 
@@ -619,10 +619,28 @@ class FormBuilder extends UXComponent
         }
 
         if (isset($field['help'])) {
-            $groupEl->child(Element::make('span')->class('ux-form-help')->text($field['help']));
+            if (is_array($field['help'])) {
+                $helpKey = $field['help'][0];
+                $helpParams = is_array($field['help'][1] ?? null) ? $field['help'][1] : [];
+                $helpDefault = $field['help'][2] ?? '';
+                $groupEl->child(Element::make('span')->class('ux-form-help')->intl($helpKey, $helpParams, $helpDefault));
+            } else {
+                $groupEl->child(Element::make('span')->class('ux-form-help')->text($field['help']));
+            }
         }
 
         return $groupEl;
+    }
+
+    private function resolveLabelElement(string|array $label): Element
+    {
+        if (is_array($label)) {
+            $key = $label[0];
+            $params = is_array($label[1] ?? null) ? $label[1] : [];
+            $default = $label[2] ?? '';
+            return Element::make('span')->intl($key, $params, $default);
+        }
+        return Element::make('span')->text($label);
     }
 
     private function buildFieldAttrs(array $field): array
@@ -632,7 +650,16 @@ class FormBuilder extends UXComponent
         $attrs['name'] = $field['name'];
 
         if (isset($field['placeholder'])) {
-            $attrs['placeholder'] = $field['placeholder'];
+            if (is_array($field['placeholder'])) {
+                $attrs['data-intl'] = $field['placeholder'][0];
+                $attrs['data-intl-attr'] = 'placeholder';
+                if (!empty($field['placeholder'][1])) {
+                    $attrs['data-intl-params'] = json_encode($field['placeholder'][1]);
+                }
+                $attrs['placeholder'] = t($field['placeholder'][0], $field['placeholder'][1] ?? [], $field['placeholder'][2] ?? '');
+            } else {
+                $attrs['placeholder'] = $field['placeholder'];
+            }
         }
 
         if ($field['required'] ?? false) {

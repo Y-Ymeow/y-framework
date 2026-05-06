@@ -33,9 +33,9 @@ class DashboardPage implements PageInterface
         return 'dashboard';
     }
 
-    public static function getTitle(): string
+    public static function getTitle(): string|array
     {
-        return t('admin.dashboard');
+        return ['admin.dashboard', [], '控制台'];
     }
 
     public static function getIcon(): string

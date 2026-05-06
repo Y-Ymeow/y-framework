@@ -15,7 +15,7 @@ use Framework\UX\UI\Button;
     model: Post::class,
     title: '文章管理',
     icon: 'file-earmark-text',
-    group: '内容管理',
+    group: 'admin.content',
     sort: 11,
 )]
 class PostResource extends BaseResource
@@ -42,25 +42,25 @@ class PostResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('title', t('admin:posts.title_field'), ['required' => true])
-            ->text('slug', t('admin:posts.slug'), [])
-            ->textarea('excerpt', t('admin:posts.excerpt'), [])
-            ->textarea('content', t('admin:posts.content'), [])
-            ->text('cover_image', t('admin:posts.cover_image'), [])
-            ->select('status', t('admin:posts.status'), [], [
+        $form->text('title', ['admin:posts.title_field', [], '标题'], ['required' => true])
+            ->text('slug', ['admin:posts.slug', [], '标识'], [])
+            ->textarea('excerpt', ['admin:posts.excerpt', [], '摘要'], [])
+            ->textarea('content', ['admin:posts.content', [], '内容'], [])
+            ->text('cover_image', ['admin:posts.cover_image', [], '封面图'], [])
+            ->select('status', ['admin:posts.status', [], '状态'], [], [
                 'draft' => t('admin:posts.draft'),
                 'published' => t('admin:posts.published'),
                 'archived' => t('admin:posts.archived'),
             ])
-            ->number('category_id', t('admin:categories.title'), []);
+            ->number('category_id', ['admin:categories.title', [], '分类'], []);
     }
 
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('title', t('admin:posts.title_field'))
-            ->column('status', t('admin:posts.status'))
-            ->column('created_at', t('admin:posts.created_at'))
+            ->column('title', ['admin:posts.title_field', [], '标题'])
+            ->column('status', ['admin:posts.status', [], '状态'])
+            ->column('created_at', ['admin:posts.created_at', [], '创建时间'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()

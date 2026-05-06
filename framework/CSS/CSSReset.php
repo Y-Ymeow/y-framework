@@ -14,7 +14,7 @@ class CSSReset
 ::before,
 ::backdrop,
 ::file-selector-button { box-sizing: border-box;  margin: 0;  padding: 0;  border: 0 solid; }html,
-:host { line-height: 1.5;  -webkit-text-size-adjust: 100%;  tab-size: 4;  font-family: --theme(   --default-font-family,   ui-sans-serif,   system-ui,   sans-serif,   'Apple Color Emoji',   'Segoe UI Emoji',   'Segoe UI Symbol',   'Noto Color Emoji' );  font-feature-settings: --theme(--default-font-feature-settings, normal);  font-variation-settings: --theme(--default-font-variation-settings, normal);  -webkit-tap-highlight-color: transparent; }hr { height: 0;  color: inherit;  border-top-width: 1px; }abbr:where([title]) { -webkit-text-decoration: underline dotted; text-decoration: underline dotted;}h1,
+:host { line-height: 1.5;  -webkit-text-size-adjust: 100%;  tab-size: 4;  font-family: --theme(   --default-font-family,   ui-sans-serif,   system-ui,   sans-serif,   'Apple Color Emoji',   'Segoe UI Emoji',   'Segoe UI Symbol',   'Noto Color Emoji' );  font-feature-settings: --theme(--default-font-feature-settings, normal);  font-variation-settings: --theme(--default-font-variation-settings, normal);  -webkit-tap-highlight-color: transparent; }hr { height: 0;  color: inherit;  border-top-width: 1px; }abbr:where([title]) { -webkit-text-decoration: underline dotted; text-decoration: underline dotted;  text-emphasis-position: under;}h1,
 h2,
 h3,
 h4,

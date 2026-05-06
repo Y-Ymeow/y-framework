@@ -141,7 +141,7 @@ CSS
      * @return static
      * @ux-example Tabs::make()->item('首页', $homeView, null, true)
      */
-    public function item(string $label, mixed $content, ?string $id = null, bool $active = false): static
+    public function item(string|array $label, mixed $content, ?string $id = null, bool $active = false): static
     {
         $id = $id ?? 'tab-' . count($this->items);
         $this->items[] = [
@@ -229,6 +229,7 @@ CSS
         $el = new Element('div');
         $this->buildElement($el);
 
+        $el->id('ux-tabs-' . substr(md5(serialize($this->items)), 0, 8));
         $el->class('ux-tabs');
         $el->class("ux-tabs-{$this->variant}");
         if ($this->justified) {
@@ -268,7 +269,14 @@ CSS
                 $btnEl->liveAction($this->liveAction, $this->liveEvent ?? 'click');
             }
 
-            $btnEl->text($item['label']);
+            if (is_array($item['label'])) {
+                $key = $item['label'][0];
+                $params = is_array($item['label'][1] ?? null) ? $item['label'][1] : [];
+                $default = $item['label'][2] ?? '';
+                $btnEl->child(Element::make('span')->intl($key, $params, $default));
+            } else {
+                $btnEl->text($item['label']);
+            }
             $liEl->child($btnEl);
             $listEl->child($liEl);
         }

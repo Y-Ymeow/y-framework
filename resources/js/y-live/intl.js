@@ -22,6 +22,9 @@ function collectIntlElements() {
     document.querySelectorAll('[data-intl]').forEach(el => {
         if (!el._y_intl_bound) {
             el._y_intl_bound = true;
+            el._y_intl_original = el.dataset.intlAttr
+                ? el.getAttribute(el.dataset.intlAttr)
+                : el.textContent;
         }
     });
 }
@@ -61,36 +64,53 @@ export async function switchLocale(locale) {
 }
 
 function collectIntlKeys() {
-    const keys = new Set();
+    const seen = new Set();
+    const keys = [];
     document.querySelectorAll('[data-intl]').forEach(el => {
         let key = el.dataset.intl;
+        let entry;
         if (el.dataset.intlParams) {
-            key = {
+            entry = {
                 key,
                 params: el.dataset.intlParams,
             };
+        } else {
+            entry = key;
         }
-        if (key) keys.add(key);
+        let entryKey = typeof entry === 'object' ? entry.key + ' ' + entry.params : entry;
+        if (!seen.has(entryKey)) {
+            seen.add(entryKey);
+            keys.push(entry);
+        }
     });
-    return Array.from(keys);
+    return keys;
 }
-
-
 
 function applyTranslations() {
     document.querySelectorAll('[data-intl]').forEach(el => {
         let key = el.dataset.intl;
+        let lookupKey = key;
         if (el.dataset.intlParams) {
-            key = key + ' ' + el.dataset.intlParams;
+            lookupKey = key + ' ' + el.dataset.intlParams;
+        }
+
+        let translated = translations[lookupKey];
+
+        if (translated === undefined || translated === key) {
+            if (el._y_intl_original !== undefined) {
+                translated = el._y_intl_original;
+            }
         }
 
         if (el.dataset.intlAttr) {
-            el.setAttribute(el.dataset.intlAttr, translations[key]);
+            if (translated !== undefined) {
+                el.setAttribute(el.dataset.intlAttr, translated);
+            }
             return;
         }
 
-        if (key && translations[key] !== undefined) {
-            el.textContent = translations[key];
+        if (translated !== undefined) {
+            el.textContent = translated;
         }
     });
 }

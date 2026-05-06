@@ -218,7 +218,7 @@ JS
      * @param string|null $id 分组 ID（自动生成）
      * @return static
      */
-    public function group(string $label, ?string $icon = null, bool $open = false, ?string $id = null): static
+    public function group(string|array $label, ?string $icon = null, bool $open = false, ?string $id = null): static
     {
         $this->items[] = [
             'type'     => 'group',
@@ -335,14 +335,15 @@ JS
 
         $params = [];
         $defaultText = '';
+        $labelKey = $item['label'];
         if (is_array($item['label'])) {
-            $item['label'] = $item['label'][0];
+            $labelKey = $item['label'][0];
             $params = is_array($item['label'][1]) ? $item['label'][1] : [];
             $defaultText = $item['label'][2] ?? '';
         }
 
         $link->child(
-            Element::make('span')->class('ux-menu-label', 'truncate')->intl($item['label'], $params, $defaultText)
+            Element::make('span')->class('ux-menu-label', 'truncate')->intl($labelKey, $params, $defaultText)
         );
 
         $li->child($link);
@@ -378,8 +379,17 @@ JS
             );
         }
 
+        $groupParams = [];
+        $groupDefault = '';
+        $groupLabelKey = $group['label'];
+        if (is_array($group['label'])) {
+            $groupLabelKey = $group['label'][0];
+            $groupParams = is_array($group['label'][1]) ? $group['label'][1] : [];
+            $groupDefault = $group['label'][2] ?? '';
+        }
+
         $headerLeft->child(
-            Element::make('span')->class('ux-menu-label')->intl($group['label'])
+            Element::make('span')->class('ux-menu-label')->intl($groupLabelKey, $groupParams, $groupDefault)
         );
         $header->child($headerLeft);
 

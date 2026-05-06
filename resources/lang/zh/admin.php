@@ -178,4 +178,11 @@ return [
         'mail_encryption' => '加密方式',
         'mail_encryption_desc' => 'SMTP 连接加密方式',
     ],
+
+    'groups' => [
+        'system' => '系统管理',
+        'security' => '安全管理',
+        'performance' => '性能管理',
+        'content' => '内容管理',
+    ]
 ];

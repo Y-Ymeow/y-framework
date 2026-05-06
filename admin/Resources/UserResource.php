@@ -43,10 +43,10 @@ class UserResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', t('admin:users.name'), ['required' => true])
-            ->email('email', t('admin:users.email'), ['required' => true]);
+        $form->text('name', ['admin:users.name', [], '姓名'], ['required' => true])
+            ->email('email', ['admin:users.email', [], '邮箱'], ['required' => true]);
 
-        $form->section(t('admin:users.role'));
+        $form->section(['admin:users.role', [], '角色']);
         $roles = Role::all();
         foreach ($roles as $role) {
             $form->checkbox("role_{$role['id']}", $role['name'], [
@@ -58,9 +58,9 @@ class UserResource extends BaseResource
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('name', t('admin:users.name'))
-            ->column('email', t('admin:users.email'))
-            ->column('created_at', t('admin:users.created_at'))
+            ->column('name', ['admin:users.name', [], '姓名'])
+            ->column('email', ['admin:users.email', [], '邮箱'])
+            ->column('created_at', ['admin:users.created_at', [], '创建时间'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()
@@ -82,7 +82,13 @@ class UserResource extends BaseResource
     {
         if ($isEdit && $record) {
             return Element::make('div')->class('admin-form-info')
-                ->child(Element::make('p')->intl('admin:users.last_modified') . ': ' . ($record->updated_at ?? t('admin.unknown')));
+                ->child(
+                    Element::make('p')->child(
+                        Element::make('span')->intl('admin:users.last_modified', [], '最后修改')
+                    )->child(
+                        Element::make('span')->text(': ' . ($record->updated_at ?? t('admin.unknown')))
+                    )
+                );
         }
         return null;
     }

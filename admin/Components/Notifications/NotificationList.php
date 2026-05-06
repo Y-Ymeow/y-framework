@@ -81,7 +81,8 @@ class NotificationList extends LiveComponent
             ->class('flex', 'items-center', 'justify-between', 'mb-3');
         $header->child(Element::make('h3')
             ->class('font-semibold', 'text-gray-700')
-            ->intl('admin.notifications') . ' (' . count($this->notifications) . ')');
+            ->child(Element::make('span')->intl('admin.notifications', [], '通知'))
+            ->child(Element::make('span')->text(' (' . count($this->notifications) . ')')));
 
         if (count($this->notifications) > $this->maxVisible) {
             $toggleBtn = Element::make('button')

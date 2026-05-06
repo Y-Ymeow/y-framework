@@ -91,7 +91,7 @@ class AdminListPage extends LiveComponent
         }
 
         if (empty($keys)) {
-            parent::toast('请先选择要删除的项目', 'error');
+            parent::toast(t('admin:actions.select_first', [], '请先选择要删除的项目'), 'error');
             return;
         }
 
@@ -103,7 +103,7 @@ class AdminListPage extends LiveComponent
             $modelClass::destroy($key);
         }
         $this->selectedKeys = [];
-        parent::toast('删除成功');
+        parent::toast(t('admin:actions.delete_success', [], '删除成功'));
         $this->refresh('admin-list-table');
     }
 
@@ -130,7 +130,7 @@ class AdminListPage extends LiveComponent
         $modelClass = $resource::getModel();
         $modelClass::destroy($rowKey);
 
-        parent::toast('删除成功');
+        parent::toast(t('admin:actions.delete_success', [], '删除成功'));
         $this->refresh('admin-list-table');
     }
 
@@ -162,7 +162,7 @@ class AdminListPage extends LiveComponent
             ->class('admin-btn admin-btn-primary admin-btn-sm')
             ->attr('href', "{$prefix}/{$name}/create")
             ->attr('data-navigate', '')
-            ->text('新增');
+            ->child(Element::make('span')->intl('admin:actions.create', [], '新增'));
         $headerEl->child(Element::make('div')->class('admin-list-actions')->child($createLink));
         $wrapper->child($headerEl);
 
@@ -303,11 +303,11 @@ class AdminListPage extends LiveComponent
         $table->batchAction('deleteSelected');
         $table->batchActions([
             [
-                'label' => '批量删除',
+                'label' => t('admin:actions.batch_delete', [], '批量删除'),
                 'action' => 'delete',
                 'variant' => 'danger',
                 'icon' => 'trash',
-                'confirm' => '确定要删除选中的记录吗？'
+                'confirm' => t('admin:actions.confirm_delete_selected', [], '确定要删除选中的记录吗？')
             ]
         ]);
         // 行操作通过 $table->rowActions() 在 Resource 中直接注册组件

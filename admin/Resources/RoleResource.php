@@ -43,11 +43,11 @@ class RoleResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', t('admin:roles.name'), ['required' => true])
-            ->text('slug', t('admin:roles.slug'), ['required' => true])
-            ->textarea('description', t('admin:roles.description'), []);
+        $form->text('name', ['admin:roles.name', [], '名称'], ['required' => true])
+            ->text('slug', ['admin:roles.slug', [], '标识'], ['required' => true])
+            ->textarea('description', ['admin:roles.description', [], '描述'], []);
 
-        $form->section(t('admin:roles.permissions'));
+        $form->section(['admin:roles.permissions', [], '权限']);
         $permissionsByModule = Permission::getByModule();
         foreach ($permissionsByModule as $module => $perms) {
             foreach ($perms as $perm) {
@@ -61,11 +61,11 @@ class RoleResource extends BaseResource
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('name', t('admin:roles.name'))
-            ->column('slug', t('admin:roles.slug'))
-            ->column('description', t('admin:roles.description'))
-            ->column('is_system', t('admin:roles.is_system'))
-            ->column('created_at', t('admin:roles.created_at'))
+            ->column('name', ['admin:roles.name', [], '名称'])
+            ->column('slug', ['admin:roles.slug', [], '标识'])
+            ->column('description', ['admin:roles.description', [], '描述'])
+            ->column('is_system', ['admin:roles.is_system', [], '系统角色'])
+            ->column('created_at', ['admin:roles.created_at', [], '创建时间'])
             ->rowActions(function ($row, $rowKey, $index) {
                 $actions = [
                     Button::make()

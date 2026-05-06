@@ -7,36 +7,36 @@ class PerformanceOptions
     public static function registerOptions(): void
     {
         OptionsRegistry::register('enable_cache', [
-            'label' => t('admin.settings.enable_cache'),
+            'label' => ['admin.settings.enable_cache', [], '启用缓存'],
             'type' => 'switch',
-            'group' => t('admin.settings.performance'),
+            'group' => ['admin.settings.performance', [], '性能'],
             'default' => true,
-            'description' => t('admin.settings.enable_cache_desc'),
+            'description' => ['admin.settings.enable_cache_desc', [], '启用页面缓存以提升性能'],
         ]);
 
         OptionsRegistry::register('cache_ttl', [
-            'label' => t('admin.settings.cache_ttl'),
+            'label' => ['admin.settings.cache_ttl', [], '缓存时间'],
             'type' => 'number',
-            'group' => t('admin.settings.performance'),
+            'group' => ['admin.settings.performance', [], '性能'],
             'default' => '3600',
-            'description' => t('admin.settings.cache_ttl_desc'),
+            'description' => ['admin.settings.cache_ttl_desc', [], '缓存过期时间（秒）'],
             'dependsOn' => ['enable_cache' => true],
         ]);
 
         OptionsRegistry::register('enable_minify', [
-            'label' => t('admin.settings.enable_minify'),
+            'label' => ['admin.settings.enable_minify', [], '启用压缩'],
             'type' => 'switch',
-            'group' => t('admin.settings.performance'),
+            'group' => ['admin.settings.performance', [], '性能'],
             'default' => false,
-            'description' => t('admin.settings.enable_minify_desc'),
+            'description' => ['admin.settings.enable_minify_desc', [], '压缩 HTML/CSS/JS 输出'],
         ]);
 
         OptionsRegistry::register('enable_gzip', [
-            'label' => t('admin.settings.enable_gzip'),
+            'label' => ['admin.settings.enable_gzip', [], '启用 Gzip'],
             'type' => 'switch',
-            'group' => t('admin.settings.performance'),
+            'group' => ['admin.settings.performance', [], '性能'],
             'default' => true,
-            'description' => t('admin.settings.enable_gzip_desc'),
+            'description' => ['admin.settings.enable_gzip_desc', [], '启用 Gzip 压缩传输'],
         ]);
     }
 }

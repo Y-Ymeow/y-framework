@@ -60,7 +60,7 @@ class AdminFormPage extends LiveComponent
         }
 
         $this->saved = true;
-        parent::toast($this->recordId ? '更新成功' : '创建成功');
+        parent::toast($this->recordId ? t('admin:actions.update_success', [], '更新成功') : t('admin:actions.create_success', [], '创建成功'));
         $this->refresh('admin-form');
     }
 
@@ -93,10 +93,22 @@ class AdminFormPage extends LiveComponent
         $wrapper->liveFragment('admin-form');
 
         $isEdit = $this->recordId !== null;
-        $title = ($isEdit ? '编辑' : '创建') . $resource::getTitle();
+        $titleData = $resource::getTitle();
+        $titleKey = is_array($titleData) ? $titleData[0] : $titleData;
+        $titleParams = is_array($titleData) ? ($titleData[1] ?? []) : [];
+        $titleDefault = is_array($titleData) ? ($titleData[2] ?? '') : $titleData;
+
+        $actionKey = $isEdit ? 'admin:actions.edit' : 'admin:actions.create';
+        $actionDefault = $isEdit ? '编辑' : '创建';
 
         $headerEl = Element::make('div')->class('admin-form-header');
-        $headerEl->child(Element::make('h1')->class('admin-form-title')->text($title));
+        $headerEl->child(
+            Element::make('h1')->class('admin-form-title')->child(
+                Element::make('span')->intl($actionKey, [], $actionDefault)
+            )->child(
+                Element::make('span')->intl($titleKey, $titleParams, $titleDefault)
+            )
+        );
 
         $prefix = AdminManager::getPrefix();
         $name = $resource::getName();
@@ -106,7 +118,7 @@ class AdminFormPage extends LiveComponent
                 ->class('admin-btn admin-btn-secondary admin-btn-sm')
                 ->attr('href', $backUrl)
                 ->attr('data-navigate', '')
-                ->text('← 返回列表')
+                ->child(Element::make('span')->intl('admin:actions.back_to_list', [], '← 返回列表'))
         );
         $wrapper->child($headerEl);
 
@@ -120,7 +132,11 @@ class AdminFormPage extends LiveComponent
 
             if ($this->saved) {
                 $wrapper->child(
-                    Element::make('div')->class('admin-form-success')->text($isEdit ? '更新成功！' : '创建成功！')
+                    Element::make('div')->class('admin-form-success')->intl(
+                        $isEdit ? 'admin:actions.update_success' : 'admin:actions.create_success',
+                        [],
+                        $isEdit ? '更新成功！' : '创建成功！'
+                    )
                 );
             }
 
@@ -148,14 +164,14 @@ class AdminFormPage extends LiveComponent
                     ->attr('type', 'submit')
                     ->attr('form', 'admin-form')
                     ->liveAction('save', 'click')
-                    ->text('保存')
+                    ->child(Element::make('span')->intl('admin:actions.save', [], '保存'))
             );
             $actionsEl->child(
                 Element::make('button')
                     ->class('admin-btn admin-btn-secondary')
                     ->attr('type', 'button')
                     ->liveAction('resetForm')
-                    ->text('重置')
+                    ->child(Element::make('span')->intl('admin:actions.reset', [], '重置'))
             );
             $wrapper->child($actionsEl);
 
@@ -190,7 +206,11 @@ class AdminFormPage extends LiveComponent
 
         if ($this->saved) {
             $wrapper->child(
-                Element::make('div')->class('admin-form-success')->text($isEdit ? '更新成功！' : '创建成功！')
+                Element::make('div')->class('admin-form-success')->intl(
+                    $isEdit ? 'admin:actions.update_success' : 'admin:actions.create_success',
+                    [],
+                    $isEdit ? '更新成功！' : '创建成功！'
+                )
             );
         }
 
@@ -228,14 +248,14 @@ class AdminFormPage extends LiveComponent
                 ->attr('type', 'submit')
                 ->attr('form', 'admin-form')
                 ->liveAction('save', 'click')
-                ->text('保存')
+                ->child(Element::make('span')->intl('admin:actions.save', [], '保存'))
         );
         $actionsEl->child(
             Element::make('button')
                 ->class('admin-btn admin-btn-secondary')
                 ->attr('type', 'button')
                 ->liveAction('resetForm')
-                ->text('重置')
+                ->child(Element::make('span')->intl('admin:actions.reset', [], '重置'))
         );
         $wrapper->child($actionsEl);
 
@@ -295,7 +315,7 @@ class AdminFormPage extends LiveComponent
             $required = $field['required'] ?? false;
 
             if ($required && empty($this->formData[$name]) && $this->formData[$name] !== '0') {
-                $errors[$name] = "{$label} 是必填项";
+                $errors[$name] = t('admin:validation.required', ['field' => $label], "{$label} 是必填项");
             }
         }
 

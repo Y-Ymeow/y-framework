@@ -5,7 +5,7 @@ namespace Admin\Contracts\Page;
 interface PageInterface
 {
     public static function getName(): string;
-    public static function getTitle(): string;
+    public static function getTitle(): string|array;
 
     public static function getIcon(): string;
 

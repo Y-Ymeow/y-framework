@@ -172,14 +172,12 @@ class AdminLayout extends LiveComponent
                     }
                 }
                 $isOpen = $hasActive || in_array($groupName, $this->expandedGroups, true);
-                $menu->group($groupName, null, $isOpen, $groupName);
+
+                $groupLabel = $this->resolveGroupLabel($groupName);
+                $menu->group($groupLabel, null, $isOpen, $groupName);
                 foreach ($items as $item) {
                     $url = $item['url'];
                     $icon = $item['icon'] ?? 'circle';
-
-                    if (is_array($item['title'])) {
-                        $item['title'] = $item['title'][0];
-                    }
 
                     $menu->subitem(
                         $item['title'],
@@ -204,7 +202,7 @@ class AdminLayout extends LiveComponent
 
         $groups[''][] = [
             'name' => 'dashboard',
-            'title' => t('admin.dashboard'),
+            'title' => ['admin.dashboard', [], '控制台'],
             'url' => $prefix,
             'icon' => 'speedometer2',
             'sort' => 0,
@@ -278,6 +276,16 @@ class AdminLayout extends LiveComponent
         return array_filter($sorted, fn($items) => !empty($items));
     }
 
+    protected function resolveGroupLabel(string $groupName): string|array
+    {
+        $groupMap = [
+            'admin.system' => ['admin.groups.system', [], '系统管理'],
+            'admin.content' => ['admin.groups.content', [], '内容管理'],
+        ];
+
+        return $groupMap[$groupName] ?? $groupName;
+    }
+
     protected function renderMain(): Element
     {
         $main = Element::make('div')
@@ -331,7 +339,7 @@ class AdminLayout extends LiveComponent
         $searchInput = Element::make('input')
             ->attr('type', 'search')
             ->class('ux-form-input', 'ux-search-input')
-            ->attr('placeholder', t('admin.global_search'))
+            ->intlAttr('placeholder', 'admin.global_search', [], '全局搜索...')
             ->attr('autocomplete', 'off');
         $searchWrapper->child($searchInput);
 
@@ -384,7 +392,7 @@ class AdminLayout extends LiveComponent
             ->noborder()
             ->position('bottom-end')
             ->customTrigger($trigger)
-            ->item(t('settings'), '#', 'gear')
+            ->item(t('admin.settings'), '#', 'gear')
             ->divider()
             ->element(
                 Element::make('a')
@@ -402,7 +410,7 @@ class AdminLayout extends LiveComponent
             ->title(t('admin.notifications'))
             ->right()
             ->md()
-            ->child(Element::make('div')->class('p-4', 'text-gray-500')->intl('admin.no_notifications'));
+            ->child(Element::make('div')->class('p-4', 'text-gray-500')->intl('admin.no_notifications', [], '暂无通知'));
     }
 
     protected function renderFooter(): Element
@@ -413,8 +421,8 @@ class AdminLayout extends LiveComponent
         $inner = Element::make('div')
             ->class('flex', 'items-center', 'justify-between', 'text-sm', 'text-gray-500');
 
-        $inner->child(Element::make('span')->text('© 2024 Admin Dashboard'));
-        $inner->child(Element::make('span')->class('text-xs')->text('Powered by Framework'));
+        $inner->child(Element::make('span')->intl('admin.footer_copyright', [], '© 2024 Admin Dashboard'));
+        $inner->child(Element::make('span')->class('text-xs')->intl('admin.footer_powered', [], 'Powered by Framework'));
 
         $footer->child($inner);
         return $footer;

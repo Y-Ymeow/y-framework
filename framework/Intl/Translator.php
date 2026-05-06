@@ -109,6 +109,11 @@ class Translator
                 return null;
             }
             
+            if (!is_array(self::$translations[$locale][$namespace][$file])) {
+                return self::$translations[$locale][$namespace][$file] ?? null;
+            }
+
+
             $message = Arr::get(self::$translations[$locale][$namespace][$file], $nestedKey);
             return is_string($message) ? $message : null;
         }

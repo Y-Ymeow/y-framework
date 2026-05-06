@@ -15,7 +15,7 @@ use Framework\UX\UI\Button;
     model: Category::class,
     title: '分类管理',
     icon: 'folder',
-    group: '内容管理',
+    group: 'admin.content',
     sort: 12,
 )]
 class CategoryResource extends BaseResource
@@ -42,18 +42,18 @@ class CategoryResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', t('admin:categories.name'), ['required' => true])
-            ->text('slug', t('admin:categories.slug'), [])
-            ->textarea('description', t('admin:categories.description'), [])
-            ->number('sort', t('admin:categories.sort'), ['value' => '0']);
+        $form->text('name', ['admin:categories.name', [], '名称'], ['required' => true])
+            ->text('slug', ['admin:categories.slug', [], '标识'], [])
+            ->textarea('description', ['admin:categories.description', [], '描述'], [])
+            ->number('sort', ['admin:categories.sort', [], '排序'], ['value' => '0']);
     }
 
     public function configureTable(DataTable $table): void
     {
         $table->column('id', 'ID')
-            ->column('name', t('admin:categories.name'))
-            ->column('slug', t('admin:categories.slug'))
-            ->column('sort', t('admin:categories.sort'))
+            ->column('name', ['admin:categories.name', [], '名称'])
+            ->column('slug', ['admin:categories.slug', [], '标识'])
+            ->column('sort', ['admin:categories.sort', [], '排序'])
             ->rowActions(function ($row, $rowKey, $index) {
                 return [
                     Button::make()
