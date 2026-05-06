@@ -195,8 +195,7 @@ class Pagination extends UXComponent
 
         $action = $this->perPageAction ?? $this->liveAction;
         if ($action) {
-            $select->liveAction($action, 'change');
-            $select->data('action-params', json_encode([$this->perPageParam => '__value__']));
+            $select->liveAction($action, 'change', [$this->perPageParam => '__value__']);
         }
 
         $wrapper->child(Element::make('span')->class('ux-pagination-perpage-label')->intl('ux:pagination.per_page'));
@@ -212,8 +211,7 @@ class Pagination extends UXComponent
             return Element::make('button')
                 ->attr('type', 'button')
                 ->class('ux-pagination-link')
-                ->liveAction($this->liveAction, $this->liveEvent ?? 'click')
-                ->data('action-params', json_encode([$this->pageParam => $page]))
+                ->liveAction($this->liveAction, $this->liveEvent ?? 'click', [$this->pageParam => $page])
                 ->text($label);
         }
 

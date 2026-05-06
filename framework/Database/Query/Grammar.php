@@ -30,7 +30,7 @@ abstract class Grammar
 
     public function wrapColumns(array $columns): string
     {
-        return implode(', ', array_map(fn($col) => $col === '*' ? '*' : $this->wrap($col), $columns));
+        return implode(', ', array_map(fn($col) => $col === '*' || str_contains($col, '(') ? $col : $this->wrap($col), $columns));
     }
 
     public function compileWhere(WhereExpressionInterface $where): array
@@ -255,9 +255,10 @@ abstract class Grammar
 
         foreach ($columns as $select) {
             if ($select->alias !== null) {
-                $formatted[] = $this->wrap($select->column) . ' AS ' . $this->wrap($select->alias);
+                $column = str_contains($select->column, '(') ? $select->column : $this->wrap($select->column);
+                $formatted[] = $column . ' AS ' . $this->wrap($select->alias);
             } else {
-                $formatted[] = $select->column === '*' ? '*' : $this->wrap($select->column);
+                $formatted[] = $select->column === '*' || str_contains($select->column, '(') ? $select->column : $this->wrap($select->column);
             }
         }
 

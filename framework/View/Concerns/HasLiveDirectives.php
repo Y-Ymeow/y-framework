@@ -60,36 +60,14 @@ trait HasLiveDirectives
      * @view-default false
      * @return static
      */
-    public function liveAction(string $action, string $event = 'click', bool $legacyAttrs = false): static
+    public function liveAction(string $action, string $event = 'click', mixed $params = []): static
     {
-        if ($legacyAttrs) {
-            $this->attrs['data-action'] = $action;
-            if ($event !== 'click') {
-                $this->attrs['data-action-event'] = $event;
-            }
-        } elseif ($event === 'click') {
-            $this->attrs['data-live-action'] = $action;
+        $params = is_array($params) && !empty($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
+        if (!empty($params)) {
+            $this->attrs['data-action:' . $event] = $action . '(' . $params . ')';
         } else {
-            $this->attrs['data-live-action:' . $event] = $action;
+            $this->attrs['data-action:' . $event] = $action;
         }
-        return $this;
-    }
-
-    /**
-     * LiveComponent Action 参数（data-live-action-params / data-action-params）
-     *
-     * 传递额外参数给 Action 方法。支持 JSON 或表达式字符串。
-     *
-     * @view-since 1.0.0
-     * @param string|array $params 参数值、参数数组、或表达式字符串（如 '{count: count + 1}'）
-     * @param bool $legacyAttrs 使用旧的 data-action-params 属性名
-     * @view-default false
-     * @return static
-     */
-    public function liveParams(string|array $params, bool $legacyAttrs = false): static
-    {
-        $attr = $legacyAttrs ? 'data-action-params' : 'data-live-action-params';
-        $this->attrs[$attr] = is_array($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
         return $this;
     }
 

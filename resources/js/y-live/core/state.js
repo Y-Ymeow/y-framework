@@ -1,11 +1,20 @@
 // Live State Management - Live 组件状态管理
-import { ReactiveState, effect, batch } from '../../y-directive/reactive.js';
+import { ReactiveState, effect, batch } from '../../y-directive/reactive';
+import { evaluate } from '../../y-directive/evaluator';
 
 export function setupLiveComponent(el, onAction, target = null) {
     if (!el._y_live_ready) {
         el._y_live_ready = true;
 
-        const state = el._y_state || new ReactiveState({});
+        let initialState = {};
+        try {
+            const stateAttr = el.dataset.state;
+            if (stateAttr) {
+                initialState = JSON.parse(stateAttr);
+            }
+        } catch (e) {}
+
+        const state = el._y_state || new ReactiveState(initialState);
         if (!el._y_state) el._y_state = state;
 
         el._y_live_component_class = el.dataset.live || '';
@@ -31,8 +40,23 @@ export function setupLiveComponent(el, onAction, target = null) {
 function bindLiveActions(el, componentClass, stateRef, state, onAction, scanTarget) {
     const actionEls = scanTarget.querySelectorAll('[data-live-action], [data-action]');
     const list = Array.from(actionEls);
-    if (scanTarget.hasAttribute('data-live-action')) list.push(scanTarget);
-    else if (scanTarget.hasAttribute('data-action')) list.push(scanTarget);
+    if (scanTarget.hasAttribute('data-live-action') || scanTarget.hasAttribute('data-action')) list.push(scanTarget);
+    
+    for (const attr of scanTarget.attributes || []) {
+        if (attr.name.startsWith('data-live-action:') || attr.name.startsWith('data-action:')) {
+            list.push(scanTarget);
+            break;
+        }
+    }
+    
+    scanTarget.querySelectorAll('*').forEach(node => {
+        for (const attr of node.attributes || []) {
+            if (attr.name.startsWith('data-live-action:') || attr.name.startsWith('data-action:')) {
+                if (!list.includes(node)) list.push(node);
+                break;
+            }
+        }
+    });
 
     list.forEach(actionEl => {
         if (actionEl._y_action_bound) return;
@@ -165,6 +189,10 @@ function bindLiveModels(el, componentClass, stateRef, state, onAction, scanTarge
                     else return;
                 } else {
                     value = modelEl.value;
+                }
+
+                if (state && typeof state.set === 'function') {
+                    state.set(property, value);
                 }
 
                 const dispatcher = onAction || el._liveDispatch;

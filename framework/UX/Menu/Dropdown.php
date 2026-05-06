@@ -287,9 +287,9 @@ CSS
 
             $itemAttrs = [];
             if ($item['action']) {
-                $itemAttrs['data-action'] = $item['action'];
+                $itemAttrs['data-action:click'] = $item['action'];
                 if (!empty($item['params'])) {
-                    $itemAttrs['data-action-params'] = json_encode($item['params']);
+                    $itemAttrs['data-action:click'] = $item['action'] . '(' . json_encode($item['params']) . ')';
                 }
             }
 

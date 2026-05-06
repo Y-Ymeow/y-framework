@@ -64,7 +64,14 @@ class EloquentUserProvider implements UserProvider
             $query->where($key, $value);
         }
 
-        return $query->first();
+        $row = $query->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $instance = new $this->model();
+        return $instance->newFromBuilder($row);
     }
 
     public function validateCredentials(Authenticatable $user, array $credentials): bool

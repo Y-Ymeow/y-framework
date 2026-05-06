@@ -113,8 +113,9 @@ class AdminListPage extends LiveComponent
         $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
-        $prefix = AdminManager::getPrefix();
-        $url = "{$prefix}/{$this->resourceName}/{$rowKey}/edit";
+        $resourceName = $params['resourceName'] ?? $this->resourceName;
+        $prefix = AdminManager::getPrefix() ?: '/admin';
+        $url = "{$prefix}/{$resourceName}/{$rowKey}/edit";
         $this->redirect($url);
     }
 
@@ -124,7 +125,10 @@ class AdminListPage extends LiveComponent
         $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
-        $resource = $this->getResource();
+        $resourceName = $params['resourceName'] ?? $this->resourceName;
+        if (!$resourceName) return;
+
+        $resource = AdminManager::getResource($resourceName);
         if (!$resource) return;
 
         $modelClass = $resource::getModel();
@@ -156,7 +160,7 @@ class AdminListPage extends LiveComponent
         $headerEl = Element::make('div')->class('admin-list-header');
         $headerEl->child(Element::make('h1')->class('admin-list-title')->intl($title, $params, $defaultText));
 
-        $prefix = AdminManager::getPrefix();
+        $prefix = AdminManager::getPrefix() ?: '/admin';
         $name = $resource::getName();
         $createLink = Element::make('a')
             ->class('admin-btn admin-btn-primary admin-btn-sm')
@@ -285,7 +289,13 @@ class AdminListPage extends LiveComponent
         $offset = ($this->page - 1) * $this->perPage;
         $rows = $query->offset($offset)->limit($this->perPage)->get();
 
-        $rows = is_array($rows) ? array_filter($rows, fn($r) => !empty($r)) : [];
+        if ($rows instanceof \Framework\Support\Collection) {
+            $rows = array_filter($rows->all(), fn($r) => !empty($r));
+        } elseif (is_array($rows)) {
+            $rows = array_filter($rows, fn($r) => !empty($r));
+        } else {
+            $rows = [];
+        }
 
         $table->dataSource($rows);
         $table->selectable();

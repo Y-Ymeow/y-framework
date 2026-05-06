@@ -837,11 +837,10 @@ class DataTable extends UXComponent
                 $sortAction = $this->sortAction ?? $this->liveAction;
                 if ($sortAction) {
                     $nextDir = ($isCurrentSort && $currentDir === 'asc') ? 'desc' : 'asc';
-                    $th->liveAction($sortAction, 'click');
-                    $th->data('action-params', json_encode([
+                    $th->liveAction($sortAction, 'click', [
                         'sortField' => $col['dataKey'],
                         'sortDirection' => $nextDir,
-                    ], JSON_UNESCAPED_UNICODE));
+                    ]);
                 }
             } else {
                 $th->child($this->resolveTitleElement($col['title']));
@@ -1099,7 +1098,7 @@ class DataTable extends UXComponent
             $btn->liveAction($action, $event);
 
             if (!empty($config['params'])) {
-                $btn->data('action-params', json_encode($config['params'], JSON_UNESCAPED_UNICODE));
+                $btn->liveAction($action, $event, $config['params']);
             }
 
             $wrapper->child($btn);
@@ -1162,12 +1161,11 @@ class DataTable extends UXComponent
             $item->child(Element::make('span')->class('ux-batch-actions-item-label')->text($actionConfig['label']));
 
             if ($this->batchAction) {
-                $item->liveAction($this->batchAction, 'click');
-                $item->data('action-params', json_encode([
+                $item->liveAction($this->batchAction, 'click', [
                     'batchAction' => $actionConfig['action'],
                     'selectedKeys' => [],
                     'confirm' => $actionConfig['confirm'] ?? null,
-                ], JSON_UNESCAPED_UNICODE));
+                ]);
             }
 
             if (!empty($actionConfig['confirm'])) {

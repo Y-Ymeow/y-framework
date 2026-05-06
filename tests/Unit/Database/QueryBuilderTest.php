@@ -4,25 +4,26 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use Framework\Database\SqlValidator;
-use Framework\Database\QueryBuilder;
-use Framework\Database\Connection;
+use Framework\Database\Connection\Connection;
+use Framework\Database\Query\Builder;
+use Framework\Database\Query\Grammars\SqliteGrammar;
 use PDO;
 
 class QueryBuilderTest extends \PHPUnit\Framework\TestCase
 {
     private Connection $connection;
-    private QueryBuilder $qb;
+    private Builder $qb;
 
     protected function setUp(): void
     {
-        $this->connection = new Connection('sqlite::memory:', '', '', [
+        $pdo = new PDO('sqlite::memory:', '', '', [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
-        $this->connection->getPdo()->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, created_at DATETIME)");
-        $this->connection->getPdo()->exec("INSERT INTO users (name, email, created_at) VALUES ('John Doe', 'john@example.com', '2024-01-01 00:00:00')");
-        $this->connection->getPdo()->exec("INSERT INTO users (name, email, created_at) VALUES ('Jane Smith', 'jane@example.com', '2024-01-02 00:00:00')");
-        $this->qb = new QueryBuilder($this->connection, 'users');
+        $pdo->exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, created_at DATETIME)");
+        $pdo->exec("INSERT INTO users (name, email, created_at) VALUES ('John Doe', 'john@example.com', '2024-01-01 00:00:00')");
+        $pdo->exec("INSERT INTO users (name, email, created_at) VALUES ('Jane Smith', 'jane@example.com', '2024-01-02 00:00:00')");
+        $this->connection = new Connection($pdo, '', 'sqlite');
+        $this->qb = new Builder($this->connection, 'users', new SqliteGrammar());
     }
 
     public function test_select_all(): void
@@ -115,7 +116,7 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
         $this->connection->execute("ALTER TABLE users ADD COLUMN age INTEGER DEFAULT 0");
         $this->connection->execute("UPDATE users SET age = 25 WHERE id = 1");
         $this->connection->execute("UPDATE users SET age = 30 WHERE id = 2");
-        
+
         $sum = $this->qb->sum('age');
         $this->assertEquals(55, $sum);
     }
@@ -125,7 +126,7 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
         $this->connection->execute("ALTER TABLE users ADD COLUMN age INTEGER DEFAULT 0");
         $this->connection->execute("UPDATE users SET age = 25 WHERE id = 1");
         $this->connection->execute("UPDATE users SET age = 30 WHERE id = 2");
-        
+
         $max = $this->qb->max('age');
         $this->assertEquals(30, $max);
     }
@@ -135,7 +136,7 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
         $this->connection->execute("ALTER TABLE users ADD COLUMN age INTEGER DEFAULT 0");
         $this->connection->execute("UPDATE users SET age = 25 WHERE id = 1");
         $this->connection->execute("UPDATE users SET age = 30 WHERE id = 2");
-        
+
         $min = $this->qb->min('age');
         $this->assertEquals(25, $min);
     }
@@ -143,8 +144,8 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
     public function test_to_sql(): void
     {
         $sql = $this->qb->where('name', 'John')->toSql();
-        $this->assertStringContainsString('SELECT * FROM `users`', $sql);
-        $this->assertStringContainsString('WHERE `name` = ?', $sql);
+        $this->assertStringContainsString('SELECT * FROM "users"', $sql);
+        $this->assertStringContainsString('WHERE "name" = ?', $sql);
     }
 
     public function test_insert(): void
@@ -155,7 +156,7 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
             'created_at' => '2024-01-03 00:00:00'
         ]);
         $this->assertGreaterThan(0, $result);
-        
+
         $user = $this->qb->where('email', 'test@example.com')->first();
         $this->assertEquals('Test User', $user['name']);
     }
@@ -164,7 +165,7 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
     {
         $affected = $this->qb->where('id', 1)->update(['name' => 'Updated Name']);
         $this->assertEquals(1, $affected);
-        
+
         $user = $this->qb->where('id', 1)->first();
         $this->assertEquals('Updated Name', $user['name']);
     }
@@ -173,8 +174,8 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
     {
         $deleted = $this->qb->where('id', 1)->delete();
         $this->assertEquals(1, $deleted);
-        
-        $count = (new QueryBuilder($this->connection, 'users'))->count();
+
+        $count = (new Builder($this->connection, 'users', new SqliteGrammar()))->count();
         $this->assertEquals(1, $count);
     }
 
@@ -199,12 +200,12 @@ class QueryBuilderTest extends \PHPUnit\Framework\TestCase
     public function test_group_by(): void
     {
         $sql = $this->qb->groupBy('name')->toSql();
-        $this->assertStringContainsString('GROUP BY `name`', $sql);
+        $this->assertStringContainsString('GROUP BY "name"', $sql);
     }
 
     public function test_having(): void
     {
         $sql = $this->qb->having('id', '>', 1)->toSql();
-        $this->assertStringContainsString('HAVING `id` > ?', $sql);
+        $this->assertStringContainsString('HAVING "id" > ?', $sql);
     }
 }

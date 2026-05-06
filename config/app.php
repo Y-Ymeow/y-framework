@@ -15,7 +15,7 @@ return [
         \Framework\Cache\CacheServiceProvider::class,
         \Framework\Database\DatabaseServiceProvider::class,
         \Framework\Http\Session\SessionServiceProvider::class,
-        \Framework\Auth\AuthServiceProvider::class,
+        \Admin\Auth\AuthServiceProvider::class,
         \Framework\Queue\QueueServiceProvider::class,
         \Framework\Scheduler\SchedulerServiceProvider::class,
 

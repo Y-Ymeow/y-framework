@@ -14,7 +14,7 @@ class AdminManager
 {
     protected static array $resources = [];
     protected static array $pages = [];
-    protected static ?string $prefix = '/admin';
+    protected static string $prefix = '/admin';
     protected static ?string $brandTitle = 'Admin';
     protected static bool $booted = false;
 

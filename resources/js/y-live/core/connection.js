@@ -86,6 +86,11 @@ export async function dispatchLive(el, componentClass, action, stateRef, state, 
         });
 
         const data = await response.json();
+        
+        if (!response.ok) {
+            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+        }
+        
         return { success: true, data };
     } catch (err) {
         console.error('Live network error:', err);
@@ -102,7 +107,6 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
 
     fetch('/live/stream', { method: 'POST', headers, body })
         .then(async (response) => {
-            console.log('Stream response:', response);
             if (!response.ok) {
                 const text = await response.text();
                 try {

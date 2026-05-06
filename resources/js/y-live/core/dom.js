@@ -11,7 +11,21 @@ export function createSafeFragment(html) {
 }
 
 export function replaceLiveHtml(target, html, liveState = null, onAction = null) {
-    target.replaceChildren(createSafeFragment(html));
+    const fragment = createSafeFragment(html);
+    const newElement = fragment.firstElementChild;
+
+    // 检查是否是整块替换（即 html 包含根节点自身）
+    if (newElement && (newElement.id === target.id || newElement.getAttribute('data-live-fragment') === target.getAttribute('data-live-fragment'))) {
+        // 同步属性
+        Array.from(newElement.attributes).forEach(attr => {
+            target.setAttribute(attr.name, attr.value);
+        });
+        // 替换子节点
+        target.replaceChildren(...Array.from(newElement.childNodes));
+    } else {
+        // 传统的内部替换
+        target.replaceChildren(fragment);
+    }
 }
 
 export function sanitizeLiveTree(root) {
@@ -33,16 +47,13 @@ export function sanitizeLiveTree(root) {
             const name = attr.name.toLowerCase();
             const value = attr.value ?? '';
 
+            // 禁止原生 on* 事件
             if (name.startsWith('on')) {
                 node.removeAttribute(attr.name);
                 return;
             }
 
-            if (name.startsWith('data-') && !window.Y_UI_SAFE_ATTRS?.has(name)) {
-                node.removeAttribute(attr.name);
-                return;
-            }
-
+            // 移除不安全的 URL
             if ((name === 'href' || name === 'src' || name === 'action' || name === 'formaction') && isUnsafeUrl(value)) {
                 node.removeAttribute(attr.name);
             }

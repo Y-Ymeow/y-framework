@@ -172,7 +172,7 @@ class StatCard extends UXComponent
             $el->class('ux-stat-card-clickable');
             $el->liveAction($this->clickAction, $this->clickEvent);
             if (!empty($this->clickParams)) {
-                $el->data('action-params', json_encode($this->clickParams, JSON_UNESCAPED_UNICODE));
+                $el->liveAction($this->clickAction, $this->clickEvent, $this->clickParams);
             }
         }
 

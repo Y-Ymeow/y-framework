@@ -55,7 +55,6 @@ input:where([type='button'], [type='reset'], [type='submit']),
 ::file-selector-button { appearance: button;}::-webkit-inner-spin-button,
 ::-webkit-outer-spin-button { height: auto;}
 [hidden]:where(:not([hidden='until-found'])) {display: none !important;}
-[data-cloak] {display: none !important;}
 CSS;
 
         return str_replace("\n", "", $css);

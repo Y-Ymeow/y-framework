@@ -67,8 +67,7 @@ class UserResource extends BaseResource
                         ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
-                        ->liveAction('editRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('editRow', params: ['rowKey' => $rowKey]),
                 ];
             });
     }

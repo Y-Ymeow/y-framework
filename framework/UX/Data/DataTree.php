@@ -308,11 +308,10 @@ class DataTree extends UXComponent
 
                 $toggleAction = $this->toggleAction ?? $this->liveAction;
                 if ($toggleAction) {
-                    $toggleEl->liveAction($toggleAction, 'click');
-                    $toggleEl->data('action-params', json_encode([
+                    $toggleEl->liveAction($toggleAction, 'click', [
                         'key' => (string)$key,
                         'expanded' => !$isExpanded,
-                    ], JSON_UNESCAPED_UNICODE));
+                    ]);
                 } else {
                     $toggleEl->data('action', 'toggle');
                 }
@@ -339,10 +338,9 @@ class DataTree extends UXComponent
 
                 $checkAction = $this->checkAction ?? $this->liveAction;
                 if ($checkAction) {
-                    $checkboxEl->liveAction($checkAction, 'change');
-                    $checkboxEl->data('action-params', json_encode([
+                    $checkboxEl->liveAction($checkAction, 'change', [
                         'key' => (string)$key,
-                    ], JSON_UNESCAPED_UNICODE));
+                    ]);
                 }
 
                 $contentEl->child($checkboxEl);
@@ -353,10 +351,9 @@ class DataTree extends UXComponent
             if ($this->selectable) {
                 $selectAction = $this->selectAction ?? $this->liveAction;
                 if ($selectAction) {
-                    $titleEl->liveAction($selectAction, 'click');
-                    $titleEl->data('action-params', json_encode([
+                    $titleEl->liveAction($selectAction, 'click', [
                         'key' => (string)$key,
-                    ], JSON_UNESCAPED_UNICODE));
+                    ]);
                 } else {
                     $titleEl->data('action', 'select');
                     $titleEl->data('key', (string)$key);

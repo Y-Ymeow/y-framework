@@ -17,24 +17,24 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         $this->app->alias(AuthManager::class, 'auth');
-        $this->app->singleton(Gate::class, fn () => Gate::getInstance());
     }
 
     public function boot(): void
     {
+        // 注册认证相关的 gates 和 policies
         if (config('auth.gates')) {
             foreach (config('auth.gates', []) as $ability => $callback) {
                 if ($callback instanceof \Closure) {
-                    Gate::defineStatic($ability, $callback);
+                    \Framework\Auth\Gate::defineStatic($ability, $callback);
                 } elseif (is_string($callback) && class_exists($callback)) {
-                    Gate::defineStatic($ability, fn (...$args) => (new $callback)(...$args));
+                    \Framework\Auth\Gate::defineStatic($ability, fn (...$args) => (new $callback)(...$args));
                 }
             }
         }
 
         if (config('auth.policies')) {
             foreach (config('auth.policies', []) as $model => $policy) {
-                Gate::policyStatic($model, $policy);
+                \Framework\Auth\Gate::policyStatic($model, $policy);
             }
         }
     }

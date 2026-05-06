@@ -345,9 +345,14 @@ class FormBuilder extends UXComponent
 
     public function section(string|array $title, ?string $description = null): static
     {
-        $this->currentSection = $title;
-        $this->sections[$title] = [
-            'title' => $title,
+        $sectionKey = is_array($title) ? ($title[0] ?? '') : $title;
+        $sectionParams = is_array($title) ? ($title[1] ?? []) : [];
+        $sectionDefault = is_array($title) ? ($title[2] ?? '') : $title;
+        $displayTitle = t($sectionKey, $sectionParams, $sectionDefault);
+
+        $this->currentSection = $displayTitle;
+        $this->sections[$sectionKey] = [
+            'title' => $displayTitle,
             'description' => $description,
             'fields' => [],
         ];

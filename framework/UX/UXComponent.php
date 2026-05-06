@@ -61,6 +61,7 @@ abstract class UXComponent
     protected array $classes = [];
     protected array $children = [];
     protected ?string $liveAction = null;
+    protected array $liveParams = [];
     protected ?string $liveEvent = null;
     protected bool $isStream = false;
     protected ?string $uxModel = null;
@@ -338,10 +339,11 @@ abstract class UXComponent
      * @ux-example Button::make()->liveAction('save')
      * @ux-default event='click'
      */
-    public function liveAction(string $action, string $event = 'click'): static
+    public function liveAction(string $action, string $event = 'click', array $params = []): static
     {
         $this->liveAction = $action;
         $this->liveEvent = $event;
+        $this->liveParams = $params;
         return $this;
     }
 
@@ -503,7 +505,7 @@ abstract class UXComponent
         }
 
         if ($this->liveAction) {
-            $el->liveAction($this->liveAction, $this->liveEvent ?? 'click');
+            $el->liveAction($this->liveAction, $this->liveEvent ?? 'click', $this->liveParams);
         }
 
         if ($this->isStream) {

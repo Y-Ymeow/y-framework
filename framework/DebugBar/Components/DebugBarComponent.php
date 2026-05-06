@@ -8,6 +8,7 @@ use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
+use Framework\Database\Connection\Connection;
 use Framework\DebugBar\DebugBar;
 use Framework\DebugBar\SqlCollector;
 use Framework\DebugBar\RouteCollector;
@@ -51,7 +52,7 @@ class DebugBarComponent extends LiveComponent
     {
         // 尝试收集数据，但容忍数据库未初始化的情况
         try {
-            $conn = \Framework\Database\Connection::get();
+            $conn = Connection::get();
             SqlCollector::register();
         } catch (\Throwable $e) {
             // 数据库未初始化，跳过 SQL 收集
@@ -200,8 +201,7 @@ CSS);
             $link = Element::make('button')
                 ->class('db-nav-link')
                 ->attr('type', 'button')
-                ->liveAction('selectTab')
-                ->liveParams(['tab' => $id]);
+                ->liveAction('selectTab', 'click', ['tab' => $id]);
 
             $badgeValue = match ($id) {
                 'request' => $this->snapshot['panels']['request']['data']['total'] ?? 0,
@@ -298,7 +298,7 @@ CSS);
             $tr->child($tdTime);
 
             $tdQuery = Element::make('td')->class('db-sql-query');
-            $tdQuery->text(htmlspecialchars($q['sql']));
+            $tdQuery->text($q['sql']);
 
             if (!empty($q['bindings'])) {
                 $bindingsStr = implode(', ', array_map(fn($b) => is_string($b) ? "'$b'" : (is_array($b) ? json_encode($b) : (string)$b), $q['bindings']));

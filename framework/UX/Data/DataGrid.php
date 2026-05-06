@@ -247,8 +247,7 @@ class DataGrid extends UXComponent
 
                 $itemAction = $this->itemAction ?? $this->liveAction;
                 if ($itemAction) {
-                    $cellEl->liveAction($itemAction, $this->itemActionEvent);
-                    $cellEl->data('action-params', json_encode(['index' => $index], JSON_UNESCAPED_UNICODE));
+                    $cellEl->liveAction($itemAction, $this->itemActionEvent, ['index' => $index]);
                 }
 
                 if ($this->renderItem) {

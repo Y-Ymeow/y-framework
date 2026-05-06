@@ -584,18 +584,17 @@ class Element
                 if ($child instanceof self) {
                     $inner .= $child->render();
                 } elseif ($child instanceof \Framework\Component\Live\LiveComponent) {
-                    $inner .= $this->sanitizeHtml($child->toHtml());
+                    $inner .= $child->toHtml();
                 } elseif ($child instanceof \Framework\UX\UXComponent) {
                     $inner .= $child->render();
                 } elseif (is_object($child) && method_exists($child, 'toHtml')) {
-                    $html = $child->toHtml();
-                    $inner .= $this->sanitizeHtml(is_string($html) ? $html : (string)$html);
+                    $inner .= (string)$child->toHtml();
                 } elseif (is_object($child) && method_exists($child, 'render')) {
                     $rendered = $child->render();
                     if ($rendered instanceof self) {
                         $inner .= $rendered->render();
                     } else {
-                        $inner .= $this->sanitizeHtml((string)$rendered);
+                        $inner .= (string)$rendered;
                     }
                 } elseif (is_string($child)) {
                     $inner .= $this->sanitizeHtml($child);

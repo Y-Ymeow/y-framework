@@ -387,9 +387,7 @@ class RichEditor extends FormField
         }
 
         if ($this->liveAction) {
-            $hiddenInput->attr('data-action', $this->liveAction);
-            $hiddenInput->attr('data-action-event', $this->liveEvent);
-            $hiddenInput->data('action-params', json_encode(['name' => $this->name, 'content' => '__value__']));
+            $hiddenInput->liveAction($this->liveAction, $this->liveEvent, $this->liveParams);
         }
 
         foreach ($this->buildFieldAttrs() as $key => $value) {

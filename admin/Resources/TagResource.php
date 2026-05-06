@@ -57,14 +57,12 @@ class TagResource extends BaseResource
                         ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
-                        ->liveAction('editRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('editRow', params: ['rowKey' => $rowKey]),
                     Button::make()
                         ->label(t('admin.delete'))
                         ->danger()
                         ->sm()
-                        ->liveAction('deleteRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('deleteRow', params: ['rowKey' => $rowKey]),
                 ];
             });
     }

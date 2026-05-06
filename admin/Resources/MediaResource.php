@@ -59,14 +59,12 @@ class MediaResource extends BaseResource
                         ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
-                        ->liveAction('editRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('editRow', 'click', ['rowKey' => $rowKey]),
                     Button::make()
                         ->label(t('admin.delete'))
                         ->danger()
                         ->sm()
-                        ->liveAction('deleteRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('deleteRow', 'click', ['rowKey' => $rowKey]),
                 ];
             });
     }

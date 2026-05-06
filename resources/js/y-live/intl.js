@@ -1,4 +1,4 @@
-import { initDirectives } from '../y-directive/directives.js';
+import { initDirectives } from '../y-directive';
 
 let currentLocale = document.documentElement.lang || 'en';
 let translations = {};

@@ -1,7 +1,7 @@
 // Navigate System - data-navigate 无刷新导航
 import { createSafeFragment } from './core/dom.js';
 import { setupLiveComponent } from './core/state.js';
-import { initDirectives } from '../y-directive/directives.js';
+import { initDirectives } from '../y-directive';
 
 let progressBarEl = null;
 

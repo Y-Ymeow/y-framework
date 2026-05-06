@@ -1,20 +1,37 @@
 // Y-Directive - 响应式指令系统入口
-import { ReactiveState, effect, batch } from './reactive.js';
-import { initDirectives, evaluate, execute } from './directives.js';
+import { ReactiveState, effect, batch } from './reactive/index.js';
+import { $dispatch } from './scope/index.js';
+import { initDirectives } from './runner/index.js';
+import { directiveContext } from './reactive/context.js';
+import './directives/index.js';
 
-const registry = new Map();
+window.$dispatch = $dispatch;
 
-function register(name, definition) {
-    registry.set(name, definition);
+export { ReactiveState, effect, batch, initDirectives };
+
+export function directive(name, handler) {
+    if (handler === undefined) {
+        return directiveContext.registry.get(name);
+    }
+    directiveContext.registry.set(name, handler);
 }
 
-function boot(root = document) {
+const componentRegistry = new Map();
+
+export function register(name, definition) {
+    componentRegistry.set(name, definition);
+}
+
+export function boot(root = document) {
+    if (window.__Y_BOOTED__ && root === document) return;
+    
     initDirectives(root);
 
     root.querySelectorAll('[data-component]').forEach(el => {
         if (el._y_component) return;
+
         const name = el.dataset.component;
-        const definition = registry.get(name);
+        const definition = componentRegistry.get(name);
         if (!definition) return;
 
         if (!el._y_state) {
@@ -25,24 +42,20 @@ function boot(root = document) {
         if (definition.connect) definition.connect(el, el._y_state);
         el._y_component = true;
     });
+
+    if (root === document) window.__Y_BOOTED__ = true;
 }
 
 const D = {
     boot,
     register,
+    directive,
     ReactiveState,
     effect,
     batch,
-    evaluate,
-    execute,
+    initDirectives,
 };
 
-window.D = D;
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => D.boot());
-} else {
-    D.boot();
-}
+window.D = window.Y = D;
 
 export default D;

@@ -7,6 +7,7 @@ namespace Admin\Pages;
 use Admin\Auth\AuthManager;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Framework\UX\UI\Button;
 use Framework\UX\Form\Input;
 use Framework\UX\Form\Checkbox;
@@ -14,9 +15,13 @@ use Framework\View\Base\Element;
 
 class LoginPage extends LiveComponent
 {
+    #[State]
     public string $email = '';
+    #[State]
     public string $password = '';
+    #[State]
     public bool $remember = false;
+    #[State]
     public array $errors = [];
 
     public static function getName(): string
@@ -30,7 +35,7 @@ class LoginPage extends LiveComponent
     }
 
     #[LiveAction]
-    public function login(): void
+    public function login(array $params = []): void
     {
         $this->errors = [];
 
@@ -65,7 +70,7 @@ class LoginPage extends LiveComponent
 
         $form = Element::make('form')
             ->class('space-y-6')
-            ->attr('method', 'POST');
+            ->liveAction('login', 'submit');
 
         if (!empty($this->errors)) {
             $errorHtml = Element::make('div')
@@ -101,8 +106,7 @@ class LoginPage extends LiveComponent
             ->label(t('login'))
             ->submit()
             ->primary()
-            ->block()
-            ->liveAction('login', 'submit');
+            ->block();
 
         $form->child($emailInput);
         $form->child($passwordInput);

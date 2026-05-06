@@ -56,3 +56,9 @@ skeleton/
 storage/sessions/
 storage/sse/
 .phpunit.cache/test-results
+.agents/
+.kilocode/
+.gemini/
+.opencode/
+.trellis/
+.windsurf/

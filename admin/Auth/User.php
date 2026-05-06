@@ -6,7 +6,7 @@ namespace Admin\Auth;
 
 use Framework\Database\Model;
 
-class User extends Model
+class User extends Model implements Authenticatable
 {
     protected string $table = 'users';
     protected array $fillable = ['name', 'email', 'password'];
@@ -14,6 +14,36 @@ class User extends Model
     protected array $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function getAuthIdentifierName(): string
+    {
+        return 'id';
+    }
+
+    public function getAuthIdentifier(): mixed
+    {
+        return $this->id;
+    }
+
+    public function getAuthPassword(): string
+    {
+        return $this->password ?? '';
+    }
+
+    public function getRememberToken(): ?string
+    {
+        return $this->remember_token ?? null;
+    }
+
+    public function setRememberToken(string $token): void
+    {
+        $this->remember_token = $token;
+    }
+
+    public function getRememberTokenName(): string
+    {
+        return 'remember_token';
+    }
 
     public function roles()
     {
@@ -28,7 +58,7 @@ class User extends Model
             ->where('user_roles.user_id', $this->id)
             ->get();
 
-        return array_map(fn($r) => $r['slug'], $results);
+        return array_map(fn($r) => $r['slug'], $results->toArray());
     }
 
     public function getRoleNames(): array
@@ -39,7 +69,7 @@ class User extends Model
             ->where('user_roles.user_id', $this->id)
             ->get();
 
-        return array_map(fn($r) => $r['name'], $results);
+        return array_map(fn($r) => $r['name'], $results->toArray());
     }
 
     public function hasRole(string|array $roles): bool
@@ -70,7 +100,7 @@ class User extends Model
         $roleIds = db()->table('user_roles')
             ->where('user_id', $this->id)
             ->get();
-        $roleIds = array_map(fn($r) => $r['role_id'], $roleIds);
+        $roleIds = array_map(fn($r) => $r['role_id'], $roleIds->toArray());
 
         if (empty($roleIds)) {
             return false;

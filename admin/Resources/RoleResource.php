@@ -67,13 +67,13 @@ class RoleResource extends BaseResource
             ->column('is_system', ['admin:roles.is_system', [], '系统角色'])
             ->column('created_at', ['admin:roles.created_at', [], '创建时间'])
             ->rowActions(function ($row, $rowKey, $index) {
+                $resourceName = static::getName();
                 $actions = [
                     Button::make()
                         ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
-                        ->liveAction('editRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey])),
+                        ->liveAction('editRow', 'click', ['rowKey' => $rowKey, 'resourceName' => $resourceName]),
                 ];
 
                 if (empty($row['is_system']) || !$row['is_system']) {
@@ -81,8 +81,7 @@ class RoleResource extends BaseResource
                         ->label(t('admin.delete'))
                         ->danger()
                         ->sm()
-                        ->liveAction('deleteRow')
-                        ->data('action-params', json_encode(['rowKey' => $rowKey]));
+                        ->liveAction('deleteRow', 'click', ['rowKey' => $rowKey, 'resourceName' => $resourceName]);
                 }
 
                 return $actions;

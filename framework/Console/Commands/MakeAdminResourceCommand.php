@@ -142,8 +142,7 @@ class {$className} extends BaseResource
                         ->label('删除')
                         ->danger()
                         ->sm()
-                        ->liveAction('deleteRow')
-                        ->data('action-params', json_encode(['rowKey' => \$rowKey]))
+                        ->liveAction('deleteRow', params: ['rowKey' => \$rowKey])
                         ->data('confirm', '确定删除此记录？'),
                 ];
             });

@@ -110,7 +110,7 @@ class AdminFormPage extends LiveComponent
             )
         );
 
-        $prefix = AdminManager::getPrefix();
+        $prefix = AdminManager::getPrefix() ?: '/admin';
         $name = $resource::getName();
         $backUrl = "{$prefix}/{$name}";
         $headerEl->child(

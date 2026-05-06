@@ -467,7 +467,7 @@ class Builder implements QueryBuilderInterface
     {
         $select = $column === '*' ? '*' : $this->grammar->wrap($column);
         $savedColumns = $this->columns;
-        $this->columns = [new SelectExpression("COUNT({$select}) as _count")];
+        $this->columns = [new SelectExpression("COUNT({$select})", '_count')];
 
         $result = $this->grammar->compileSelect($this);
         $row = $this->connection->queryOne($result['sql'], $result['bindings']);
@@ -481,7 +481,7 @@ class Builder implements QueryBuilderInterface
     {
         $col = $this->grammar->wrap($column);
         $savedColumns = $this->columns;
-        $this->columns = [new SelectExpression("SUM({$col}) as _sum")];
+        $this->columns = [new SelectExpression("SUM({$col})", '_sum')];
 
         $result = $this->grammar->compileSelect($this);
         $row = $this->connection->queryOne($result['sql'], $result['bindings']);
@@ -495,7 +495,7 @@ class Builder implements QueryBuilderInterface
     {
         $col = $this->grammar->wrap($column);
         $savedColumns = $this->columns;
-        $this->columns = [new SelectExpression("AVG({$col}) as _avg")];
+        $this->columns = [new SelectExpression("AVG({$col})", '_avg')];
 
         $result = $this->grammar->compileSelect($this);
         $row = $this->connection->queryOne($result['sql'], $result['bindings']);
@@ -509,7 +509,7 @@ class Builder implements QueryBuilderInterface
     {
         $col = $this->grammar->wrap($column);
         $savedColumns = $this->columns;
-        $this->columns = [new SelectExpression("MAX({$col}) as _max")];
+        $this->columns = [new SelectExpression("MAX({$col})", '_max')];
 
         $result = $this->grammar->compileSelect($this);
         $row = $this->connection->queryOne($result['sql'], $result['bindings']);
@@ -523,7 +523,7 @@ class Builder implements QueryBuilderInterface
     {
         $col = $this->grammar->wrap($column);
         $savedColumns = $this->columns;
-        $this->columns = [new SelectExpression("MIN({$col}) as _min")];
+        $this->columns = [new SelectExpression("MIN({$col})", '_min')];
 
         $result = $this->grammar->compileSelect($this);
         $row = $this->connection->queryOne($result['sql'], $result['bindings']);

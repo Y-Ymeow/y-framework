@@ -99,7 +99,6 @@ const SseLive = {
             return;
         }
 
-        console.log(`[SseLive] Dispatching ${action} to ${componentId}`);
         window.L.dispatch(liveEl, componentClass, action, stateRef, state, null, params || {});
     },
 

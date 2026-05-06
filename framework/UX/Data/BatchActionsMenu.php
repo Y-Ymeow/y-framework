@@ -167,12 +167,11 @@ class BatchActionsMenu
                 $item->child(Element::make('span')->class('ux-batch-actions-item-label')->text($action['label']));
 
                 if ($this->liveAction) {
-                    $item->liveAction($this->liveAction, $this->liveEvent ?? 'click');
-                    $item->data('action-params', json_encode([
+                    $item->liveAction($this->liveAction, $this->liveEvent ?? 'click', [
                         'batchAction' => $action['action'],
                         'selectedKeys' => $this->selectedKeys,
                         'confirm' => $action['confirm'] ?? null,
-                    ], JSON_UNESCAPED_UNICODE));
+                    ]);
                 }
 
                 if ($action['confirm']) {

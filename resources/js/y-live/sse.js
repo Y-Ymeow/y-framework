@@ -86,11 +86,9 @@ const SseClient = {
 
             // 内置事件
             eventSource.addEventListener('ping', (event) => {
-                console.log('[SSE] Heartbeat received');
             });
 
             eventSource.addEventListener('close', (event) => {
-                console.log('[SSE] Server closed connection');
                 isManualClose = true;
                 eventSource.close();
             });

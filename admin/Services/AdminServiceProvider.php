@@ -51,6 +51,9 @@ class AdminServiceProvider extends ServiceProvider
     {
         $basePath = $this->app->basePath();
 
+        $prefix = env('ADMIN_PREFIX', '/admin');
+        AdminManager::setPrefix($prefix);
+
         $this->app->make(LifecycleManager::class);
 
         $adminDirs = [

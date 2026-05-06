@@ -276,8 +276,7 @@ CSS
                 ->attr('aria-expanded', $isOpen ? 'true' : 'false');
 
             if ($this->liveAction) {
-                $headerEl->liveAction($this->liveAction, $this->liveEvent ?? 'click');
-                $headerEl->data('action-params', json_encode(['id' => $item['id'], 'open' => !$isOpen]));
+                $headerEl->liveAction($this->liveAction, $this->liveEvent ?? 'click', ['id' => $item['id'], 'open' => !$isOpen]);
             }
 
             $titleEl = Element::make('span')->class('ux-accordion-title');

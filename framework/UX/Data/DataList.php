@@ -286,8 +286,7 @@ class DataList extends UXComponent
 
                 $itemAction = $this->itemAction ?? $this->liveAction;
                 if ($itemAction) {
-                    $li->liveAction($itemAction, $this->itemActionEvent);
-                    $li->data('action-params', json_encode(['index' => $index], JSON_UNESCAPED_UNICODE));
+                    $li->liveAction($itemAction, $this->itemActionEvent ?? 'click', ['index' => $index]);
                 }
 
                 if ($this->renderItem) {

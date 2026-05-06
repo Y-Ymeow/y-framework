@@ -2,7 +2,7 @@
 
 return [
     'default' => env('AUTH_GUARD', 'web'),
-    'model' => env('AUTH_MODEL', 'App\\Models\\User'),
+    'model' => env('AUTH_MODEL', 'Admin\\Auth\\User'),
 
     'guards' => [
         'web' => [
@@ -18,7 +18,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', 'App\\Models\\User'),
+            'model' => env('AUTH_MODEL', 'Admin\\Auth\\User'),
         ],
     ],
 

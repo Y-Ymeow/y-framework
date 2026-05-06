@@ -203,9 +203,17 @@ class Document
         foreach ($config->getInjections('head') as $injected) $html .= $injected;
         foreach ($this->injections['head'] as $injected) $html .= $injected;
 
+        $html .= '<style>';
+        $html .= '[data-cloak] { display: none !important; }';
+        $html .= '[data-loading] { opacity: 0; transform: translateY(10px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }';
+        $html .= '[data-loading].y-loaded { opacity: 1; transform: translateY(0); }';
+        $html .= '#y-progress { position: fixed; top: 0; left: 0; height: 2px; background: #3b82f6; z-index: 10001; transition: width 0.3s ease, opacity 0.4s; pointer-events: none; opacity: 0; }';
+        $html .= 'body{ width: 100%; overflow-x: hidden; }';
+        $html .= '</style>';
+
         $html .= '</head>';
 
-        $html .= '<body>';
+        $html .= '<body >';
 
         foreach ($config->getInjections('body_start') as $injected) $html .= $injected;
         foreach ($this->injections['body_start'] as $injected) $html .= $injected;

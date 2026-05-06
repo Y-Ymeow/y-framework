@@ -25,6 +25,7 @@ abstract class LiveComponent
     private array $validationErrors = [];
     protected bool $mountCalled = false;
     private array $computedCache = [];
+    protected bool $loading = false;
 
     public function __construct()
     {
@@ -89,7 +90,8 @@ abstract class LiveComponent
         }
 
         return sprintf(
-            '<div data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s"%s>%s</div>',
+            '<div %s data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s"%s>%s</div>',
+            $this->loading ? 'data-loading' : '',
             static::class,
             $this->componentId,
             $stateAttr,

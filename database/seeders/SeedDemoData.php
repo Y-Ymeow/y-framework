@@ -23,6 +23,7 @@ class SeedDemoData
         if ($count > 1) return;
 
         $users = [
+            ['name' => 'Admin', 'email' => 'admin@admin.com', 'password' => password_hash('admin123', PASSWORD_BCRYPT), 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
             ['name' => '张三', 'email' => 'zhangsan@example.com', 'password' => password_hash('123456', PASSWORD_BCRYPT), 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
             ['name' => '李四', 'email' => 'lisi@example.com', 'password' => password_hash('123456', PASSWORD_BCRYPT), 'role' => 'editor', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
             ['name' => '王五', 'email' => 'wangwu@example.com', 'password' => password_hash('123456', PASSWORD_BCRYPT), 'role' => 'viewer', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],

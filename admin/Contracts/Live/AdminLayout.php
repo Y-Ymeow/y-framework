@@ -21,6 +21,7 @@ use Framework\View\Document\Document;
 
 class AdminLayout extends LiveComponent
 {
+    protected bool $loading = true;
     public string $activeMenu = '';
 
     #[Session]
@@ -47,7 +48,7 @@ class AdminLayout extends LiveComponent
 
         $request = app()->make(\Framework\Http\Request\Request::class);
         $path = $request->path();
-        $prefix = AdminManager::getPrefix();
+        $prefix = AdminManager::getPrefix() ?: '/admin';
 
         if (str_starts_with($path, $prefix)) {
             $subPath = trim(substr($path, strlen($prefix)), '/');
@@ -198,7 +199,7 @@ class AdminLayout extends LiveComponent
     protected function getMenuGroups(): array
     {
         $groups = [];
-        $prefix = AdminManager::getPrefix();
+        $prefix = AdminManager::getPrefix() ?: '/admin';
 
         $groups[''][] = [
             'name' => 'dashboard',
@@ -397,7 +398,7 @@ class AdminLayout extends LiveComponent
             ->element(
                 Element::make('a')
                     ->class('ux-dropdown-link', 'flex', 'items-center', 'gap-2', 'text-red-600', 'px-4', 'py-2')
-                    ->attr('href', AdminManager::getPrefix() . '/logout')
+                    ->attr('href', (AdminManager::getPrefix() ?: '/admin') . '/logout')
                     ->child(Element::make('i')->class('bi', 'bi-box-arrow-right'))
                     ->child(Element::make('span')->intl('admin.logout')->class('text-sm'))
             );

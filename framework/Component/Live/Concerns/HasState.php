@@ -197,9 +197,8 @@ trait HasState
 
     protected function liveSigningKey(): string
     {
-        $sessionToken = app()->make(Session::class)->getId() ?: 'guest';
         $appKey = config('app.key', 'default-key');
-        return hash_hmac('sha256', $sessionToken, $appKey);
+        return hash_hmac('sha256', 'live-component-state', $appKey);
     }
 
     /**

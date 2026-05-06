@@ -263,12 +263,17 @@ function str_contains_any(string $haystack, string ...$needles): bool
     return false;
 }
 
-function auth(): \Framework\Auth\AuthManager
+function auth(): \Framework\Auth\AuthManager|\Admin\Auth\AuthManager
 {
     static $instance = null;
     if ($instance === null) {
         $app = \Framework\Foundation\Application::getInstance() ?? app();
-        $instance = $app->make(\Framework\Auth\AuthManager::class);
+        // 优先使用 Admin\Auth\AuthManager，如果不存在则使用 Framework\Auth\AuthManager
+        try {
+            $instance = $app->make(\Admin\Auth\AuthManager::class);
+        } catch (\Throwable $e) {
+            $instance = $app->make(\Framework\Auth\AuthManager::class);
+        }
     }
     return $instance;
 }
