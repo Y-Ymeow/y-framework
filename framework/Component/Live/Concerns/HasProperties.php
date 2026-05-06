@@ -208,6 +208,36 @@ trait HasProperties
 
     protected function persistProperties(): void
     {
+        $this->persistPropertiesInternal();
+    }
+
+    public function __updateProperty(array $params): void
+    {
+        $property = $params['property'] ?? null;
+        $value = $params['value'] ?? null;
+
+        if ($property === null) return;
+
+        $editableProps = $this->frontendEditableProperties();
+        $publicProps = $this->allowedStateProperties();
+
+        if (!in_array($property, $publicProps, true)) return;
+
+        if (!empty($this->lockedChecksums) && !in_array($property, $editableProps, true)) {
+            return;
+        }
+
+        $ref = new \ReflectionClass($this);
+        if ($ref->hasProperty($property)) {
+            $prop = $ref->getProperty($property);
+            if (!$prop->isStatic()) {
+                $prop->setValue($this, $this->castParam($value, $prop->getType()));
+            }
+        }
+    }
+
+    protected function persistPropertiesInternal(): void
+    {
         $ref = new \ReflectionClass($this);
         foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
             if ($prop->isStatic()) {

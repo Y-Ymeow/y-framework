@@ -585,6 +585,8 @@ class Element
                     $inner .= $child->render();
                 } elseif ($child instanceof \Framework\Component\Live\LiveComponent) {
                     $inner .= $this->sanitizeHtml($child->toHtml());
+                } elseif ($child instanceof \Framework\UX\UXComponent) {
+                    $inner .= $child->render();
                 } elseif (is_object($child) && method_exists($child, 'toHtml')) {
                     $html = $child->toHtml();
                     $inner .= $this->sanitizeHtml(is_string($html) ? $html : (string)$html);

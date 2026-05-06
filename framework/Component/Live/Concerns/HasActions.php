@@ -58,6 +58,10 @@ trait HasActions
             }
         }
 
+        if (!isset($this->actionCache['__updateProperty'])) {
+            $this->actionCache['__updateProperty'] = '__updateProperty';
+        }
+
         return $this->actionCache;
     }
 

@@ -275,7 +275,7 @@ export function initDirectives(root = document) {
             else if (name === 'data-show') { bindDirective(el, state, 'show', value); bound = true; }
             else if (name === 'data-if') { bindDirective(el, state, 'if', value); bound = true; }
             else if (name === 'data-for') { bindDirective(el, state, 'for', value); bound = true; }
-            else if (name === 'data-model' || name === 'data-live-model') { bindDirective(el, state, 'model', value); bound = true; }
+            else if (name === 'data-model') { bindDirective(el, state, 'model', value); bound = true; }
             else if (name === 'data-effect') { bindDirective(el, state, 'effect', value); bound = true; }
             else if (name.startsWith('data-on:')) {
                 bindDirective(el, state, 'on', value, name.slice(8));
