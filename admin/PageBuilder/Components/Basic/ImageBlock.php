@@ -46,11 +46,7 @@ class ImageBlock extends ComponentType
                         'right' => '右对齐',
                     ])
                     ->default('center'),
-
-                TextInput::make('className')
-                    ->label('额外样式')
-                    ->default(''),
-            ]),
+            ])
         ]);
     }
 

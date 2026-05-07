@@ -13,7 +13,7 @@ class Time
 {
     private DateTimeImmutable $dateTime;
 
-    public function __construct(string|DateTimeImmutable $time = 'now', string|DateTimeZone $timezone = null)
+    public function __construct(string|DateTimeImmutable $time = 'now', string|DateTimeZone|null $timezone = null)
     {
         $tz = $timezone instanceof DateTimeZone ? $timezone : new DateTimeZone($timezone ?? date_default_timezone_get());
         
@@ -24,17 +24,17 @@ class Time
         }
     }
 
-    public static function now(string|DateTimeZone $timezone = null): self
+    public static function now(string|DateTimeZone|null $timezone = null): self
     {
         return new self('now', $timezone);
     }
 
-    public static function parse(string $time, string|DateTimeZone $timezone = null): self
+    public static function parse(string $time, string|DateTimeZone|null $timezone = null): self
     {
         return new self($time, $timezone);
     }
 
-    public static function createFromTimestamp(int $timestamp, string|DateTimeZone $timezone = null): self
+    public static function createFromTimestamp(int $timestamp, string|DateTimeZone|null $timezone = null): self
     {
         return new self("@{$timestamp}", $timezone);
     }

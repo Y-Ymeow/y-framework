@@ -14,6 +14,8 @@ use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Display\Collapse;
+use Admin\PageBuilder\StylePanel\StylePanelBuilder;
 
 class PageBuilderPage extends LiveComponent implements PageInterface
 {
@@ -205,13 +207,27 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         if (!is_array($tree)) return;
 
         $settings = [];
+        $styleData = [];
         foreach ($params as $key => $value) {
             if ($key === 'uid') continue;
-            $settings[$key] = $value;
+            if (str_starts_with($key, 'style_') || $key === '_custom_classes') {
+                $styleData[$key] = $value;
+            } else {
+                $settings[$key] = $value;
+            }
+        }
+
+        if (!empty($styleData)) {
+            $styleBuilder = new StylePanelBuilder();
+            $settings['className'] = $styleBuilder->buildClasses($styleData);
         }
 
         $this->updateAllSettingsInTree($tree, $uid, $settings);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
+
         $this->toast('设置已保存');
         $this->refresh('comp-' . $uid);
     }
@@ -227,6 +243,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $this->removeFromTree($tree, $uid);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
 
         if ($this->selectedUid === $uid) {
             $this->selectedUid = '';
@@ -259,6 +278,10 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $this->addChildToTree($tree, $parentUid, $newChild);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
+
         $this->selectedUid = $uid;
         $this->refresh('canvas');
         $this->refresh('properties-panel');
@@ -273,6 +296,10 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             return;
         }
         $this->componentTreeJson = $treeJson;
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
+
         $this->refresh('canvas');
     }
 
@@ -314,7 +341,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         foreach ($tree as &$component) {
             if (($component['uid'] ?? '') === $uid) {
-                $component['settings'] = $settings;
+                $component['settings'] = array_merge($component['settings'] ?? [], $settings);
                 return true;
             }
             $children = $component['children'] ?? [];
@@ -472,7 +499,11 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $canvasArea = Element::make('div')->class('page-builder-canvas-area');
         $canvasArea->child($this->renderCanvasToolbar());
-        $canvasArea->child($this->renderCanvas());
+
+        $canvasWrapper = Element::make('div')->class('page-builder-canvas-wrapper');
+        $canvasWrapper->child($this->renderCanvas());
+        $canvasArea->child($canvasWrapper);
+
         $body->child($canvasArea);
 
         $body->child($this->renderPropertiesPanel());
@@ -518,6 +549,31 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     protected function renderCanvasToolbar(): Element
     {
         $toolbar = Element::make('div')->class('page-builder-canvas-toolbar');
+
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-preview-btn', 'active')
+                ->attr('data-preview-btn', 'desktop')
+                ->attr('title', '电脑')
+                ->html('<i class="bi bi-display"></i>')
+        );
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-preview-btn')
+                ->attr('data-preview-btn', 'tablet')
+                ->attr('title', '平板')
+                ->html('<i class="bi bi-tablet"></i>')
+        );
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-preview-btn')
+                ->attr('data-preview-btn', 'mobile')
+                ->attr('title', '手机')
+                ->html('<i class="bi bi-phone"></i>')
+        );
+
+        $toolbar->child(Element::make('div')->class('page-builder-toolbar-separator'));
+
         $toolbar->child(
             Element::make('button')
                 ->class('page-builder-zoom-btn')
@@ -550,6 +606,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $canvas = Element::make('div')
             ->class('page-builder-canvas')
             ->attr('data-builder-canvas', '')
+            ->attr('data-preview', 'desktop')
             ->liveFragment('canvas');
 
         $tree = json_decode($this->componentTreeJson, true);
@@ -595,18 +652,17 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $toolbar = Element::make('div')->class('pb-comp-toolbar');
         $toolbar->child(
-            Element::make('span')->class('pb-comp-label')
-                ->html('<i class="bi bi-' . ($componentType?->icon() ?? 'square') . '"></i> ' . ($componentType?->label() ?? $type))
+            Element::make('button')
+                ->class('pb-comp-btn', 'pb-comp-btn-drag')
+                ->attr('title', '拖动排序')
+                ->html('<i class="bi bi-grip-vertical"></i>')
         );
-        if ($isContainer) {
-            $toolbar->child(Element::make('span')->class('pb-comp-badge')->text('容器'));
-        }
-        $toolbar->child(Element::make('div')->class('pb-comp-toolbar-actions'));
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn')
                 ->attr('data-action:click', 'toggleComponent()')
                 ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->attr('title', '编辑')
                 ->html('<i class="bi bi-pencil"></i>')
         );
         $toolbar->child(
@@ -614,6 +670,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 ->class('pb-comp-btn', 'pb-comp-btn-danger')
                 ->attr('data-action:click', 'removeComponent()')
                 ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->attr('title', '删除')
                 ->html('<i class="bi bi-trash3"></i>')
         );
         $comp->child($toolbar);
@@ -694,25 +751,57 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         );
         $panel->child($panelHeader);
 
-        $formBody = Element::make('div')->class('page-builder-properties-body');
+        $hiddenUid = Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('data-submit-field', 'uid')
+            ->attr('value', $this->selectedUid);
 
-        $formBody->child(
-            Element::make('input')
-                ->attr('type', 'hidden')
-                ->attr('data-submit-field', 'uid')
-                ->attr('value', $this->selectedUid)
+        $tabNav = Element::make('div')->class('page-builder-properties-tabs');
+        $tabNav->child(
+            Element::make('button')
+                ->class('page-builder-properties-tab', 'page-builder-properties-tab--active')
+                ->attr('data-properties-tab', 'content')
+                ->attr('type', 'button')
+                ->text('内容设置')
+        );
+        $tabNav->child(
+            Element::make('button')
+                ->class('page-builder-properties-tab')
+                ->attr('data-properties-tab', 'style')
+                ->attr('type', 'button')
+                ->text('样式设置')
         );
 
-        $form = new FormBuilder();
-        $componentType->settings($form);
-        $form->fill($component['settings'] ?? []);
+        $contentPanel = Element::make('div')
+            ->class('page-builder-properties-tab-content', 'page-builder-properties-tab-content--active')
+            ->attr('data-properties-panel', 'content');
 
-        foreach ($form->getComponents() as $formComponent) {
+        $contentForm = new FormBuilder();
+        $componentType->settings($contentForm);
+        $contentForm->fill($component['settings'] ?? []);
+
+        foreach ($contentForm->getComponents() as $formComponent) {
             if (method_exists($formComponent, 'render')) {
-                $formBody->child($formComponent->render());
+                $contentPanel->child($formComponent->render());
             }
         }
-        $panel->child($formBody);
+
+        $stylePanel = Element::make('div')
+            ->class('page-builder-properties-tab-content')
+            ->attr('data-properties-panel', 'style');
+
+        $styleBuilder = new StylePanelBuilder();
+        $styleCollapses = $styleBuilder->buildCollapses($component['settings']['className'] ?? '');
+        foreach ($styleCollapses as $collapse) {
+            $stylePanel->child($collapse->render());
+        }
+
+        $panelBody = Element::make('div')->class('page-builder-properties-body');
+        $panelBody->child($hiddenUid);
+        $panelBody->child($tabNav);
+        $panelBody->child($contentPanel);
+        $panelBody->child($stylePanel);
+        $panel->child($panelBody);
 
         $panelFooter = Element::make('div')->class('page-builder-properties-footer');
         $panelFooter->child(

@@ -78,6 +78,11 @@ class ErrorHandler
     {
         if (!(error_reporting() & $severity)) return false;
 
+        if ($severity === E_DEPRECATED || $severity === E_USER_DEPRECATED) {
+            self::logException(new \ErrorException($message, 0, $severity, $file, $line));
+            return true;
+        }
+
         $exception = new \ErrorException($message, 0, $severity, $file, $line);
         self::handleException($exception);
 

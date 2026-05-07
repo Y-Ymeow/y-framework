@@ -28,9 +28,6 @@ class Footer extends ComponentType
             TextInput::make('copyright')
                 ->label('版权信息')
                 ->default('© 2025 My Site. All rights reserved.'),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
         ]);
     }
 

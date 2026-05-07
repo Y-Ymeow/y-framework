@@ -11,10 +11,22 @@ use Framework\View\Base\Element;
 
 class CTA extends ComponentType
 {
-    public function name(): string { return 'cta'; }
-    public function label(): string { return '行动号召'; }
-    public function icon(): string { return 'cursor-fill'; }
-    public function category(): string { return 'sections'; }
+    public function name(): string
+    {
+        return 'cta';
+    }
+    public function label(): string
+    {
+        return '行动号召';
+    }
+    public function icon(): string
+    {
+        return 'cursor-fill';
+    }
+    public function category(): string
+    {
+        return 'sections';
+    }
 
     public function settings(FormBuilder $form): void
     {
@@ -31,9 +43,6 @@ class CTA extends ComponentType
             TextInput::make('button_url')
                 ->label('按钮链接')
                 ->default('#'),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
         ]);
     }
 

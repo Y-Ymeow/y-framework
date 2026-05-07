@@ -7,7 +7,6 @@ namespace Admin\PageBuilder\Components\Layout;
 use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\Select;
-use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Layout\Grid as FormGrid;
 use Framework\View\Base\Element;
 
@@ -39,10 +38,6 @@ class GridContainer extends ComponentType
                         'lg' => '大',
                     ])
                     ->default('md'),
-
-                TextInput::make('className')
-                    ->label('额外样式')
-                    ->default(''),
             ]),
         ]);
     }

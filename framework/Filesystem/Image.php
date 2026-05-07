@@ -175,7 +175,7 @@ class Image
         return $result;
     }
 
-    public function stream(string $type = null, int $quality = 90): string
+    public function stream(?string $type = null, int $quality = 90): string
     {
         ob_start();
 

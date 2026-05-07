@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Admin\PageBuilder;
 
-use Admin\PageBuilder\Components\ComponentRegistry;
-
 class PageGenerator
 {
     protected string $pagesPath;
@@ -33,6 +31,8 @@ class PageGenerator
 
         file_put_contents($filePath, $content);
 
+        $this->upsertDbRecord($className, $route, []);
+
         return [
             'success' => true,
             'file' => $filePath,
@@ -45,15 +45,17 @@ class PageGenerator
     {
         $className = $this->sanitizeClassName($name);
         $filePath = $this->pagesPath . '/' . $className . '.php';
-        $jsonPath = $this->pagesPath . '/' . $className . '.json';
 
         if (!file_exists($filePath)) {
             return ['success' => false, 'error' => '页面文件不存在'];
         }
 
         unlink($filePath);
-        if (file_exists($jsonPath)) {
-            unlink($jsonPath);
+
+        try {
+            PageBuilderPageModel::where('name', $className)->delete();
+        } catch (\Throwable $e) {
+            $this->logError('delete db record failed', ['class' => $className, 'error' => $e->getMessage()]);
         }
 
         return ['success' => true, 'file' => $filePath];
@@ -61,56 +63,182 @@ class PageGenerator
 
     public function listPages(): array
     {
-        if (!is_dir($this->pagesPath)) {
-            return [];
-        }
+        $rows = $this->syncFilesystemToDb();
 
         $pages = [];
-        foreach (glob($this->pagesPath . '/*.php') as $file) {
-            $className = basename($file, '.php');
-            $content = file_get_contents($file);
-            $route = $this->extractRoute($content);
-            $hasBuilder = file_exists($this->pagesPath . '/' . $className . '.json');
-
-            $pages[] = [
-                'name' => $className,
-                'file' => $file,
-                'route' => $route,
-                'has_route' => !empty($route),
-                'has_builder' => $hasBuilder,
-                'modified' => date('Y-m-d H:i:s', filemtime($file)),
-            ];
+        try {
+            $items = [];
+            foreach ($rows as $row) {
+                $item = ($row instanceof \Framework\Support\Collection) ? $row->toArray() : (method_exists($row, 'toArray') ? $row->toArray() : (array) $row);
+                $tree = $item['component_tree'] ?? null;
+                if (is_string($tree)) {
+                    $tree = json_decode($tree, true);
+                }
+                $item['component_tree'] = $tree;
+                $items[] = $item;
+            }
+            usort($items, fn($a, $b) => strtotime($b['updated_at'] ?? '') <=> strtotime($a['updated_at'] ?? ''));
+            foreach ($items as $row) {
+                $pages[] = [
+                    'name' => $row['name'],
+                    'file' => $this->pagesPath . '/' . $row['name'] . '.php',
+                    'route' => $row['route'] ?? '/',
+                    'has_route' => !empty($row['route']) && $row['route'] !== '/',
+                    'has_builder' => !empty($row['component_tree']),
+                    'modified' => $row['updated_at'] ?? $row['created_at'] ?? '',
+                ];
+            }
+        } catch (\Throwable $e) {
+            $this->logError('listPages failed', ['error' => $e->getMessage()]);
         }
 
         return $pages;
     }
 
-    public function getComponentTree(string $name): array
+    protected function syncFilesystemToDb(): \Framework\Support\Collection
     {
-        $jsonPath = $this->pagesPath . '/' . $this->sanitizeClassName($name) . '.json';
-        if (!file_exists($jsonPath)) {
-            return [];
+        $rows = PageBuilderPageModel::all();
+
+        if (!is_dir($this->pagesPath)) {
+            return $rows;
         }
 
-        $json = file_get_contents($jsonPath);
-        $data = json_decode($json, true);
-        return is_array($data) ? $data : [];
+        $existingNames = [];
+        foreach ($rows as $row) {
+            $item = ($row instanceof \Framework\Support\Collection) ? $row->toArray() : (method_exists($row, 'toArray') ? $row->toArray() : (array) $row);
+            $existingNames[$item['name'] ?? ''] = true;
+        }
+
+        foreach (glob($this->pagesPath . '/*.php') as $file) {
+            $className = basename($file, '.php');
+            if (isset($existingNames[$className])) continue;
+
+            $content = file_get_contents($file);
+            $route = $this->extractRoute($content) ?? '/';
+
+            $tree = [];
+            $jsonPath = $this->pagesPath . '/' . $className . '.json';
+            if (file_exists($jsonPath)) {
+                $json = file_get_contents($jsonPath);
+                $data = json_decode($json, true);
+                if (is_array($data)) {
+                    $tree = $data;
+                }
+            }
+
+            try {
+                PageBuilderPageModel::create([
+                    'name' => $className,
+                    'route' => $route,
+                    'component_tree' => $tree ?: null,
+                ]);
+            } catch (\Throwable $e) {
+                $this->logError('syncFilesystemToDb create failed', ['class' => $className, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $rows;
+    }
+
+    public function getComponentTree(string $name): array
+    {
+        $className = $this->sanitizeClassName($name);
+
+        try {
+            $row = $this->findDbRecord($className);
+            if ($row) {
+                $tree = $row['component_tree'] ?? null;
+                if (is_string($tree)) {
+                    $tree = json_decode($tree, true);
+                }
+                if (!empty($tree) && is_array($tree)) {
+                    return $tree;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logError('getComponentTree failed', ['class' => $className, 'error' => $e->getMessage()]);
+        }
+
+        $jsonPath = $this->pagesPath . '/' . $className . '.json';
+        if (file_exists($jsonPath)) {
+            $json = file_get_contents($jsonPath);
+            $data = json_decode($json, true);
+            if (is_array($data) && !empty($data)) {
+                $this->upsertDbRecord($className, null, $data);
+                return $data;
+            }
+        }
+
+        return [];
     }
 
     public function saveComponentTree(string $name, array $tree): array
     {
         $className = $this->sanitizeClassName($name);
-        $jsonPath = $this->pagesPath . '/' . $className . '.json';
 
-        if (!is_dir($this->pagesPath)) {
-            mkdir($this->pagesPath, 0755, true);
-        }
-
-        file_put_contents($jsonPath, json_encode($tree, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $this->upsertDbRecord($className, null, $tree);
 
         $this->generatePhpFromTree($className, $tree);
 
         return ['success' => true];
+    }
+
+    protected function upsertDbRecord(string $className, ?string $route = null, ?array $tree = null): void
+    {
+        try {
+            $row = $this->findDbRecord($className);
+
+            if (!$row) {
+                $data = ['name' => $className];
+                if ($route !== null) {
+                    $data['route'] = $route;
+                }
+                if ($tree !== null) {
+                    $data['component_tree'] = $tree;
+                }
+                PageBuilderPageModel::create($data);
+            } else {
+                $updateData = [];
+                if ($route !== null) {
+                    $updateData['route'] = $route;
+                }
+                if ($tree !== null) {
+                    $updateData['component_tree'] = json_encode($tree, JSON_UNESCAPED_UNICODE);
+                }
+                if (!empty($updateData)) {
+                    PageBuilderPageModel::where('name', $className)->update($updateData);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logError('upsertDbRecord failed', ['class' => $className, 'error' => $e->getMessage()]);
+        }
+    }
+
+    protected function findDbRecord(string $className): ?array
+    {
+        $row = PageBuilderPageModel::where('name', $className)->first();
+        if ($row === null) {
+            return null;
+        }
+        if ($row instanceof \Framework\Support\Collection) {
+            return $row->toArray();
+        }
+        if (is_array($row)) {
+            return $row;
+        }
+        if (method_exists($row, 'toArray')) {
+            return $row->toArray();
+        }
+        return null;
+    }
+
+    protected function logError(string $message, array $context = []): void
+    {
+        try {
+            logger()->error('[PageGenerator] ' . $message, $context);
+        } catch (\Throwable) {
+            error_log('[PageGenerator] ' . $message . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE));
+        }
     }
 
     public function generatePhpFromTree(string $className, array $tree): void

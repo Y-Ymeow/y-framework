@@ -27,11 +27,8 @@ class Banner extends ComponentType
                 ->default('查看详情'),
             TextInput::make('link_url')
                 ->label('链接地址')
-                ->default('#'),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
-        ]);
+                ->default('#')
+            ]);
     }
 
     public function render(array $settings): Element

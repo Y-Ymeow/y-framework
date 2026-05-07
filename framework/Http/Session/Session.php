@@ -20,6 +20,10 @@ class Session
             return;
         }
 
+        if (headers_sent()) {
+            return;
+        }
+
         $sessionPath = getenv('SESSION_PATH') ?: $_ENV['SESSION_PATH'] ?? null;
         if (!$sessionPath) {
             $sessionPath = paths()->sessions();

@@ -7,17 +7,17 @@ use Framework\Http\Response\Response;
 use Framework\View\Base\Element;
 use Admin\PageBuilder\Components\ComponentRegistry;
 
-class UXDemoPage
+class About
 {
-    #[Route('/demo/ux', methods: ['GET'])]
+    #[Route('/about', methods: ['GET'])]
     public function __invoke(): Response
     {
         $page = Element::make('div')->class('pb-page');
 
-        $type_c17781026426687xll9 = ComponentRegistry::get('text_block');
-        if ($type_c17781026426687xll9) {
-            $comp_c17781026426687xll9 = $type_c17781026426687xll9->render([]);
-            $page->child($comp_c17781026426687xll9);
+        $type_c17781853289315mmrp = ComponentRegistry::get('hero');
+        if ($type_c17781853289315mmrp) {
+            $comp_c17781853289315mmrp = $type_c17781853289315mmrp->render([]);
+            $page->child($comp_c17781853289315mmrp);
         }
         return Response::html($page);
     }

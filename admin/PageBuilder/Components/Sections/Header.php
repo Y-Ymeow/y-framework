@@ -35,9 +35,6 @@ class Header extends ComponentType
             TextInput::make('nav_items')
                 ->label('导航项 (逗号分隔)')
                 ->default('首页,关于,服务,博客'),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
         ]);
     }
 

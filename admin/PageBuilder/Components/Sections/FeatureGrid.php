@@ -6,7 +6,6 @@ namespace Admin\PageBuilder\Components\Sections;
 
 use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
-use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Components\Select;
 use Framework\UX\Form\Components\Textarea;
 use Framework\View\Base\Element;
@@ -29,9 +28,6 @@ class FeatureGrid extends ComponentType
                 ->label('特性列表 (每行: 图标|标题|描述)')
                 ->rows(4)
                 ->default("lightning|快速|极致的性能表现\nshield|安全|企业级安全保障\ngear|灵活|高度可定制化"),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
         ]);
     }
 

@@ -14,6 +14,7 @@ class LogManager implements LoggerInterface
     use LoggerTrait;
 
     private array $config;
+    private array $channels = [];
     private array $levelMap = [
         LogLevel::EMERGENCY => 7,
         LogLevel::ALERT     => 6,
@@ -25,84 +26,167 @@ class LogManager implements LoggerInterface
         LogLevel::DEBUG     => 0,
     ];
 
+    private static array $defaults = [
+        'default' => 'single',
+        'channels' => [
+            'single' => [
+                'driver' => 'single',
+                'path' => null,
+                'level' => 'debug',
+            ],
+            'daily' => [
+                'driver' => 'daily',
+                'path' => null,
+                'level' => 'debug',
+            ],
+            'stderr' => [
+                'driver' => 'stderr',
+                'level' => 'debug',
+            ],
+        ],
+    ];
+
     public function __construct(array $config = [])
     {
-        $this->config = $config;
+        $this->config = array_merge(self::$defaults, $config);
     }
 
-    /**
-     * @param mixed $level
-     * @param string|Stringable $message
-     * @param array $context
-     */
+    public function channel(?string $name = null): LoggerInterface
+    {
+        $channel = $name ?? $this->config['default'] ?? 'single';
+        if (!isset($this->channels[$channel])) {
+            $this->channels[$channel] = $this->resolveChannel($channel);
+        }
+        return $this->channels[$channel];
+    }
+
     public function log($level, string|Stringable $message, array $context = []): void
     {
-        $default = $this->config['default'] ?? 'single';
-        $channelConfig = $this->config['channels'][$default] ?? [];
-        
-        $minLevel = $channelConfig['level'] ?? 'debug';
-        if (($this->levelMap[$level] ?? 0) < ($this->levelMap[$minLevel] ?? 0)) {
-            return;
-        }
-
-        $formatted = $this->format($level, (string) $message, $context);
-        $driver = $channelConfig['driver'] ?? 'single';
-
-        switch ($driver) {
-            case 'daily':
-                $this->writeToDaily($channelConfig['path'] ?? paths()->logs('app.log'), $formatted);
-                break;
-            case 'stderr':
-                $this->writeToStderr($formatted);
-                break;
-            case 'single':
-            default:
-                $this->writeToSingle($channelConfig['path'] ?? paths()->logs('app.log'), $formatted);
-                break;
-        }
+        $this->channel()->log($level, $message, $context);
     }
 
-    private function format(string $level, string $message, array $context): string
+    public function emergency(string|Stringable $message, array $context = []): void
     {
-        $time = date('Y-m-d H:i:s');
-        $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
-        
-        return sprintf("[%s] %s: %s%s%s", $time, strtoupper($level), $message, $contextStr, PHP_EOL);
+        $this->log(LogLevel::EMERGENCY, $message, $context);
     }
 
-    private function writeToSingle(string $path, string $content): void
+    public function alert(string|Stringable $message, array $context = []): void
     {
-        $this->ensureDirectoryExists(dirname($path));
-        file_put_contents($path, $content, FILE_APPEND | LOCK_EX);
+        $this->log(LogLevel::ALERT, $message, $context);
     }
 
-    private function writeToDaily(string $path, string $content): void
+    public function critical(string|Stringable $message, array $context = []): void
     {
-        $info = pathinfo($path);
-        $datedPath = $info['dirname'] . '/' . $info['filename'] . '-' . date('Y-m-d') . (isset($info['extension']) ? '.' . $info['extension'] : '');
-        
-        $this->writeToSingle($datedPath, $content);
+        $this->log(LogLevel::CRITICAL, $message, $context);
     }
 
-    private function writeToStderr(string $content): void
+    public function error(string|Stringable $message, array $context = []): void
     {
-        file_put_contents('php://stderr', $content);
+        $this->log(LogLevel::ERROR, $message, $context);
     }
 
-    private function ensureDirectoryExists(string $dir): void
+    public function warning(string|Stringable $message, array $context = []): void
     {
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
+        $this->log(LogLevel::WARNING, $message, $context);
     }
 
-    /**
-     * 清理过期日志文件
-     *
-     * @param string $logDir 日志目录
-     * @param int $maxAge 保留天数
-     * @return int 清理的文件数
-     */
+    public function notice(string|Stringable $message, array $context = []): void
+    {
+        $this->log(LogLevel::NOTICE, $message, $context);
+    }
+
+    public function info(string|Stringable $message, array $context = []): void
+    {
+        $this->log(LogLevel::INFO, $message, $context);
+    }
+
+    public function debug(string|Stringable $message, array $context = []): void
+    {
+        $this->log(LogLevel::DEBUG, $message, $context);
+    }
+
+    private function resolveChannel(string $name): LoggerInterface
+    {
+        $channelConfig = $this->config['channels'][$name] ?? $this->config['channels']['single'] ?? self::$defaults['channels']['single'];
+
+        return new class($channelConfig, $this->levelMap) implements LoggerInterface {
+            use LoggerTrait;
+
+            private array $config;
+            private array $levelMap;
+
+            public function __construct(array $config, array $levelMap)
+            {
+                $this->config = $config;
+                $this->levelMap = $levelMap;
+            }
+
+            public function log($level, string|Stringable $message, array $context = []): void
+            {
+                $minLevel = $this->config['level'] ?? 'debug';
+                if (($this->levelMap[$level] ?? 0) < ($this->levelMap[$minLevel] ?? 0)) {
+                    return;
+                }
+
+                $formatted = $this->format($level, (string) $message, $context);
+                $driver = $this->config['driver'] ?? 'single';
+
+                match ($driver) {
+                    'daily' => $this->writeToDaily($formatted),
+                    'stderr' => $this->writeToStderr($formatted),
+                    default => $this->writeToSingle($formatted),
+                };
+            }
+
+            private function format(string $level, string $message, array $context): string
+            {
+                $time = date('Y-m-d H:i:s');
+                $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+                return sprintf("[%s] %s: %s%s%s", $time, strtoupper($level), $message, $contextStr, PHP_EOL);
+            }
+
+            private function logPath(): string
+            {
+                if (!empty($this->config['path'])) {
+                    return $this->config['path'];
+                }
+                try {
+                    return paths()->logs('app.log');
+                } catch (\Throwable) {
+                    return sys_get_temp_dir() . '/framework.log';
+                }
+            }
+
+            private function writeToSingle(string $content): void
+            {
+                $path = $this->logPath();
+                $this->ensureDirectoryExists(dirname($path));
+                file_put_contents($path, $content, FILE_APPEND | LOCK_EX);
+            }
+
+            private function writeToDaily(string $content): void
+            {
+                $path = $this->logPath();
+                $info = pathinfo($path);
+                $datedPath = $info['dirname'] . '/' . $info['filename'] . '-' . date('Y-m-d') . (isset($info['extension']) ? '.' . $info['extension'] : '');
+                $this->ensureDirectoryExists(dirname($datedPath));
+                file_put_contents($datedPath, $content, FILE_APPEND | LOCK_EX);
+            }
+
+            private function writeToStderr(string $content): void
+            {
+                file_put_contents('php://stderr', $content);
+            }
+
+            private function ensureDirectoryExists(string $dir): void
+            {
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+            }
+        };
+    }
+
     public static function gc(string $logDir, int $maxAge = 14): int
     {
         if (!is_dir($logDir)) {
@@ -113,8 +197,7 @@ class LogManager implements LoggerInterface
         $maxAgeSeconds = $maxAge * 86400;
         $count = 0;
 
-        $files = glob($logDir . '/*');
-        foreach ($files as $file) {
+        foreach (glob($logDir . '/*') as $file) {
             if (is_file($file) && ($now - filemtime($file) > $maxAgeSeconds)) {
                 @unlink($file);
                 $count++;

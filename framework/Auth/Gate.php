@@ -47,7 +47,7 @@ class Gate
         return $this;
     }
 
-    public function resource(string $name, string $class, array $abilities = null): self
+    public function resource(string $name, string $class, ?array $abilities = null): self
     {
         $abilities ??= ['viewAny', 'view', 'create', 'update', 'delete', 'restore', 'forceDelete'];
 

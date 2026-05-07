@@ -47,9 +47,6 @@ class Hero extends ComponentType
                     ->options(['sm' => '小', 'md' => '中', 'lg' => '大'])
                     ->default('lg'),
             ]),
-            TextInput::make('className')
-                ->label('额外样式')
-                ->default(''),
         ]);
     }
 

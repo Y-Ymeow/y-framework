@@ -13,10 +13,22 @@ use Framework\View\Base\Element;
 
 class Heading extends ComponentType
 {
-    public function name(): string { return 'heading'; }
-    public function label(): string { return '标题'; }
-    public function icon(): string { return 'type-h1'; }
-    public function category(): string { return 'basic'; }
+    public function name(): string
+    {
+        return 'heading';
+    }
+    public function label(): string
+    {
+        return '标题';
+    }
+    public function icon(): string
+    {
+        return 'type-h1';
+    }
+    public function category(): string
+    {
+        return 'basic';
+    }
 
     public function settings(FormBuilder $form): void
     {
@@ -45,10 +57,6 @@ class Heading extends ComponentType
                         'right' => '右对齐',
                     ])
                     ->default('left'),
-
-                TextInput::make('className')
-                    ->label('额外样式')
-                    ->default(''),
             ]),
         ]);
     }

@@ -8,7 +8,6 @@ use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\Textarea;
 use Framework\UX\Form\Components\Select;
-use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Layout\Grid;
 use Framework\View\Base\Element;
 
@@ -36,11 +35,7 @@ class TextBlock extends ComponentType
                         'right' => '右对齐',
                     ])
                     ->default('left'),
-
-                TextInput::make('className')
-                    ->label('额外样式')
-                    ->default(''),
-            ]),
+                ]),
         ]);
     }
 

@@ -6,6 +6,7 @@ class PageBuilder {
         this.initializedBuilders = new WeakSet();
         this.zoomLevels = [0.5, 0.75, 1, 1.25, 1.5];
         this.currentZoomIndex = 2;
+        this.currentPreview = 'desktop';
     }
 
     init(root = document) {
@@ -13,6 +14,8 @@ class PageBuilder {
             this.initDragFromPanel(builder);
             this.initCanvasSortable(builder);
             this.initZoomControls(builder);
+            this.initPreviewControls(builder);
+            this.initPropertiesTabs(builder);
         });
     }
 
@@ -165,6 +168,23 @@ class PageBuilder {
         }
     }
 
+    initPreviewControls(builder) {
+        const canvas = builder.querySelector('.page-builder-canvas');
+        if (!canvas) return;
+
+        builder.querySelectorAll('[data-preview-btn]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.previewBtn;
+                this.currentPreview = mode;
+
+                builder.querySelectorAll('[data-preview-btn]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                canvas.setAttribute('data-preview', mode);
+            });
+        });
+    }
+
     getTree(builder) {
         const attr = builder.dataset.componentTree;
         try {
@@ -212,6 +232,24 @@ class PageBuilder {
         return null;
     }
 
+    initPropertiesTabs(builder) {
+        const tabs = builder.querySelectorAll('[data-properties-tab]');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.propertiesTab;
+                const panel = tab.closest('.page-builder-properties-body');
+                if (!panel) return;
+
+                panel.querySelectorAll('[data-properties-tab]').forEach(t => t.classList.remove('page-builder-properties-tab--active'));
+                tab.classList.add('page-builder-properties-tab--active');
+
+                panel.querySelectorAll('[data-properties-panel]').forEach(p => p.classList.remove('page-builder-properties-tab-content--active'));
+                const targetPanel = panel.querySelector(`[data-properties-panel="${target}"]`);
+                if (targetPanel) targetPanel.classList.add('page-builder-properties-tab-content--active');
+            });
+        });
+    }
+
     destroy() {
         this.sortableInstances.forEach(i => i.destroy());
         this.sortableInstances = [];
@@ -233,7 +271,10 @@ window.addEventListener('y:updated', (e) => {
     const root = e.detail?.el || document;
     const builder = root.closest('[data-page-builder]') || root.querySelector('[data-page-builder]');
     if (builder) {
+        window.PageBuilder.initDragFromPanel(builder);
         window.PageBuilder.initCanvasSortable(builder);
         window.PageBuilder.initZoomControls(builder);
+        window.PageBuilder.initPreviewControls(builder);
+        window.PageBuilder.initPropertiesTabs(builder);
     }
 });

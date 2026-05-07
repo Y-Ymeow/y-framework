@@ -70,7 +70,7 @@ class TestResponse
         return $this->assertStatus(401);
     }
 
-    public function assertRedirect(string $uri = null): self
+    public function assertRedirect(?string $uri = null): self
     {
         $status = $this->getStatus();
         \PHPUnit\Framework\Assert::assertTrue(
@@ -162,7 +162,7 @@ class TestResponse
         return $this;
     }
 
-    public function assertHeader(string $name, string $value = null): self
+    public function assertHeader(string $name, ?string $value = null): self
     {
         $actual = $this->response->getHeader($name, '');
 
@@ -181,7 +181,7 @@ class TestResponse
         return $this;
     }
 
-    public function assertCookie(string $name, string $value = null): self
+    public function assertCookie(string $name, ?string $value = null): self
     {
         $setCookieHeader = $this->response->getHeader('Set-Cookie', '');
         $found = str_contains($setCookieHeader, "{$name}=");

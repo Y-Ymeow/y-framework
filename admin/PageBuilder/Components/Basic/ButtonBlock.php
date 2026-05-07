@@ -49,10 +49,6 @@ class ButtonBlock extends ComponentType
                         'right' => '右对齐',
                     ])
                     ->default('left'),
-
-                TextInput::make('className')
-                    ->label('额外样式')
-                    ->default(''),
             ]),
         ]);
     }

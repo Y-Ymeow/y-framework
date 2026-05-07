@@ -33,7 +33,8 @@ export function getFullScope(el, state) {
 
             if (proxy && key in proxy) return proxy[key]
 
-            if (key in window) return window[key]
+            const winVal = window[key]
+            if (winVal !== undefined && !(winVal instanceof Element)) return winVal
 
             return undefined
         },

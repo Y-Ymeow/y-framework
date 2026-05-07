@@ -58,10 +58,9 @@ function storage_path(string $path = ''): string
     return paths()->storage($path);
 }
 
-function logger(string $message, array $context = []): void
+function logger(): \Framework\Log\LogManager
 {
-    $logManager = app()->make(\Psr\Log\LoggerInterface::class);
-    $logManager->info($message, $context);
+    return app()->make(\Psr\Log\LoggerInterface::class);
 }
 
 function config(string $key, mixed $default = null): mixed
