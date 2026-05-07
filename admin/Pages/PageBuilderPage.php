@@ -489,8 +489,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $builder = Element::make('div')
             ->class('page-builder')
-            ->attr('data-page-builder', '')
-            ->attr('data-component-tree', $this->componentTreeJson);
+            ->attr('data-page-builder', '');
 
         $header = Element::make('div')->class('page-builder-header');
         $header->child(
@@ -620,6 +619,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $canvas = Element::make('div')
             ->class('page-builder-canvas')
             ->attr('data-builder-canvas', '')
+            ->attr('data-component-tree', $this->componentTreeJson)
             ->attr('data-preview', 'desktop')
             ->liveFragment('canvas');
 

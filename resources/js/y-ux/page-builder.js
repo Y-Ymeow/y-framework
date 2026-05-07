@@ -190,7 +190,8 @@ class PageBuilder {
     }
 
     getTree(builder) {
-        const attr = builder.dataset.componentTree;
+        const canvas = builder.querySelector('.page-builder-canvas[data-builder-canvas]') || builder;
+        const attr = canvas.dataset.componentTree;
         try {
             return JSON.parse(attr || '[]');
         } catch {
@@ -199,7 +200,8 @@ class PageBuilder {
     }
 
     setTree(builder, tree) {
-        builder.dataset.componentTree = JSON.stringify(tree);
+        const canvas = builder.querySelector('.page-builder-canvas[data-builder-canvas]') || builder;
+        canvas.dataset.componentTree = JSON.stringify(tree);
     }
 
     readTreeFromDom(builder) {
