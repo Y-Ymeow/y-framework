@@ -209,7 +209,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $settings = [];
         $styleData = [];
         foreach ($params as $key => $value) {
-            if ($key === 'uid') continue;
+            if ($key === 'uid' || $key === 'className') continue;
             if (str_starts_with($key, 'style_') || $key === '_custom_classes') {
                 $styleData[$key] = $value;
             } else {

@@ -14,10 +14,10 @@ class About
     {
         $page = Element::make('div')->class('pb-page');
 
-        $type_c17781853289315mmrp = ComponentRegistry::get('hero');
-        if ($type_c17781853289315mmrp) {
-            $comp_c17781853289315mmrp = $type_c17781853289315mmrp->render([]);
-            $page->child($comp_c17781853289315mmrp);
+        $type_test123 = ComponentRegistry::get('hero');
+        if ($type_test123) {
+            $comp_test123 = $type_test123->render({"title":"My Hero Title","subtitle":"My Subtitle","className":"flex flex-row p-4 bg-blue-500 my-custom"});
+            $page->child($comp_test123);
         }
         return Response::html($page);
     }
