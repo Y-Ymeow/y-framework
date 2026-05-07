@@ -121,10 +121,13 @@ class Pagination extends UXComponent
      */
     protected function toElement(): Element
     {
+        if ($this->perPage <= 0) {
+            $this->perPage = 15; // Default fallback
+        }
         $lastPage = (int)ceil($this->total / $this->perPage);
-        
+
         $navEl = new Element('nav');
-        $this->buildElement($navEl);
+        $this->buildElement($navEl, ['liveAction', 'isStream', 'uxModel']);
         $navEl->class('ux-pagination');
 
         if ($lastPage > 1) {
@@ -179,7 +182,7 @@ class Pagination extends UXComponent
 
     protected function buildPerPageSelector(): Element
     {
-        $wrapper = Element::make('div')->class('ux-pagination-perpage');
+        $wrapper = Element::make('div')->class('ux-pagination-perpage')->state(["page" => $this->perPage]);
 
         $select = Element::make('select')->class('ux-pagination-perpage-select');
 
@@ -195,7 +198,7 @@ class Pagination extends UXComponent
 
         $action = $this->perPageAction ?? $this->liveAction;
         if ($action) {
-            $select->liveAction($action, 'change', [$this->perPageParam => '__value__']);
+            $select->liveAction($action, 'change', "{ $this->perPageParam: page }")->bindModel('page');
         }
 
         $wrapper->child(Element::make('span')->class('ux-pagination-perpage-label')->intl('ux:pagination.per_page'));

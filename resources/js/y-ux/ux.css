@@ -44,6 +44,9 @@
 @import './css/tag-input.css';
 @import './css/calendar.css';
 @import './css/date-range-picker.css';
+@import './css/menu-manager.css';
+@import './css/media-library.css';
+@import './css/page-builder.css';
 
 
 .ux-row {

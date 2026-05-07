@@ -17,7 +17,7 @@ use Framework\View\Base\Element;
  * @ux-since 1.0.0
  * @ux-example DataTable::make()->columns($columns)->rows($users)->sortable()->pagination(100)
  * @ux-example DataTable::make()->columns(['name' => '姓名', 'email' => '邮箱'])->rows($data)->searchable()->selectable()
- * @ux-example DataTable::make()->columns($cols)->rows($items)->actions(['edit' => 'editRow', 'delete' => 'deleteRow'])
+ * @ux-example DataTable::make()->columns($cols)->rows($items)->actions(['edit' => 'editRow', 'delete' => 'deleteRow'])->liveAction('editRow', 'deleteRow')
  * @ux-js-component data-table.js
  * @ux-css data-table.css
  */
@@ -1162,9 +1162,9 @@ class DataTable extends UXComponent
 
             if ($this->batchAction) {
                 $item->liveAction($this->batchAction, 'click', [
-                    'batchAction' => $actionConfig['action'],
-                    'selectedKeys' => [],
-                    'confirm' => $actionConfig['confirm'] ?? null,
+                    $actionConfig['action'],
+                    [],
+                    $actionConfig['confirm'] ?? null,
                 ]);
             }
 

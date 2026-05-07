@@ -480,7 +480,7 @@ abstract class UXComponent
      * 构建 Element 的通用属性
      * @ux-internal
      */
-    protected function buildElement(Element $el): Element
+    protected function buildElement(Element $el, array $ignore = []): Element
     {
         $el->id($this->id);
 
@@ -504,15 +504,15 @@ abstract class UXComponent
             $el->bindOn($event, $handler);
         }
 
-        if ($this->liveAction) {
+        if ($this->liveAction && !in_array('liveAction', $ignore)) {
             $el->liveAction($this->liveAction, $this->liveEvent ?? 'click', $this->liveParams);
         }
 
-        if ($this->isStream) {
+        if ($this->isStream && !in_array('isStream', $ignore)) {
             $el->attr('data-stream', '');
         }
 
-        if ($this->uxModel) {
+        if ($this->uxModel && !in_array('uxModel', $ignore)) {
             $el->data('ux-model', $this->uxModel);
         }
 

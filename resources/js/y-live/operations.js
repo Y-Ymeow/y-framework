@@ -1,6 +1,6 @@
 // Operations System - Live 操作执行
 import { createSafeFragment, replaceLiveHtml, applyLiveFragment } from './core/dom.js';
-import { bindNavigateLinks } from './navigate.js';
+import { bindNavigateLinks, navigate as clientNavigate } from './navigate.js';
 
 export function executeOperation(op) {
     switch (op.op) {
@@ -9,7 +9,6 @@ export function executeOperation(op) {
             let input = document.querySelector(`input[name="${op.target}"], textarea[name="${op.target}"], select[name="${op.target}"]`)
                 || document.getElementById(op.target);
             if (input) { 
-                input.value = val; 
                 input.dispatchEvent(new Event('change', { bubbles: true })); 
             }
             break;
@@ -60,6 +59,13 @@ export function executeOperation(op) {
             }
             break;
         }
+        case 'navigate':
+            clientNavigate(op.url, {
+                replace: op.replace === true,
+                fragment: op.fragment || null,
+                state: op.state || null,
+            });
+            break;
         case 'redirect':
             if (document.startViewTransition) {
                 document.startViewTransition(() => { window.location.href = op.url; });

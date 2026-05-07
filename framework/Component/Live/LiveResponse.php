@@ -93,6 +93,19 @@ class LiveResponse
         return $this;
     }
 
+    public function navigateTo(string $url, ?string $fragment = null, bool $replace = false): self
+    {
+        $params = ['op' => 'navigate', 'url' => $url];
+        if ($fragment !== null) {
+            $params['fragment'] = $fragment;
+        }
+        if ($replace) {
+            $params['replace'] = true;
+        }
+        $this->operations[] = $params;
+        return $this;
+    }
+
     public function reload(): self
     {
         $this->operations[] = ['op' => 'reload'];

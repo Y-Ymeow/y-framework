@@ -62,7 +62,13 @@ trait HasLiveDirectives
      */
     public function liveAction(string $action, string $event = 'click', mixed $params = []): static
     {
-        $params = is_array($params) && !empty($params) ? json_encode($params, JSON_UNESCAPED_UNICODE) : $params;
+        if (is_array($params) && !empty($params)) {
+            foreach ($params as $key => $value) {
+                $params[$key] = json_encode($value, JSON_UNESCAPED_UNICODE);
+            }
+            $params = implode(',', $params);
+        }
+        
         if (!empty($params)) {
             $this->attrs['data-action:' . $event] = $action . '(' . $params . ')';
         } else {

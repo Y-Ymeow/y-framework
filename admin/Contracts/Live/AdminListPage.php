@@ -9,6 +9,7 @@ use Framework\Component\Live\Attribute\LiveAction;
 use Admin\Contracts\Resource\ResourceInterface;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Services\AdminManager;
+use Framework\Component\Live\Attribute\Prop;
 use Framework\UX\Data\DataTable;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
@@ -16,7 +17,9 @@ use Framework\UX\UXComponent;
 
 class AdminListPage extends LiveComponent
 {
+    #[Prop()]
     public string $resourceName = '';
+
     public int $page = 1;
     public int $perPage = 15;
     public string $sortField = '';
@@ -68,16 +71,17 @@ class AdminListPage extends LiveComponent
     }
 
     #[LiveAction]
-    public function loadPage(array $params): void
+    public function loadPage(int $page = 1, int $perPage = 15): void
     {
-        $this->page = (int)($params['page'] ?? $this->page);
+        $this->page = $page;
+        $this->perPage = $perPage;
         $this->refresh('admin-list-table');
     }
 
     #[LiveAction]
-    public function loadPerPage(array $params): void
+    public function loadPerPage(int $perPage = 15): void
     {
-        $this->perPage = (int)($params['perPage'] ?? $this->perPage);
+        $this->perPage = $perPage > 0 ? $perPage : 15;
         $this->page = 1;
         $this->refresh('admin-list-table');
     }
@@ -113,10 +117,12 @@ class AdminListPage extends LiveComponent
         $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
-        $resourceName = $params['resourceName'] ?? $this->resourceName;
+        $resourceName = $this->getResource()->getName();
+        if (!$resourceName) return;
+
         $prefix = AdminManager::getPrefix() ?: '/admin';
         $url = "{$prefix}/{$resourceName}/{$rowKey}/edit";
-        $this->redirect($url);
+        $this->navigateTo($url);
     }
 
     #[LiveAction]
@@ -125,7 +131,7 @@ class AdminListPage extends LiveComponent
         $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
-        $resourceName = $params['resourceName'] ?? $this->resourceName;
+        $resourceName = $this->getResource()->getName();
         if (!$resourceName) return;
 
         $resource = AdminManager::getResource($resourceName);

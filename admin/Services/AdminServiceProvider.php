@@ -8,13 +8,14 @@ use Admin\Auth\AuthManager;
 use Admin\Auth\EloquentUserProvider;
 use Admin\Auth\Gate;
 use Admin\Auth\UserProvider;
-use Admin\Resources\MediaResource;
-use Admin\Resources\MenuResource;
 use Admin\Resources\PostResource;
 use Admin\Resources\CategoryResource;
 use Admin\Resources\TagResource;
 use Admin\Resources\RoleResource;
 use Admin\Resources\UserResource;
+use Admin\Pages\MenuManagerPage;
+use Admin\Pages\MediaPage;
+use Admin\Pages\PageBuilderPage;
 use Admin\DashboardData\Register;
 use Framework\Foundation\Application;
 use Framework\Foundation\ServiceProvider;
@@ -72,8 +73,9 @@ class AdminServiceProvider extends ServiceProvider
 
         AdminManager::registerResource(UserResource::class);
         AdminManager::registerResource(RoleResource::class);
-        AdminManager::registerResource(MenuResource::class);
-        AdminManager::registerResource(MediaResource::class);
+        AdminManager::registerPage(MenuManagerPage::class);
+        AdminManager::registerPage(MediaPage::class);
+        AdminManager::registerPage(PageBuilderPage::class);
         AdminManager::registerResource(PostResource::class);
         AdminManager::registerResource(CategoryResource::class);
         AdminManager::registerResource(TagResource::class);

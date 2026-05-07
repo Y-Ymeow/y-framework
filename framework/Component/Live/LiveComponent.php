@@ -80,8 +80,22 @@ abstract class LiveComponent
 
         $state = $this->serializeState();
         $publicProps = $this->getPublicProperties();
+        $liveActions = $this->getLiveActions();
 
-        $stateAttr = htmlspecialchars(json_encode($publicProps, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+        unset($liveActions[array_search('__updateProperty', $liveActions)]);
+
+        $liveStateData = [
+            '__component' => static::class,
+            '__id' => $this->componentId,
+            '__state' => $state,
+            '__props' => $publicProps,
+            '__actions' => array_keys($liveActions),
+        ];
+
+        $liveStateAttr = htmlspecialchars(
+            json_encode($liveStateData, JSON_UNESCAPED_UNICODE),
+            ENT_QUOTES, 'UTF-8'
+        );
 
         $listenersAttr = '';
         $listenerEvents = $this->getListenerEvents();
@@ -90,12 +104,11 @@ abstract class LiveComponent
         }
 
         return sprintf(
-            '<div %s data-live="%s" data-live-id="%s" data-state="%s" data-live-state="%s"%s>%s</div>',
+            '<div %s data-live="%s" data-live-id="%s" data-live-state="%s"%s>%s</div>',
             $this->loading ? 'data-loading' : '',
             static::class,
             $this->componentId,
-            $stateAttr,
-            $state,
+            $liveStateAttr,
             $listenersAttr,
             $this->render()
         );

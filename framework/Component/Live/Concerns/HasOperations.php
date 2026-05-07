@@ -40,6 +40,21 @@ trait HasOperations
     }
 
     /**
+     * 无刷新导航
+     */
+    public function navigateTo(string $url, ?string $fragment = null, bool $replace = false): void
+    {
+        $params = ['url' => $url];
+        if ($fragment !== null) {
+            $params['fragment'] = $fragment;
+        }
+        if ($replace) {
+            $params['replace'] = true;
+        }
+        $this->operation('navigate', $params);
+    }
+
+    /**
      * 刷新页面
      */
     public function refreshPage(): void

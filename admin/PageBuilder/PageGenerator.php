@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Admin\PageBuilder;
 
+use Admin\PageBuilder\Components\ComponentRegistry;
+
 class PageGenerator
 {
     protected string $pagesPath;
@@ -20,7 +22,7 @@ class PageGenerator
         $filePath = $this->pagesPath . '/' . $className . '.php';
 
         if (file_exists($filePath)) {
-            return ['success' => false, 'error' => '页面文件已存在: ' . $filePath];
+            return ['success' => false, 'error' => '页面文件已存在'];
         }
 
         $content = $this->renderTemplate($className, $route, $template);
@@ -43,12 +45,16 @@ class PageGenerator
     {
         $className = $this->sanitizeClassName($name);
         $filePath = $this->pagesPath . '/' . $className . '.php';
+        $jsonPath = $this->pagesPath . '/' . $className . '.json';
 
         if (!file_exists($filePath)) {
             return ['success' => false, 'error' => '页面文件不存在'];
         }
 
         unlink($filePath);
+        if (file_exists($jsonPath)) {
+            unlink($jsonPath);
+        }
 
         return ['success' => true, 'file' => $filePath];
     }
@@ -63,16 +69,15 @@ class PageGenerator
         foreach (glob($this->pagesPath . '/*.php') as $file) {
             $className = basename($file, '.php');
             $content = file_get_contents($file);
-
             $route = $this->extractRoute($content);
-            $hasRoute = !empty($route);
+            $hasBuilder = file_exists($this->pagesPath . '/' . $className . '.json');
 
             $pages[] = [
                 'name' => $className,
                 'file' => $file,
                 'route' => $route,
-                'has_route' => $hasRoute,
-                'size' => filesize($file),
+                'has_route' => !empty($route),
+                'has_builder' => $hasBuilder,
                 'modified' => date('Y-m-d H:i:s', filemtime($file)),
             ];
         }
@@ -80,36 +85,104 @@ class PageGenerator
         return $pages;
     }
 
-    public function getPageContent(string $name): ?string
+    public function getComponentTree(string $name): array
     {
-        $filePath = $this->pagesPath . '/' . $this->sanitizeClassName($name) . '.php';
-        if (!file_exists($filePath)) {
-            return null;
+        $jsonPath = $this->pagesPath . '/' . $this->sanitizeClassName($name) . '.json';
+        if (!file_exists($jsonPath)) {
+            return [];
         }
-        return file_get_contents($filePath);
+
+        $json = file_get_contents($jsonPath);
+        $data = json_decode($json, true);
+        return is_array($data) ? $data : [];
     }
 
-    public function updatePageContent(string $name, string $content): array
+    public function saveComponentTree(string $name, array $tree): array
     {
-        $filePath = $this->pagesPath . '/' . $this->sanitizeClassName($name) . '.php';
-        if (!file_exists($filePath)) {
-            return ['success' => false, 'error' => '页面文件不存在'];
+        $className = $this->sanitizeClassName($name);
+        $jsonPath = $this->pagesPath . '/' . $className . '.json';
+
+        if (!is_dir($this->pagesPath)) {
+            mkdir($this->pagesPath, 0755, true);
         }
 
-        file_put_contents($filePath, $content);
+        file_put_contents($jsonPath, json_encode($tree, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        $this->generatePhpFromTree($className, $tree);
 
         return ['success' => true];
     }
 
+    public function generatePhpFromTree(string $className, array $tree): void
+    {
+        $filePath = $this->pagesPath . '/' . $className . '.php';
+
+        $route = '/';
+        if (file_exists($filePath)) {
+            $content = file_get_contents($filePath);
+            $route = $this->extractRoute($content) ?? '/';
+        }
+
+        $renderCode = $this->buildRenderCode($tree);
+
+        $php = <<<PHP
+<?php
+
+namespace App\Pages;
+
+use Framework\Routing\Attribute\Route;
+use Framework\Http\Response\Response;
+use Framework\View\Base\Element;
+use Admin\PageBuilder\Components\ComponentRegistry;
+
+class {$className}
+{
+    #[Route('{$route}', methods: ['GET'])]
+    public function __invoke(): Response
+    {
+        \$page = Element::make('div')->class('pb-page');
+{$renderCode}
+        return Response::html(\$page);
+    }
+}
+PHP;
+
+        file_put_contents($filePath, $php);
+    }
+
+    protected function buildRenderCode(array $tree, string $var = '$page', int $indent = 2): string
+    {
+        $code = '';
+        $pad = str_repeat('    ', $indent);
+
+        foreach ($tree as $index => $component) {
+            $type = $component['type'] ?? '';
+            $settings = $component['settings'] ?? [];
+            $children = $component['children'] ?? [];
+            $uid = $component['uid'] ?? $index;
+
+            $settingsJson = json_encode($settings, JSON_UNESCAPED_UNICODE);
+            $compVar = "\$comp_{$uid}";
+
+            $code .= "\n{$pad}\$type_{$uid} = ComponentRegistry::get('{$type}');";
+            $code .= "\n{$pad}if (\$type_{$uid}) {";
+            $code .= "\n{$pad}    {$compVar} = \$type_{$uid}->render({$settingsJson});";
+
+            if (!empty($children)) {
+                $childCode = $this->buildRenderCode($children, $compVar, $indent + 2);
+                $code .= $childCode;
+            }
+
+            $code .= "\n{$pad}    {$var}->child({$compVar});";
+            $code .= "\n{$pad}}";
+        }
+
+        return $code;
+    }
+
     protected function renderTemplate(string $className, string $route, string $template): string
     {
-        return match ($template) {
-            'list' => $this->getListTemplate($className, $route),
-            'detail' => $this->getDetailTemplate($className, $route),
-            'form' => $this->getFormTemplate($className, $route),
-            'landing' => $this->getLandingTemplate($className, $route),
-            default => $this->getBlankTemplate($className, $route),
-        };
+        return $this->getBlankTemplate($className, $route);
     }
 
     protected function getBlankTemplate(string $className, string $route): string
@@ -129,7 +202,7 @@ class {$className}
     public function __invoke(): Response
     {
         \$page = Element::make('div')
-            ->class('p-8', 'max-w-4xl', 'mx-auto')
+            ->class('pb-page', 'p-8', 'max-w-4xl', 'mx-auto')
             ->child(Element::make('h1')->class('text-3xl', 'font-bold', 'mb-4')->text('{$className}'))
             ->child(Element::make('p')->class('text-gray-600')->text('This is a new page.'));
 
@@ -139,145 +212,7 @@ class {$className}
 PHP;
     }
 
-    protected function getListTemplate(string $className, string $route): string
-    {
-        return <<<PHP
-<?php
-
-namespace App\Pages;
-
-use Framework\Routing\Attribute\Route;
-use Framework\Http\Response\Response;
-use Framework\View\Base\Element;
-use Framework\UX\Data\DataTable;
-use Framework\UX\UI\Button;
-
-class {$className}
-{
-    #[Route('{$route}', methods: ['GET'])]
-    public function __invoke(): Response
-    {
-        \$table = DataTable::make()
-            ->column('id', 'ID')
-            ->column('name', 'Name')
-            ->column('created_at', 'Created At');
-
-        \$wrapper = Element::make('div')
-            ->class('p-8', 'max-w-6xl', 'mx-auto')
-            ->child(Element::make('h1')->class('text-2xl', 'font-bold', 'mb-6')->text('{$className}'))
-            ->child(\$table);
-
-        return Response::html(\$wrapper);
-    }
-}
-PHP;
-    }
-
-    protected function getDetailTemplate(string $className, string $route): string
-    {
-        return <<<PHP
-<?php
-
-namespace App\Pages;
-
-use Framework\Routing\Attribute\Route;
-use Framework\Http\Response\Response;
-use Framework\View\Base\Element;
-use Framework\UX\Data\DescriptionList;
-
-class {$className}
-{
-    #[Route('{$route}', methods: ['GET'])]
-    public function __invoke(): Response
-    {
-        \$list = DescriptionList::make()
-            ->item('ID', '1')
-            ->item('Name', 'Example')
-            ->item('Created', date('Y-m-d'));
-
-        \$wrapper = Element::make('div')
-            ->class('p-8', 'max-w-4xl', 'mx-auto')
-            ->child(Element::make('h1')->class('text-2xl', 'font-bold', 'mb-6')->text('{$className}'))
-            ->child(\$list);
-
-        return Response::html(\$wrapper);
-    }
-}
-PHP;
-    }
-
-    protected function getFormTemplate(string $className, string $route): string
-    {
-        return <<<PHP
-<?php
-
-namespace App\Pages;
-
-use Framework\Routing\Attribute\Route;
-use Framework\Http\Response\Response;
-use Framework\View\Base\Element;
-use Framework\UX\Form\FormBuilder;
-
-class {$className}
-{
-    #[Route('{$route}', methods: ['GET', 'POST'])]
-    public function __invoke(): Response
-    {
-        \$form = FormBuilder::make()
-            ->post()
-            ->action('{$route}')
-            ->text('name', 'Name', ['required' => true])
-            ->email('email', 'Email', ['required' => true])
-            ->textarea('message', 'Message', [])
-            ->submitLabel('Submit');
-
-        \$wrapper = Element::make('div')
-            ->class('p-8', 'max-w-4xl', 'mx-auto')
-            ->child(Element::make('h1')->class('text-2xl', 'font-bold', 'mb-6')->text('{$className}'))
-            ->child(\$form);
-
-        return Response::html(\$wrapper);
-    }
-}
-PHP;
-    }
-
-    protected function getLandingTemplate(string $className, string $route): string
-    {
-        return <<<PHP
-<?php
-
-namespace App\Pages;
-
-use Framework\Routing\Attribute\Route;
-use Framework\Http\Response\Response;
-use Framework\View\Base\Element;
-use Framework\UX\UI\Button;
-
-class {$className}
-{
-    #[Route('{$route}', methods: ['GET'])]
-    public function __invoke(): Response
-    {
-        \$hero = Element::make('div')
-            ->class('min-h-screen', 'flex', 'items-center', 'justify-center', 'bg-gradient-to-r', 'from-blue-500', 'to-purple-600')
-            ->child(
-                Element::make('div')->class('text-center', 'text-white')
-                    ->child(Element::make('h1')->class('text-5xl', 'font-bold', 'mb-4')->text('{$className}'))
-                    ->child(Element::make('p')->class('text-xl', 'mb-8')->text('Welcome to our website'))
-                    ->child(
-                        Button::make()->label('Get Started')->primary()->lg()
-                            ->on('click', 'window.location.href="/about"')
-                    )
-            );
-
-        return Response::html(\$hero);
-    }
-}
-PHP;
-    }
-
-    protected function sanitizeClassName(string $name): string
+    public function sanitizeClassName(string $name): string
     {
         $name = preg_replace('/[^a-zA-Z0-9_]/', '', $name);
         if (!empty($name) && !preg_match('/^[A-Z]/', $name)) {

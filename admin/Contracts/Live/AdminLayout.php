@@ -9,6 +9,7 @@ use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\Session;
 use Admin\Services\AdminManager;
 use Framework\UX\Dialog\Drawer;
+use Framework\UX\Dialog\Toast;
 use Framework\UX\Menu\Dropdown;
 use Framework\UX\Menu\Menu;
 use Framework\UX\Display\Avatar;
@@ -426,6 +427,7 @@ class AdminLayout extends LiveComponent
         $inner->child(Element::make('span')->class('text-xs')->intl('admin.footer_powered', [], 'Powered by Framework'));
 
         $footer->child($inner);
+        $footer->child(Toast::make());
         return $footer;
     }
 

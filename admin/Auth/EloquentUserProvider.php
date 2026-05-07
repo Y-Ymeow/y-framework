@@ -28,7 +28,6 @@ class EloquentUserProvider implements UserProvider
     public function retrieveByToken(string $identifier, string $token): ?Authenticatable
     {
         $instance = $this->makeInstance();
-
         $result = $this->model::where(
             $instance->getAuthIdentifierName(),
             $identifier
@@ -38,9 +37,10 @@ class EloquentUserProvider implements UserProvider
             return null;
         }
 
-        $rememberToken = $result->getRememberToken();
+        $model = $instance->newFromBuilder($result);
+        $rememberToken = $model->getRememberToken();
         if ($rememberToken && hash_equals($rememberToken, $token)) {
-            return $result;
+            return $model;
         }
 
         return null;

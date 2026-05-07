@@ -34,6 +34,32 @@ if (!window.Y_UI_SAFE_ATTRS) {
     window.Y_UI_SAFE_ATTRS = LIVE_SAFE_DATA_ATTRS;
 }
 
+export function getComponentInfo(el) {
+    const raw = el.getAttribute('data-live-state') || ''
+    if (!raw) {
+        return {
+            __component: el.dataset.live || '',
+            __id: el.dataset.liveId || '',
+            __state: '',
+            __props: {},
+            __actions: [],
+        }
+    }
+
+    try {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.__component) return parsed
+    } catch (e) {}
+
+    return {
+        __component: el.dataset.live || '',
+        __id: el.dataset.liveId || '',
+        __state: raw,
+        __props: {},
+        __actions: [],
+    }
+}
+
 export function setLoading(el, loading) {
     const liveEl = el.closest('[data-live]') || el;
     if (loading) liveEl.classList.add('y-loading-root');
@@ -46,12 +72,39 @@ export function setLoading(el, loading) {
     });
 }
 
+function isJsonLiveState(raw) {
+    if (!raw) return false
+    try {
+        const parsed = JSON.parse(raw)
+        return !!(parsed && parsed.__component)
+    } catch (e) {
+        return false
+    }
+}
+
+export function updateLiveStateAttr(el, newBase64State, patches) {
+    const raw = el.getAttribute('data-live-state') || ''
+
+    if (isJsonLiveState(raw)) {
+        const info = JSON.parse(raw)
+        info.__state = newBase64State
+        if (patches) {
+            info.__props = { ...info.__props, ...patches }
+        }
+        el.setAttribute('data-live-state', JSON.stringify(info))
+    } else {
+        el.setAttribute('data-live-state', newBase64State)
+    }
+}
+
 function buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
     const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
     const actionParams = collectParams(el, event, extraParams);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const componentsSnapshot = collectAllLiveComponents(el);
     const componentId = el.dataset.liveId || '';
+
+    const info = getComponentInfo(el)
 
     return {
         headers: {
@@ -65,7 +118,7 @@ function buildRequestBody(el, componentClass, action, stateRef, state, event, ex
             _component: componentClass,
             _component_id: componentId,
             _action: action,
-            _state: stateRef.value,
+            _state: info.__state,
             _data: publicData,
             _params: actionParams,
             _components: componentsSnapshot,
@@ -162,30 +215,6 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
 function collectParams(el, event, extraParams = {}) {
     const params = { ...extraParams };
 
-    const liveEl = el.closest('[data-live]') || el;
-    liveEl.querySelectorAll('[data-model]').forEach(modelEl => {
-        const name = modelEl.dataset.model;
-        if (!name) return;
-
-        if (modelEl.closest('[data-live]') !== liveEl) return;
-
-        let value;
-        if (modelEl.type === 'checkbox') value = modelEl.checked;
-        else if (modelEl.type === 'radio') {
-            if (modelEl.checked) value = modelEl.value;
-            else return;
-        }
-        else value = modelEl.value;
-
-        if (name.endsWith('[]')) {
-            const baseName = name.slice(0, -2);
-            if (!params[baseName]) params[baseName] = [];
-            params[baseName].push(value);
-        } else {
-            params[name] = value;
-        }
-    });
-
     let form = null;
     if (event && event.target) {
         if (event.type === 'submit' && event.target.tagName === 'FORM') {
@@ -219,6 +248,11 @@ function collectAllLiveComponents(currentEl = null) {
     const components = [];
     const seenIds = new Set();
 
+    const extractState = (el) => {
+        const info = getComponentInfo(el)
+        return info ? info.__state : ''
+    }
+
     if (currentEl) {
         let parent = currentEl.parentElement;
         while (parent) {
@@ -227,7 +261,7 @@ function collectAllLiveComponents(currentEl = null) {
                 components.push({
                     id: liveParent.dataset.liveId,
                     class: liveParent.dataset.live,
-                    state: liveParent.dataset.liveState || '',
+                    state: extractState(liveParent),
                 });
                 seenIds.add(liveParent.dataset.liveId);
                 parent = liveParent.parentElement;
@@ -243,7 +277,7 @@ function collectAllLiveComponents(currentEl = null) {
             components.push({
                 id: id,
                 class: el.dataset.live,
-                state: el.dataset.liveState || '',
+                state: extractState(el),
             });
             seenIds.add(id);
         }
@@ -256,7 +290,7 @@ function collectAllLiveComponents(currentEl = null) {
                 components.push({
                     id: id,
                     class: el.dataset.live,
-                    state: el.dataset.liveState || '',
+                    state: extractState(el),
                 });
                 seenIds.add(id);
             }

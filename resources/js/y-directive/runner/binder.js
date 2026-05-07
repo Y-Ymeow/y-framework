@@ -70,16 +70,29 @@ export function initDirectives(root = document) {
 
 function initStates(root) {
     const allStateEls = [];
-    if (root.hasAttribute && root.hasAttribute('data-state')) {
+
+    if (root.hasAttribute && (root.hasAttribute('data-state') || root.hasAttribute('data-live-state'))) {
         allStateEls.push(root);
     }
-    
+
     if (root.querySelectorAll) {
-        root.querySelectorAll('[data-state]').forEach(el => allStateEls.push(el));
+        root.querySelectorAll('[data-state], [data-live-state]').forEach(el => allStateEls.push(el));
     }
 
     allStateEls.forEach(el => {
         if (el._y_state) return;
+
+        const liveStateRaw = el.getAttribute('data-live-state');
+        if (liveStateRaw) {
+            try {
+                const parsed = JSON.parse(liveStateRaw);
+                if (parsed && parsed.__component) {
+                    el._y_state = new ReactiveState(parsed.__props || {});
+                    return;
+                }
+            } catch (e) {}
+        }
+
         try {
             const raw = el.getAttribute('data-state') || '{}';
             el._y_state = new ReactiveState(JSON.parse(raw));

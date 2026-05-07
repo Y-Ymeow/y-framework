@@ -73,7 +73,7 @@ class RoleResource extends BaseResource
                         ->label(t('admin.edit'))
                         ->secondary()
                         ->sm()
-                        ->liveAction('editRow', 'click', ['rowKey' => $rowKey, 'resourceName' => $resourceName]),
+                        ->liveAction('editRow', 'click', ['rowKey' => $rowKey]),
                 ];
 
                 if (empty($row['is_system']) || !$row['is_system']) {
@@ -81,7 +81,7 @@ class RoleResource extends BaseResource
                         ->label(t('admin.delete'))
                         ->danger()
                         ->sm()
-                        ->liveAction('deleteRow', 'click', ['rowKey' => $rowKey, 'resourceName' => $resourceName]);
+                        ->liveAction('deleteRow', 'click', ['rowKey' => $rowKey]);
                 }
 
                 return $actions;

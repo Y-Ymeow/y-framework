@@ -9,30 +9,17 @@ import Poll from './poll.js';
 
 // 1. 注册 data-live 指令
 directive('live', (el, state, method, { content }) => {
-    // 这里的 method 通常是组件类名，content 也是
-    const componentClass = method || content;
-    
-    // 初始化 Live 组件容器
-    setupLiveComponent(el, (el, componentClass, action, stateRef, state, event, params, isStream) => {
-        return dispatchAction(el, componentClass, action, stateRef, state, event, params, isStream);
-    });
-    
-    // 标记已由指令系统接管
+    setupLiveComponent(el, () => {});
     el._y_live_managed = true;
 });
 
-// 2. 注册 data-action 指令 (支持 data-action:click="save" 或 data-action:click="save({id: 1})")
-directive('action', (el, state, method, { content, modifiers, $execute, execute }) => {
-    // 如果 method 为空（即 data-action="save"），默认使用 click
+// 2. 注册 data-action 指令 — 解析为 $live.actionName(params)
+//    data-action:click="loadPage(1, 10)" → $live.loadPage(1, 10)
+//    data-action="loadPage(1, 10)"      → $live.loadPage(1, 10) (默认 click)
+directive('action', (el, state, method, { content, modifiers, $execute }) => {
     const eventType = method || 'click';
-    
-    const handler = async (e) => {
-        const liveEl = el.closest('[data-live]');
-        if (!liveEl) {
-            console.warn('[y-live] Action element must be inside a data-live container');
-            return;
-        }
 
+    const handler = (e) => {
         if (modifiers.includes('prevent')) e.preventDefault();
         if (modifiers.includes('stop')) e.stopPropagation();
         if (el.disabled) return;
@@ -41,92 +28,106 @@ directive('action', (el, state, method, { content, modifiers, $execute, execute 
             e.preventDefault();
         }
 
-        // 解析现代语法: actionName(expr)
-        let actionName = content;
-        let finalParams = {};
-
-        const callMatch = content.match(/^([^(]+)(?:\((.*)\))?$/);
-        if (callMatch) {
-            actionName = callMatch[1].trim();
-            const expr = callMatch[2];
-            if (expr) {
-                try {
-                    // 使用 execute (即 evaluate) 求值
-                    const evaluated = execute(expr);
-                    if (evaluated !== null && typeof evaluated === 'object') {
-                        finalParams = { ...finalParams, ...evaluated };
-                    } else if (evaluated !== undefined) {
-                        finalParams.value = evaluated;
-                    }
-                } catch (err) {
-                    console.warn('[y-live] Action params evaluation failed:', expr, err);
-                }
-            }
+        let actionExpr = content;
+        if (actionExpr.indexOf('(') === -1) {
+            actionExpr += '()';
         }
 
-        // 如果是输入框，自动带上当前值 (除非已经有同名参数)
-        if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
-            if (finalParams.value === undefined) {
-                finalParams.value = el.type === 'checkbox' ? el.checked : el.value;
-            }
-        }
-
-        // 兼容 data-action-params 和 data-live-action-params
-        const paramsAttr = el.getAttribute('data-action-params') || el.getAttribute('data-live-action-params');
-        if (paramsAttr) {
+        const paramsAttr = el.getAttribute('data-action-params');
+        if (paramsAttr && actionExpr.endsWith('()')) {
             try {
-                if (paramsAttr.trim().startsWith('{')) {
-                    finalParams = { ...finalParams, ...JSON.parse(paramsAttr) };
-                } else {
-                    const result = execute(paramsAttr);
-                    if (result && typeof result === 'object') {
-                        finalParams = { ...finalParams, ...result };
-                    }
-                }
-            } catch (err) {}
+                const params = JSON.parse(paramsAttr);
+                actionExpr = actionExpr.slice(0, -2) + '(' + JSON.stringify(params) + ')';
+            } catch (err) {
+                console.warn('[y-live] Invalid data-action-params:', paramsAttr, err);
+            }
         }
 
-        const isStream = modifiers.includes('stream') || el.hasAttribute('data-stream');
-        
-        // 执行分发
-        const liveStateRef = liveEl._y_live_state_ref;
-        const liveComponentClass = liveEl._y_live_component_class;
-        const liveState = liveEl._y_state;
+        $execute('$live.' + actionExpr, null, e);
+    };
 
-        dispatchAction(liveEl, liveComponentClass, actionName, liveStateRef, liveState, e, finalParams, isStream);
+    if (el._y_action_bound) return;
+    el._y_action_bound = true;
+
+    el.addEventListener(eventType, handler);
+    return () => {
+        el._y_action_bound = false;
+        el.removeEventListener(eventType, handler);
+    };
+});
+
+// 3. 注册 data-live-model 指令 — 绑定输入到 $live.update(property, value)
+directive('live-model', (el, state, method, { content, modifiers }) => {
+    const property = content;
+    const isText = (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email')) || el.tagName === 'TEXTAREA';
+    const eventType = isText ? 'input' : 'change';
+
+    let timer = null;
+    const handler = (e) => {
+        clearTimeout(timer);
+        const delay = modifiers.includes('debounce') ? (parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300) : 300;
+
+        timer = setTimeout(() => {
+            const liveEl = el.closest('[data-live]');
+            if (!liveEl || !liveEl.$live) return;
+
+            const value = el.type === 'checkbox' ? el.checked : el.value;
+            liveEl.$live.update(property, value);
+        }, delay);
     };
 
     el.addEventListener(eventType, handler);
     return () => el.removeEventListener(eventType, handler);
 });
 
-// 3. 注册 data-live-model 指令
-directive('live-model', (el, state, method, { content, modifiers }) => {
-    const property = content;
-    const isText = (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email')) || el.tagName === 'TEXTAREA';
-    const eventType = isText ? 'input' : 'change';
-    
-    let timer = null;
+// 4. 注册 data-submit 指令 — 收集表单数据一次性提交到 LiveAction
+//    data-submit:click="saveSettings" → 收集 [data-model] 字段 → $live.saveSettings({field1: val1, ...})
+directive('submit', (el, state, method, { content, modifiers, $execute }) => {
+    const eventType = method || 'click';
+
     const handler = (e) => {
-        clearTimeout(timer);
-        const delay = parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300;
-        
-        timer = setTimeout(() => {
-            const liveEl = el.closest('[data-live]');
-            if (!liveEl) return;
+        if (modifiers.includes('prevent')) e.preventDefault();
+        if (modifiers.includes('stop')) e.stopPropagation();
+        if (el.disabled) return;
 
-            const value = el.type === 'checkbox' ? el.checked : el.value;
-            if (state) state[property] = value;
+        e.preventDefault();
 
-            dispatchAction(liveEl, liveEl._y_live_component_class, '__updateProperty', liveEl._y_live_state_ref, liveEl._y_state, e, {
-                property,
-                value
-            });
-        }, delay);
+        const scope = el.closest('[data-state]') || el.closest('[data-live-state]') || el.parentElement;
+        if (!scope) return;
+
+        const formData = {};
+        scope.querySelectorAll('[data-model]').forEach(input => {
+            const key = input.getAttribute('data-model');
+            if (!key) return;
+            if (input.type === 'checkbox') {
+                formData[key] = input.checked;
+            } else if (input.tagName === 'SELECT') {
+                formData[key] = input.value;
+            } else if (input.tagName === 'TEXTAREA') {
+                formData[key] = input.value;
+            } else {
+                formData[key] = input.value;
+            }
+        });
+
+        scope.querySelectorAll('[data-submit-field]').forEach(input => {
+            const key = input.getAttribute('data-submit-field');
+            if (!key) return;
+            formData[key] = input.type === 'checkbox' ? input.checked : input.value;
+        });
+
+        const actionName = content;
+        $execute('$live.' + actionName + '(' + JSON.stringify(formData) + ')', null, e);
     };
 
+    if (el._y_submit_bound) return;
+    el._y_submit_bound = true;
+
     el.addEventListener(eventType, handler);
-    return () => el.removeEventListener(eventType, handler);
+    return () => {
+        el._y_submit_bound = false;
+        el.removeEventListener(eventType, handler);
+    };
 });
 
 async function dispatchAction(el, componentClass, action, stateRef, state, event, params = {}, isStream = false) {
@@ -238,6 +239,10 @@ const L = {
     dispatch: dispatchAction,
     executeOperation,
     navigate,
+    getLive: (el) => {
+        const liveEl = el?.closest?.('[data-live]') || el
+        return liveEl?.$live || null
+    },
 };
 
 window.L = L;

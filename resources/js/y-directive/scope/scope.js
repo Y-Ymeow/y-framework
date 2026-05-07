@@ -1,69 +1,82 @@
 // Scope - 作用域构建
-export function getFullScope(el, state) {
-    const proxy = (state && state.proxy) ? state.proxy : state;
+export function registerScopeVar(el, name, value) {
+    if (!el._y_scope_vars) el._y_scope_vars = {}
+    el._y_scope_vars[name] = value
+}
 
-    const localScopes = [];
-    let curr = el;
+export function getFullScope(el, state) {
+    const proxy = (state && state.proxy) ? state.proxy : state
+
+    const localScopes = []
+    const scopeVars = []
+    let curr = el
     while (curr) {
-        if (curr._y_local_scope) localScopes.push(curr._y_local_scope);
-        curr = curr.parentElement;
+        if (curr._y_local_scope) localScopes.push(curr._y_local_scope)
+        if (curr._y_scope_vars) scopeVars.push(curr._y_scope_vars)
+        curr = curr.parentElement
     }
 
     const scopeProxy = new Proxy({}, {
         get(target, key) {
-            if (key === '$') return scopeProxy;
-            if (key === Symbol.unscopables) return undefined;
+            if (key === '$') return scopeProxy
+            if (key === Symbol.unscopables) return undefined
 
             for (const scope of localScopes) {
-                if (key in scope) return scope[key];
+                if (key in scope) return scope[key]
             }
 
-            if (proxy && key in proxy) return proxy[key];
+            if (typeof key === 'string' && key.startsWith('$')) {
+                for (const vars of scopeVars) {
+                    if (key in vars) return vars[key]
+                }
+            }
 
-            if (key in window) return window[key];
+            if (proxy && key in proxy) return proxy[key]
 
-            return undefined;
+            if (key in window) return window[key]
+
+            return undefined
         },
         set(target, key, value) {
             for (const scope of localScopes) {
                 if (key in scope) {
-                    scope[key] = value;
-                    return true;
+                    scope[key] = value
+                    return true
                 }
             }
 
+            if (typeof key === 'string' && key.startsWith('$')) return false
+
             if (proxy) {
-                proxy[key] = value;
-                return true;
+                proxy[key] = value
+                return true
             }
-            return false;
+            return false
         },
         has(target, key) {
-            if (key === '$') return true;
-            if (key === Symbol.unscopables) return false;
-            
-            for (const scope of localScopes) {
-                if (key in scope) return true;
-            }
-            if (proxy && key in proxy) return true;
-            if (key in window) return true;
-            
-            return false;
-        }
-    });
+            if (key === '$') return true
+            if (key === Symbol.unscopables) return false
 
-    return scopeProxy;
+            for (const scope of localScopes) if (key in scope) return true
+
+            if (typeof key === 'string' && key.startsWith('$')) {
+                for (const vars of scopeVars) if (key in vars) return true
+            }
+
+            if (proxy && key in proxy) return true
+            if (key in window) return true
+
+            return false
+        }
+    })
+
+    return scopeProxy
 }
 
 export function getRootState(el) {
-    let rootState = null;
-    let p = el;
-    while (p) {
-        if (p?._y_state) {
-            rootState = p._y_state.proxy;
-            break;
-        }
-        p = p?.parentElement;
+    while (el) {
+        if (el._y_state) return el._y_state
+        el = el.parentElement
     }
-    return rootState;
+    return null
 }

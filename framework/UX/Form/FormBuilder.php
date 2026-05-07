@@ -4,706 +4,436 @@ declare(strict_types=1);
 
 namespace Framework\UX\Form;
 
+use Framework\UX\Form\Contracts\FormComponent;
+use Framework\UX\Form\Concerns\HasComponents;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Components\Textarea;
+use Framework\UX\Form\Components\Select;
+use Framework\UX\Form\Components\Checkbox;
+use Framework\UX\Form\Components\RadioGroup;
 use Framework\UX\UI\Button;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
 
-/**
- * 表单构建器
- *
- * 用于快速构建表单，支持多种字段类型、HTTP 方法、提交按钮、Live 绑定、数据填充。
- *
- * @ux-category Form
- * @ux-since 1.0.0
- * @ux-example FormBuilder::make()->post()->action('/save')->text('name', '姓名')->email('email', '邮箱')->submitLabel('提交')
- * @ux-example FormBuilder::make()->get()->text('q', '搜索')->submitLabel('搜索')
- * @ux-js-component form-builder.js
- * @ux-css form.css
- */
 class FormBuilder extends UXComponent
 {
+    use HasComponents;
+
     protected string $method = 'POST';
     protected string $action = '';
-    protected array $fields = [];
     protected bool $multipart = false;
     protected ?string $submitLabel = null;
+    protected array $data = [];
     protected array $liveBind = [];
-    protected int $columns = 1;
-    protected ?string $currentSection = null;
-    protected array $sections = [];
 
-    /**
-     * 设置表单提交方法
-     * @param string $method HTTP 方法：GET/POST/PUT/DELETE
-     * @return static
-     * @ux-example FormBuilder::make()->method('POST')
-     * @ux-default 'POST'
-     */
+    protected static array $macros = [];
+    protected static array $registeredComponents = [];
+
+    public static function make(): static
+    {
+        return new static();
+    }
+
     public function method(string $method): static
     {
         $this->method = strtoupper($method);
         return $this;
     }
 
-    /**
-     * 设置为 GET 方法
-     * @return static
-     * @ux-example FormBuilder::make()->get()
-     */
     public function get(): static
     {
         return $this->method('GET');
     }
 
-    /**
-     * 设置为 POST 方法
-     * @return static
-     * @ux-example FormBuilder::make()->post()
-     */
     public function post(): static
     {
         return $this->method('POST');
     }
 
-    /**
-     * 设置为 PUT 方法
-     * @return static
-     * @ux-example FormBuilder::make()->put()
-     */
     public function put(): static
     {
         return $this->method('PUT');
     }
 
-    /**
-     * 设置为 DELETE 方法
-     * @return static
-     * @ux-example FormBuilder::make()->delete()
-     */
     public function delete(): static
     {
         return $this->method('DELETE');
     }
 
-    /**
-     * 设置表单提交地址
-     * @param string $action 提交 URL
-     * @return static
-     * @ux-example FormBuilder::make()->action('/save')
-     */
     public function action(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
-    /**
-     * 启用 multipart（用于文件上传）
-     * @param bool $multipart 是否启用
-     * @return static
-     * @ux-example FormBuilder::make()->multipart()
-     * @ux-default true
-     */
     public function multipart(bool $multipart = true): static
     {
         $this->multipart = $multipart;
         return $this;
     }
 
-    /**
-     * 设置提交按钮文字
-     * @param string $label 按钮文字
-     * @return static
-     * @ux-example FormBuilder::make()->submitLabel('提交')
-     */
     public function submitLabel(string $label): static
     {
         $this->submitLabel = $label;
         return $this;
     }
 
-    /**
-     * 添加文本输入框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项（placeholder, required, disabled 等）
-     * @return static
-     * @ux-example FormBuilder::make()->text('name', '姓名')
-     */
-    public function text(string $name, string|array $label, array $options = []): static
+    public function fill(array $data): static
     {
-        $this->addField(array_merge([
-            'type' => 'text',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
+        $this->data = $data;
+        $this->fillComponents($this->components, $data);
         return $this;
     }
 
-    /**
-     * 添加邮箱输入框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->email('email', '邮箱')
-     */
-    public function email(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'email',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加密码输入框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->password('password', '密码')
-     */
-    public function password(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'password',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加数字输入框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->number('age', '年龄')
-     */
-    public function number(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'number',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加多行文本框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->textarea('content', '内容')
-     */
-    public function textarea(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'textarea',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加富文本编辑器字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->richEditor('content', '内容')
-     */
-    public function richEditor(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'richEditor',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加下拉选择框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 字段选项
-     * @param array $selectOptions 下拉选项 ['value' => 'label']
-     * @return static
-     * @ux-example FormBuilder::make()->select('city', '城市', [], ['Beijing' => '北京'])
-     */
-    public function select(string $name, string|array $label, array $options = [], array $selectOptions = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'select',
-            'name' => $name,
-            'label' => $label,
-            'options' => $selectOptions,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加复选框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->checkbox('agree', '同意协议')
-     */
-    public function checkbox(string $name, string|array $label, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'checkbox',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加单选框字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $choices 选项列表 ['value' => 'label']
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->radio('gender', '性别', ['male' => '男', 'female' => '女'])
-     */
-    public function radio(string $name, string|array $label, array $choices, array $options = []): static
-    {
-        $this->addField(array_merge([
-            'type' => 'radio',
-            'name' => $name,
-            'label' => $label,
-            'choices' => $choices,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加文件上传字段
-     * @param string $name 字段名
-     * @param string $label 标签文字
-     * @param array $options 选项
-     * @return static
-     * @ux-example FormBuilder::make()->file('avatar', '头像')
-     */
-    public function file(string $name, string|array $label, array $options = []): static
-    {
-        $this->multipart = true;
-        $this->addField(array_merge([
-            'type' => 'file',
-            'name' => $name,
-            'label' => $label,
-        ], $options));
-        return $this;
-    }
-
-    /**
-     * 添加隐藏字段
-     * @param string $name 字段名
-     * @param string $value 默认值
-     * @return static
-     * @ux-example FormBuilder::make()->hidden('csrf_token', $token)
-     */
-    public function hidden(string $name, string $value): static
-    {
-        $this->addField([
-            'type' => 'hidden',
-            'name' => $name,
-            'value' => $value,
-        ]);
-        return $this;
-    }
-
-    /**
-     * 绑定字段到 LiveComponent 属性
-     * @param string $field 字段名
-     * @param string $property LiveComponent 属性名
-     * @return static
-     * @ux-example FormBuilder::make()->liveBind('email', 'user.email')
-     */
     public function liveBind(string $field, string $property): static
     {
         $this->liveBind[$field] = $property;
         return $this;
     }
 
-    public function columns(int $cols): static
+    public function getDefaults(): array
     {
-        $this->columns = max(1, min(4, $cols));
-        return $this;
+        $defaults = [];
+        $this->extractDefaults($this->components, $defaults);
+        return $defaults;
     }
 
-    public function section(string|array $title, ?string $description = null): static
+    public function getFields(): array
     {
-        $sectionKey = is_array($title) ? ($title[0] ?? '') : $title;
-        $sectionParams = is_array($title) ? ($title[1] ?? []) : [];
-        $sectionDefault = is_array($title) ? ($title[2] ?? '') : $title;
-        $displayTitle = t($sectionKey, $sectionParams, $sectionDefault);
-
-        $this->currentSection = $displayTitle;
-        $this->sections[$sectionKey] = [
-            'title' => $displayTitle,
-            'description' => $description,
-            'fields' => [],
-        ];
-        return $this;
+        $fields = [];
+        $this->extractFields($this->components, $fields);
+        return $fields;
     }
 
-    protected function addField(array $field): void
+    public static function macro(string $name, callable $callback): void
     {
-        $field['_section'] = $this->currentSection;
-        $this->fields[] = $field;
+        static::$macros[$name] = $callback;
+    }
 
-        if ($this->currentSection !== null && isset($this->sections[$this->currentSection])) {
-            $this->sections[$this->currentSection]['fields'][] = $field;
+    public function __call(string $name, array $arguments)
+    {
+        if (isset(static::$macros[$name])) {
+            return call_user_func_array(static::$macros[$name], $arguments);
         }
+
+        throw new \BadMethodCallException("Method {$name} does not exist on " . static::class);
     }
 
-    /**
-     * 填充表单数据
-     * @param array $data 数据数组
-     * @return static
-     * @ux-example FormBuilder::make()->fill(['name' => '张三', 'email' => 'test@example.com'])
-     */
-    public function fill(array $data): static
+    public static function registerComponent(string $alias, string $class): void
     {
-        foreach ($this->fields as &$field) {
-            $name = $field['name'] ?? '';
-            if ($name && isset($data[$name])) {
-                $field['value'] = $data[$name];
+        static::$registeredComponents[$alias] = $class;
+    }
+
+    protected function fillComponents(array $components, array $data): void
+    {
+        foreach ($components as $component) {
+            if ($component instanceof FormComponent) {
+                $name = $component->getName();
+                if ($name && isset($data[$name])) {
+                    $component->setValue($data[$name]);
+                }
+            }
+
+            if (method_exists($component, 'getComponents')) {
+                $this->fillComponents($component->getComponents(), $data);
             }
         }
-        return $this;
+    }
+
+    protected function extractDefaults(array $components, array &$defaults): void
+    {
+        foreach ($components as $component) {
+            if ($component instanceof FormComponent) {
+                $name = $component->getName();
+                $default = $component->getDefault();
+                if ($name && $default !== null) {
+                    $defaults[$name] = $default;
+                }
+            }
+
+            if (method_exists($component, 'getComponents')) {
+                $this->extractDefaults($component->getComponents(), $defaults);
+            }
+        }
+    }
+
+    protected function extractFields(array $components, array &$fields): void
+    {
+        foreach ($components as $component) {
+            if ($component instanceof FormComponent && $component->getName()) {
+                $fields[$component->getName()] = $component;
+            }
+
+            if (method_exists($component, 'getComponents')) {
+                $this->extractFields($component->getComponents(), $fields);
+            }
+        }
     }
 
     protected function toElement(): Element
     {
-        $formEl = new Element('form');
-        $this->buildElement($formEl);
+        $form = Element::make('form')
+            ->attr('method', $this->method);
 
-        $formEl->attr('method', $this->method);
         if ($this->action) {
-            $formEl->attr('action', $this->action);
+            $form->attr('action', $this->action);
         }
+
         if ($this->multipart) {
-            $formEl->attr('enctype', 'multipart/form-data');
+            $form->attr('enctype', 'multipart/form-data');
         }
 
-        if (!empty($this->sections)) {
-            foreach ($this->sections as $section) {
-                $sectionEl = Element::make('div')->class('ux-form-section', 'mb-8');
-
-                $headerEl = Element::make('div')->class('ux-form-section-header', 'mb-4', 'pb-3', 'border-b', 'border-gray-200');
-                $headerEl->child(
-                    Element::make('h3')->class('text-lg', 'font-semibold', 'text-gray-900')->child($this->resolveLabelElement($section['title']))
-                );
-                if ($section['description']) {
-                    $headerEl->child(
-                        Element::make('p')->class('text-sm', 'text-gray-500', 'mt-1')->text($section['description'])
-                    );
-                }
-                $sectionEl->child($headerEl);
-
-                $gridEl = $this->buildGrid();
-                foreach ($section['fields'] as $field) {
-                    $gridEl->child($this->renderField($field));
-                }
-                $sectionEl->child($gridEl);
-
-                $formEl->child($sectionEl);
-            }
-
-            $orphanFields = array_filter($this->fields, function ($f) {
-                return !isset($f['_section']) || $f['_section'] === null;
-            });
-            if (!empty($orphanFields)) {
-                $gridEl = $this->buildGrid();
-                foreach ($orphanFields as $field) {
-                    $gridEl->child($this->renderField($field));
-                }
-                $formEl->child($gridEl);
-            }
-        } else {
-            $gridEl = $this->buildGrid();
-            foreach ($this->fields as $field) {
-                $gridEl->child($this->renderField($field));
-            }
-            $formEl->child($gridEl);
+        foreach ($this->renderComponents() as $element) {
+            $form->child($element);
         }
 
         if ($this->submitLabel) {
-            $btnGroupEl = Element::make('div')->class('ux-form-group', 'pt-4', 'border-t', 'border-gray-200');
-            $btnGroupEl->child(
-                Button::make()
-                    ->label($this->submitLabel)
-                    ->submit()
-                    ->primary()
+            $form->child(
+                Element::make('div')
+                    ->class('ux-form-actions')
+                    ->child(
+                        Button::make()
+                            ->label($this->submitLabel)
+                            ->submit()
+                            ->primary()
+                    )
             );
-            $formEl->child($btnGroupEl);
         }
 
-        return $formEl;
+        return $form;
     }
 
-    protected function buildGrid(): Element
+    public function text(string $name, string|array $label = '', array $options = []): static
     {
-        $gridEl = Element::make('div');
-        if ($this->columns > 1) {
-            $gridEl->class('grid', 'gap-4');
-            $colsMap = [2 => 'grid-cols-2', 3 => 'grid-cols-3', 4 => 'grid-cols-4'];
-            $gridEl->class($colsMap[$this->columns] ?? 'grid-cols-2');
-        } else {
-            $gridEl->class('space-y-0');
+        $input = TextInput::make($name);
+        
+        if ($label) {
+            $input->label($label);
         }
-        return $gridEl;
+        
+        if (isset($options['placeholder'])) {
+            $input->placeholder($options['placeholder']);
+        }
+        
+        if (isset($options['required']) && $options['required']) {
+            $input->required();
+        }
+        
+        if (isset($options['disabled']) && $options['disabled']) {
+            $input->disabled();
+        }
+        
+        if (isset($options['default'])) {
+            $input->default($options['default']);
+        }
+        
+        $this->components[] = $input;
+        return $this;
     }
 
-    private function renderField(array $field): Element
+    public function email(string $name, string|array $label = '', array $options = []): static
     {
-        $type = $field['type'];
-
-        if ($type === 'hidden') {
-            return Element::make('input')
-                ->attr('type', 'hidden')
-                ->attr('name', $field['name'])
-                ->attr('value', $field['value']);
+        $input = TextInput::make($name)->email();
+        
+        if ($label) {
+            $input->label($label);
         }
-
-        $groupEl = Element::make('div')->class('ux-form-group');
-
-        $name = $field['name'] ?? '';
-        $label = $field['label'] ?? '';
-
-        if ($label && $type !== 'checkbox') {
-            $labelEl = Element::make('label')
-                ->class('ux-form-label')
-                ->attr('for', $name)
-                ->child($this->resolveLabelElement($label));
-
-            if ($field['required'] ?? false) {
-                $labelEl->child(Element::make('span')->class('ux-form-required')->text('*'));
-            }
-
-            $groupEl->child($labelEl);
+        
+        if (isset($options['placeholder'])) {
+            $input->placeholder($options['placeholder']);
         }
-
-        $inputAttrs = $this->buildFieldAttrs($field);
-
-        switch ($type) {
-            case 'textarea':
-                $textareaEl = Element::make('textarea');
-                foreach ($inputAttrs as $key => $value) {
-                    $textareaEl->attr($key, $value);
-                }
-                $textareaEl->text($field['value'] ?? '');
-                $groupEl->child($textareaEl);
-                break;
-
-            case 'richEditor':
-                $richEditor = new RichEditor();
-                $richEditor->name($name)->label($label);
-
-                if (isset($field['value'])) {
-                    $richEditor->value($field['value']);
-                }
-                if (isset($field['placeholder'])) {
-                    $richEditor->placeholder($field['placeholder']);
-                }
-                if (isset($field['required']) && $field['required']) {
-                    $richEditor->required(true);
-                }
-                if (isset($field['disabled']) && $field['disabled']) {
-                    $richEditor->disabled(true);
-                }
-                if (isset($field['toolbar'])) {
-                    $richEditor->toolbar($field['toolbar']);
-                }
-                if (isset($field['minimal'])) {
-                    $richEditor->minimal($field['minimal']);
-                }
-                if (isset($field['rows'])) {
-                    $richEditor->rows($field['rows']);
-                }
-                if (isset($field['outputFormat'])) {
-                    $richEditor->outputFormat($field['outputFormat']);
-                }
-                if (isset($field['help'])) {
-                    $richEditor->help($field['help']);
-                }
-
-                $groupEl->child($richEditor->render());
-                break;
-
-            case 'select':
-                $selectEl = Element::make('select');
-                foreach ($inputAttrs as $key => $value) {
-                    $selectEl->attr($key, $value);
-                }
-                foreach ($field['options'] as $value => $labelText) {
-                    $optionEl = Element::make('option')
-                        ->attr('value', (string)$value)
-                        ->text($labelText);
-                    if (($field['value'] ?? '') === (string)$value) {
-                        $optionEl->attr('selected', '');
-                    }
-                    $selectEl->child($optionEl);
-                }
-                $groupEl->child($selectEl);
-                break;
-
-            case 'checkbox':
-                $checked = ($field['checked'] ?? false) ? 'checked' : '';
-                $checkboxLabelEl = Element::make('label')->class('ux-form-checkbox');
-                $checkboxInputEl = Element::make('input')
-                    ->attr('type', 'checkbox')
-                    ->attr('name', $name)
-                    ->attr('value', '1');
-                foreach ($inputAttrs as $key => $value) {
-                    if ($key !== 'name') {
-                        $checkboxInputEl->attr($key, $value);
-                    }
-                }
-                if ($checked) {
-                    $checkboxInputEl->attr('checked', '');
-                }
-                $checkboxLabelEl->child($checkboxInputEl);
-                $checkboxLabelEl->child($this->resolveLabelElement($label));
-                $groupEl->child($checkboxLabelEl);
-                break;
-
-            case 'radio':
-                foreach ($field['choices'] as $value => $labelText) {
-                    $radioLabelEl = Element::make('label')->class('ux-form-radio');
-                    $radioInputEl = Element::make('input')
-                        ->attr('type', 'radio')
-                        ->attr('name', $name)
-                        ->attr('value', (string)$value);
-                    foreach ($inputAttrs as $key => $attrValue) {
-                        if ($key !== 'name') {
-                            $radioInputEl->attr($key, $attrValue);
-                        }
-                    }
-                    if (($field['value'] ?? '') === (string)$value) {
-                        $radioInputEl->attr('checked', '');
-                    }
-                    $radioLabelEl->child($radioInputEl);
-                    $radioLabelEl->child(Element::make('span')->text($labelText));
-                    $groupEl->child($radioLabelEl);
-                }
-                break;
-
-            case 'file':
-                $fileInputEl = Element::make('input')
-                    ->attr('type', 'file');
-                foreach ($inputAttrs as $key => $value) {
-                    $fileInputEl->attr($key, $value);
-                }
-                $groupEl->child($fileInputEl);
-                break;
-
-            default:
-                $inputEl = Element::make('input')
-                    ->attr('type', $type);
-                foreach ($inputAttrs as $key => $value) {
-                    $inputEl->attr($key, $value);
-                }
-                if (isset($field['value'])) {
-                    $inputEl->attr('value', (string)$field['value']);
-                }
-                $groupEl->child($inputEl);
+        
+        if (isset($options['required']) && $options['required']) {
+            $input->required();
         }
-
-        if (isset($field['help'])) {
-            if (is_array($field['help'])) {
-                $helpKey = $field['help'][0];
-                $helpParams = is_array($field['help'][1] ?? null) ? $field['help'][1] : [];
-                $helpDefault = $field['help'][2] ?? '';
-                $groupEl->child(Element::make('span')->class('ux-form-help')->intl($helpKey, $helpParams, $helpDefault));
-            } else {
-                $groupEl->child(Element::make('span')->class('ux-form-help')->text($field['help']));
-            }
-        }
-
-        return $groupEl;
+        
+        $this->components[] = $input;
+        return $this;
     }
 
-    private function resolveLabelElement(string|array $label): Element
+    public function password(string $name, string|array $label = '', array $options = []): static
     {
-        if (is_array($label)) {
-            $key = $label[0];
-            $params = is_array($label[1] ?? null) ? $label[1] : [];
-            $default = $label[2] ?? '';
-            return Element::make('span')->intl($key, $params, $default);
+        $input = TextInput::make($name)->password();
+        
+        if ($label) {
+            $input->label($label);
         }
-        return Element::make('span')->text($label);
+        
+        if (isset($options['required']) && $options['required']) {
+            $input->required();
+        }
+        
+        $this->components[] = $input;
+        return $this;
     }
 
-    private function buildFieldAttrs(array $field): array
+    public function number(string $name, string|array $label = '', array $options = []): static
     {
-        $attrs = [];
-        $attrs['id'] = $field['name'];
-        $attrs['name'] = $field['name'];
-
-        if (isset($field['placeholder'])) {
-            if (is_array($field['placeholder'])) {
-                $attrs['data-intl'] = $field['placeholder'][0];
-                $attrs['data-intl-attr'] = 'placeholder';
-                if (!empty($field['placeholder'][1])) {
-                    $attrs['data-intl-params'] = json_encode($field['placeholder'][1]);
-                }
-                $attrs['placeholder'] = t($field['placeholder'][0], $field['placeholder'][1] ?? [], $field['placeholder'][2] ?? '');
-            } else {
-                $attrs['placeholder'] = $field['placeholder'];
-            }
+        $input = TextInput::make($name)->number();
+        
+        if ($label) {
+            $input->label($label);
         }
-
-        if ($field['required'] ?? false) {
-            $attrs['required'] = '';
+        
+        if (isset($options['min'])) {
+            $input->withMeta('min', $options['min']);
         }
-
-        if (isset($field['disabled']) && $field['disabled']) {
-            $attrs['disabled'] = '';
+        
+        if (isset($options['max'])) {
+            $input->withMeta('max', $options['max']);
         }
-
-        if (isset($field['readonly']) && $field['readonly']) {
-            $attrs['readonly'] = '';
+        
+        if (isset($options['step'])) {
+            $input->withMeta('step', $options['step']);
         }
+        
+        $this->components[] = $input;
+        return $this;
+    }
 
-        if (isset($this->liveBind[$field['name']])) {
-            $attrs['data-bind'] = $this->liveBind[$field['name']];
+    public function textarea(string $name, string|array $label = '', array $options = []): static
+    {
+        $textarea = Textarea::make($name);
+        
+        if ($label) {
+            $textarea->label($label);
         }
-
-        if (isset($field['class'])) {
-            $attrs['class'] = $field['class'];
-        } else {
-            $attrs['class'] = 'ux-form-input';
+        
+        if (isset($options['rows'])) {
+            $textarea->rows($options['rows']);
         }
-
-        if (isset($field['autocomplete'])) {
-            $attrs['autocomplete'] = $field['autocomplete'];
-        } else {
-            $type = $field['type'] ?? 'text';
-            $autocompleteMap = [
-                'password' => 'current-password',
-                'email' => 'email',
-                'username' => 'username',
-                'tel' => 'tel',
-            ];
-            if (isset($autocompleteMap[$type])) {
-                $attrs['autocomplete'] = $autocompleteMap[$type];
-            }
+        
+        if (isset($options['placeholder'])) {
+            $textarea->placeholder($options['placeholder']);
         }
+        
+        if (isset($options['required']) && $options['required']) {
+            $textarea->required();
+        }
+        
+        $this->components[] = $textarea;
+        return $this;
+    }
 
-        return $attrs;
+    public function select(string $name, string|array $label = '', array $options = [], array $selectOptions = []): static
+    {
+        $select = Select::make($name);
+        
+        if ($label) {
+            $select->label($label);
+        }
+        
+        if (!empty($selectOptions)) {
+            $select->options($selectOptions);
+        }
+        
+        if (isset($options['required']) && $options['required']) {
+            $select->required();
+        }
+        
+        if (isset($options['multiple']) && $options['multiple']) {
+            $select->multiple();
+        }
+        
+        if (isset($options['default'])) {
+            $select->default($options['default']);
+        }
+        
+        $this->components[] = $select;
+        return $this;
+    }
+
+    public function checkbox(string $name, string|array $label = '', array $options = []): static
+    {
+        $checkbox = Checkbox::make($name);
+        
+        if ($label) {
+            $checkbox->label($label);
+        }
+        
+        if (isset($options['default'])) {
+            $checkbox->default($options['default']);
+        }
+        
+        $this->components[] = $checkbox;
+        return $this;
+    }
+
+    public function radio(string $name, string|array $label = '', array $choices = [], array $options = []): static
+    {
+        $radio = RadioGroup::make($name);
+        
+        if ($label) {
+            $radio->label($label);
+        }
+        
+        if (!empty($choices)) {
+            $radio->options($choices);
+        }
+        
+        if (isset($options['inline']) && $options['inline']) {
+            $radio->inline();
+        }
+        
+        if (isset($options['default'])) {
+            $radio->default($options['default']);
+        }
+        
+        $this->components[] = $radio;
+        return $this;
+    }
+
+    public function hidden(string $name, string $value = ''): static
+    {
+        $input = TextInput::make($name)->inputType('hidden');
+        $input->setValue($value);
+        $this->components[] = $input;
+        return $this;
+    }
+
+    public function file(string $name, string|array $label = '', array $options = []): static
+    {
+        $this->multipart = true;
+        $input = TextInput::make($name)->inputType('file');
+        
+        if ($label) {
+            $input->label($label);
+        }
+        
+        if (isset($options['accept'])) {
+            $input->withMeta('accept', $options['accept']);
+        }
+        
+        if (isset($options['multiple']) && $options['multiple']) {
+            $input->withMeta('multiple', true);
+        }
+        
+        $this->components[] = $input;
+        return $this;
+    }
+
+    public function richEditor(string $name, string|array $label = '', array $options = []): static
+    {
+        $editor = new RichEditor();
+        $editor->name($name);
+        
+        if ($label) {
+            $editor->label($label);
+        }
+        
+        if (isset($options['placeholder'])) {
+            $editor->placeholder($options['placeholder']);
+        }
+        
+        if (isset($options['toolbar'])) {
+            $editor->toolbar($options['toolbar']);
+        }
+        
+        if (isset($options['minimal'])) {
+            $editor->minimal($options['minimal']);
+        }
+        
+        $this->components[] = $editor;
+        return $this;
     }
 }

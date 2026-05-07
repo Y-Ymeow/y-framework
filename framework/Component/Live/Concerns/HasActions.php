@@ -180,6 +180,8 @@ trait HasActions
 
             if (isset($params[$name])) {
                 $args[] = $this->castParam($params[$name], $type);
+            } elseif (array_key_exists($param->getPosition(), $params)) {
+                $args[] = $this->castParam($params[$param->getPosition()], $type);
             } elseif ($param->isDefaultValueAvailable()) {
                 $args[] = $param->getDefaultValue();
             } elseif (!$param->isOptional()) {
