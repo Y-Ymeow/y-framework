@@ -6,7 +6,7 @@ namespace Framework\UX\Form\Contracts;
 
 interface FormLayout extends FormComponent
 {
-    public function schema(array $components): static;
+    public function schema(array|callable $components): static;
 
     public function getComponents(): array;
 

@@ -6,6 +6,9 @@ use Admin\Contracts\Resource\AdminResource;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Content\Category;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Components\Textarea;
+use Framework\UX\Form\Layout\Grid;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
@@ -42,10 +45,25 @@ class CategoryResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', ['admin:categories.name', [], '名称'], ['required' => true])
-            ->text('slug', ['admin:categories.slug', [], '标识'], [])
-            ->textarea('description', ['admin:categories.description', [], '描述'], [])
-            ->number('sort', ['admin:categories.sort', [], '排序'], ['value' => '0']);
+        $form->schema([
+            Grid::make(2)->schema([
+                TextInput::make('name')
+                    ->label(['admin:categories.name', [], '名称'])
+                    ->required(),
+
+                TextInput::make('slug')
+                    ->label(['admin:categories.slug', [], '标识']),
+            ]),
+
+            Textarea::make('description')
+                ->label(['admin:categories.description', [], '描述'])
+                ->rows(3),
+
+            TextInput::make('sort')
+                ->label(['admin:categories.sort', [], '排序'])
+                ->number()
+                ->default('0'),
+        ]);
     }
 
     public function configureTable(DataTable $table): void

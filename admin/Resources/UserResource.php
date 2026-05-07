@@ -7,6 +7,9 @@ use Admin\Contracts\Resource\BaseResource;
 use Admin\Auth\User;
 use Admin\Auth\Role;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Components\Checkbox;
+use Framework\UX\Form\Layout\Section;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
@@ -43,16 +46,28 @@ class UserResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', ['admin:users.name', [], '姓名'], ['required' => true])
-            ->email('email', ['admin:users.email', [], '邮箱'], ['required' => true]);
+        $form->schema([
+            Section::make('基本信息')->schema([
+                TextInput::make('name')
+                    ->label(['admin:users.name', [], '姓名'])
+                    ->required(),
 
-        $form->section(['admin:users.role', [], '角色']);
-        $roles = Role::all();
-        foreach ($roles as $role) {
-            $form->checkbox("role_{$role['id']}", $role['name'], [
-                'value' => (string)$role['id'],
-            ]);
-        }
+                TextInput::make('email')
+                    ->label(['admin:users.email', [], '邮箱'])
+                    ->email()
+                    ->required(),
+            ]),
+
+            Section::make(['admin:users.role', [], '角色'])->schema(function () {
+                $roles = Role::all();
+                $components = [];
+                foreach ($roles as $role) {
+                    $components[] = Checkbox::make("role_{$role['id']}")
+                        ->label($role['name']);
+                }
+                return $components;
+            }),
+        ]);
     }
 
     public function configureTable(DataTable $table): void

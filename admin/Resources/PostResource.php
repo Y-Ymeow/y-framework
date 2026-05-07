@@ -6,6 +6,11 @@ use Admin\Contracts\Resource\AdminResource;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Content\Post;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Components\Textarea;
+use Framework\UX\Form\Components\Select;
+use Framework\UX\Form\Layout\Grid;
+use Framework\UX\Form\Layout\Section;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
@@ -42,17 +47,45 @@ class PostResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('title', ['admin:posts.title_field', [], '标题'], ['required' => true])
-            ->text('slug', ['admin:posts.slug', [], '标识'], [])
-            ->textarea('excerpt', ['admin:posts.excerpt', [], '摘要'], [])
-            ->textarea('content', ['admin:posts.content', [], '内容'], [])
-            ->text('cover_image', ['admin:posts.cover_image', [], '封面图'], [])
-            ->select('status', ['admin:posts.status', [], '状态'], [], [
-                'draft' => t('admin:posts.draft'),
-                'published' => t('admin:posts.published'),
-                'archived' => t('admin:posts.archived'),
-            ])
-            ->number('category_id', ['admin:categories.title', [], '分类'], []);
+        $form->schema([
+            Grid::make(2)->schema([
+                Section::make('基本信息')->schema([
+                    TextInput::make('title')
+                        ->label(['admin:posts.title_field', [], '标题'])
+                        ->required(),
+
+                    TextInput::make('slug')
+                        ->label(['admin:posts.slug', [], '标识']),
+
+                    Select::make('status')
+                        ->label(['admin:posts.status', [], '状态'])
+                        ->options([
+                            'draft' => t('admin:posts.draft'),
+                            'published' => t('admin:posts.published'),
+                            'archived' => t('admin:posts.archived'),
+                        ]),
+
+                    TextInput::make('category_id')
+                        ->label(['admin:categories.title', [], '分类'])
+                        ->number(),
+                ]),
+
+                Section::make('媒体')->schema([
+                    TextInput::make('cover_image')
+                        ->label(['admin:posts.cover_image', [], '封面图']),
+                ]),
+            ]),
+
+            Section::make('内容')->schema([
+                Textarea::make('excerpt')
+                    ->label(['admin:posts.excerpt', [], '摘要'])
+                    ->rows(3),
+
+                Textarea::make('content')
+                    ->label(['admin:posts.content', [], '内容'])
+                    ->rows(8),
+            ]),
+        ]);
     }
 
     public function configureTable(DataTable $table): void

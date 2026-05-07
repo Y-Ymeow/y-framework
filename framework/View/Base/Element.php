@@ -234,6 +234,16 @@ class Element
         return $this;
     }
 
+    public function getAttr(string $key): ?string
+    {
+        return $this->attrs[$key] ?? null;
+    }
+
+    public function getChildren(): array
+    {
+        return $this->children;
+    }
+
     /**
      * 设置 data-* 自定义属性
      *

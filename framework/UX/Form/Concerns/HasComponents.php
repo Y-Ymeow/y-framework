@@ -8,9 +8,12 @@ trait HasComponents
 {
     protected array $components = [];
 
-    public function schema(array $components): static
+    public function schema(array|callable $components): static
     {
-        $this->components = $components;
+        if (is_callable($components)) {
+            $components = $components();
+        }
+        $this->components = is_array($components) ? $components : [];
         return $this;
     }
 

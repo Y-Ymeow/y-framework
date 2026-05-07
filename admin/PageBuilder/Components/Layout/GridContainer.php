@@ -8,10 +8,10 @@ use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\Select;
 use Framework\UX\Form\Components\TextInput;
-use Framework\UX\Form\Layout\Grid;
+use Framework\UX\Form\Layout\Grid as FormGrid;
 use Framework\View\Base\Element;
 
-class Grid extends ComponentType
+class GridContainer extends ComponentType
 {
     public function name(): string { return 'grid'; }
     public function label(): string { return '网格'; }
@@ -21,7 +21,7 @@ class Grid extends ComponentType
     public function settings(FormBuilder $form): void
     {
         $form->schema([
-            Grid::make(3)->schema([
+            FormGrid::make(3)->schema([
                 Select::make('columns')
                     ->label('列数')
                     ->options([

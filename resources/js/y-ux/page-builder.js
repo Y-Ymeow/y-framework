@@ -3,59 +3,72 @@ import Sortable from 'sortablejs';
 class PageBuilder {
     constructor() {
         this.sortableInstances = [];
+        this.initializedBuilders = new WeakSet();
+        this.zoomLevels = [0.5, 0.75, 1, 1.25, 1.5];
+        this.currentZoomIndex = 2;
     }
 
     init(root = document) {
         root.querySelectorAll('[data-page-builder]').forEach(builder => {
             this.initDragFromPanel(builder);
             this.initCanvasSortable(builder);
+            this.initZoomControls(builder);
         });
     }
 
     initDragFromPanel(builder) {
-        const items = builder.querySelectorAll('.page-builder-component-item[draggable]');
-        items.forEach(item => {
-            item.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('component-type', item.dataset.componentType);
-                e.dataTransfer.effectAllowed = 'copy';
-            });
+        if (this.initializedBuilders.has(builder)) return;
+        this.initializedBuilders.add(builder);
+
+        builder.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.page-builder-component-item[draggable]');
+            if (!item) return;
+            e.dataTransfer.setData('component-type', item.dataset.componentType);
+            e.dataTransfer.effectAllowed = 'copy';
         });
 
-        const canvases = builder.querySelectorAll('[data-builder-canvas]');
-        canvases.forEach(canvas => {
-            canvas.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = 'copy';
-                canvas.classList.add('page-builder-canvas-dragover');
-            });
+        builder.addEventListener('dragover', (e) => {
+            const canvas = e.target.closest('[data-builder-canvas]');
+            if (!canvas) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
 
-            canvas.addEventListener('dragleave', (e) => {
-                if (!canvas.contains(e.relatedTarget)) {
-                    canvas.classList.remove('page-builder-canvas-dragover');
-                }
+            builder.querySelectorAll('.page-builder-canvas-dragover').forEach(el => {
+                el.classList.remove('page-builder-canvas-dragover');
             });
+            canvas.classList.add('page-builder-canvas-dragover');
+        });
 
-            canvas.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+        builder.addEventListener('dragleave', (e) => {
+            const canvas = e.target.closest('[data-builder-canvas]');
+            if (!canvas) return;
+            if (!canvas.contains(e.relatedTarget)) {
                 canvas.classList.remove('page-builder-canvas-dragover');
+            }
+        });
 
-                const componentType = e.dataTransfer.getData('component-type');
-                if (!componentType) return;
+        builder.addEventListener('drop', (e) => {
+            const canvas = e.target.closest('[data-builder-canvas]');
+            if (!canvas) return;
+            e.preventDefault();
+            e.stopPropagation();
+            canvas.classList.remove('page-builder-canvas-dragover');
 
-                const isChildCanvas = canvas.matches('.pb-card-children');
-                if (isChildCanvas) {
-                    const card = canvas.closest('.pb-card');
-                    const parentUid = card?.dataset.uid;
-                    if (parentUid) {
-                        this.callAddChild(parentUid, componentType, builder);
-                        return;
-                    }
+            const componentType = e.dataTransfer.getData('component-type');
+            if (!componentType) return;
+
+            const isChildCanvas = canvas.matches('.pb-comp-children');
+            if (isChildCanvas) {
+                const comp = canvas.closest('.pb-comp');
+                const parentUid = comp?.dataset.uid;
+                if (parentUid) {
+                    this.callAddChild(parentUid, componentType, builder);
+                    return;
                 }
+            }
 
-                this.addComponent(componentType, builder);
-            });
+            this.addComponent(componentType, builder);
         });
     }
 
@@ -71,7 +84,7 @@ class PageBuilder {
         });
 
         this.setTree(builder, tree);
-        this.callUpdateTree(builder, tree); // 更新 LiveComponent 状态，不保存文件
+        this.callUpdateTree(builder, tree);
     }
 
     callAddChild(parentUid, componentType, builder) {
@@ -95,18 +108,61 @@ class PageBuilder {
         builder.querySelectorAll('[data-builder-canvas]').forEach(canvas => {
             const instance = Sortable.create(canvas, {
                 group: 'page-builder',
-                handle: '.pb-card-header',
+                handle: '.pb-comp-toolbar',
                 animation: 150,
                 ghostClass: 'page-builder-sortable-ghost',
                 chosenClass: 'page-builder-sortable-chosen',
                 onEnd: () => {
                     const tree = this.readTreeFromDom(builder);
                     this.setTree(builder, tree);
-                    this.callUpdateTree(builder, tree); // 更新 LiveComponent 状态，不保存文件
+                    this.callUpdateTree(builder, tree);
                 },
             });
             this.sortableInstances.push(instance);
         });
+    }
+
+    initZoomControls(builder) {
+        const canvas = builder.querySelector('.page-builder-canvas');
+        const label = builder.querySelector('[data-zoom-label]');
+        const zoomIn = builder.querySelector('[data-zoom-in]');
+        const zoomOut = builder.querySelector('[data-zoom-out]');
+        const zoomFit = builder.querySelector('[data-zoom-fit]');
+
+        if (!canvas || !label) return;
+
+        const applyZoom = () => {
+            const scale = this.zoomLevels[this.currentZoomIndex];
+            canvas.style.transform = `scale(${scale})`;
+            canvas.style.transformOrigin = 'top left';
+            canvas.style.width = `${100 / scale}%`;
+            label.textContent = `${Math.round(scale * 100)}%`;
+        };
+
+        if (zoomIn) {
+            zoomIn.addEventListener('click', () => {
+                if (this.currentZoomIndex < this.zoomLevels.length - 1) {
+                    this.currentZoomIndex++;
+                    applyZoom();
+                }
+            });
+        }
+
+        if (zoomOut) {
+            zoomOut.addEventListener('click', () => {
+                if (this.currentZoomIndex > 0) {
+                    this.currentZoomIndex--;
+                    applyZoom();
+                }
+            });
+        }
+
+        if (zoomFit) {
+            zoomFit.addEventListener('click', () => {
+                this.currentZoomIndex = 2;
+                applyZoom();
+            });
+        }
     }
 
     getTree(builder) {
@@ -128,13 +184,13 @@ class PageBuilder {
 
         const readLevel = (container) => {
             const items = [];
-            const cards = container.querySelectorAll(':scope > .pb-card');
+            const cards = container.querySelectorAll(':scope > .pb-comp');
             cards.forEach(card => {
                 const uid = card.dataset.uid || '';
                 const type = card.dataset.componentType || '';
                 const existing = this.findInTree(this.getTree(builder), uid);
                 const settings = existing ? existing.settings || {} : {};
-                const childContainer = card.querySelector(':scope > .pb-card-children');
+                const childContainer = card.querySelector(':scope > .pb-comp-children');
                 const childItems = childContainer ? readLevel(childContainer) : [];
 
                 items.push({ uid, type, settings, children: childItems });
@@ -156,16 +212,10 @@ class PageBuilder {
         return null;
     }
 
-    callSaveTree(builder, tree) {
-        const liveEl = builder.closest('[data-live]');
-        if (liveEl && liveEl.$live) {
-            liveEl.$live.saveTree({ tree: JSON.stringify(tree) });
-        }
-    }
-
     destroy() {
         this.sortableInstances.forEach(i => i.destroy());
         this.sortableInstances = [];
+        this.initializedBuilders = new WeakSet();
     }
 }
 
@@ -181,5 +231,9 @@ window.addEventListener('y:ready', () => {
 
 window.addEventListener('y:updated', (e) => {
     const root = e.detail?.el || document;
-    window.PageBuilder.init(root);
+    const builder = root.closest('[data-page-builder]') || root.querySelector('[data-page-builder]');
+    if (builder) {
+        window.PageBuilder.initCanvasSortable(builder);
+        window.PageBuilder.initZoomControls(builder);
+    }
 });

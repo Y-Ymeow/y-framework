@@ -39,6 +39,7 @@ class ComponentRegistry
     public static function categories(): array
     {
         return [
+            'sections' => '区块',
             'basic' => '基础',
             'layout' => '布局',
             'media' => '媒体',
@@ -50,12 +51,20 @@ class ComponentRegistry
         if (self::$booted) return;
         self::$booted = true;
 
+        self::register(new Sections\Header());
+        self::register(new Sections\Hero());
+        self::register(new Sections\Banner());
+        self::register(new Sections\FeatureGrid());
+        self::register(new Sections\CTA());
+        self::register(new Sections\Footer());
+
         self::register(new Basic\Heading());
         self::register(new Basic\TextBlock());
         self::register(new Basic\ImageBlock());
         self::register(new Basic\ButtonBlock());
         self::register(new Basic\Divider());
-        self::register(new Layout\Grid());
+
+        self::register(new Layout\GridContainer());
         self::register(new Layout\Columns());
     }
 }

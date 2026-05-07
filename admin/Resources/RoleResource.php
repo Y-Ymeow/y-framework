@@ -7,6 +7,11 @@ use Admin\Contracts\Resource\BaseResource;
 use Admin\Auth\Role;
 use Admin\Auth\Permission;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Components\Textarea;
+use Framework\UX\Form\Components\Checkbox;
+use Framework\UX\Form\Layout\Grid;
+use Framework\UX\Form\Layout\Section;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
@@ -43,19 +48,33 @@ class RoleResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', ['admin:roles.name', [], '名称'], ['required' => true])
-            ->text('slug', ['admin:roles.slug', [], '标识'], ['required' => true])
-            ->textarea('description', ['admin:roles.description', [], '描述'], []);
+        $form->schema([
+            Grid::make(2)->schema([
+                TextInput::make('name')
+                    ->label(['admin:roles.name', [], '名称'])
+                    ->required(),
 
-        $form->section(['admin:roles.permissions', [], '权限']);
-        $permissionsByModule = Permission::getByModule();
-        foreach ($permissionsByModule as $module => $perms) {
-            foreach ($perms as $perm) {
-                $form->checkbox("permission_{$perm['id']}", $perm['name'], [
-                    'value' => (string)$perm['id'],
-                ]);
-            }
-        }
+                TextInput::make('slug')
+                    ->label(['admin:roles.slug', [], '标识'])
+                    ->required(),
+            ]),
+
+            Textarea::make('description')
+                ->label(['admin:roles.description', [], '描述'])
+                ->rows(3),
+
+            Section::make(['admin:roles.permissions', [], '权限'])->schema(function () {
+                $permissionsByModule = Permission::getByModule();
+                $components = [];
+                foreach ($permissionsByModule as $module => $perms) {
+                    foreach ($perms as $perm) {
+                        $components[] = Checkbox::make("permission_{$perm['id']}")
+                            ->label($perm['name']);
+                    }
+                }
+                return $components;
+            }),
+        ]);
     }
 
     public function configureTable(DataTable $table): void

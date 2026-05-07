@@ -585,13 +585,13 @@ abstract class UXComponent
      * 渲染为 HTML 字符串
      * @ux-internal
      */
-    public function render(): string
+    public function render(): Element
     {
-        return $this->toElement()->render();
+        return $this->toElement();
     }
 
     public function __toString(): string
     {
-        return $this->render();
+        return $this->render()->render();
     }
 }

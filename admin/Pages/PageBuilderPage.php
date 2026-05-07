@@ -7,11 +7,13 @@ namespace Admin\Pages;
 use Admin\Contracts\Live\AdminLayout;
 use Admin\Contracts\Page\PageInterface;
 use Admin\PageBuilder\PageGenerator;
+use Admin\PageBuilder\PageBuilderCssService;
 use Admin\PageBuilder\Components\ComponentRegistry;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
+use Framework\UX\Form\FormBuilder;
 
 class PageBuilderPage extends LiveComponent implements PageInterface
 {
@@ -178,44 +180,19 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function updateComponentTree(array $params): void
-    {
-        $treeJson = $params['tree'] ?? '[]';
-        $tree = json_decode($treeJson, true);
-        if (!is_array($tree)) {
-            return;
-        }
-        $this->componentTreeJson = $treeJson;
-        $this->refresh('page-content');
-    }
-
-    #[LiveAction]
-    public function saveCurrentTree(): void
-    {
-        $tree = json_decode($this->componentTreeJson, true);
-        if (!is_array($tree)) {
-            $this->toast('无效的组件数据', 'error');
-            return;
-        }
-
-        $generator = new PageGenerator();
-        $result = $generator->saveComponentTree($this->editingPage, $tree);
-
-        if ($result['success']) {
-            $this->toast('页面已保存');
-        } else {
-            $this->toast($result['error'] ?? '保存失败', 'error');
-        }
-
-        $this->refresh('page-content');
-    }
-
-    #[LiveAction]
     public function toggleComponent(array $params): void
     {
+        $oldUid = $this->selectedUid;
         $uid = $params['uid'] ?? '';
         $this->selectedUid = ($this->selectedUid === $uid) ? '' : $uid;
-        $this->refresh('page-content');
+
+        if ($oldUid && $oldUid !== $this->selectedUid) {
+            $this->refresh('comp-' . $oldUid);
+        }
+        if ($this->selectedUid) {
+            $this->refresh('comp-' . $this->selectedUid);
+        }
+        $this->refresh('properties-panel');
     }
 
     #[LiveAction]
@@ -236,7 +213,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $this->updateAllSettingsInTree($tree, $uid, $settings);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
         $this->toast('设置已保存');
-        $this->refresh('page-content');
+        $this->refresh('comp-' . $uid);
     }
 
     #[LiveAction]
@@ -255,7 +232,8 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $this->selectedUid = '';
         }
 
-        $this->refresh('page-content');
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
     }
 
     #[LiveAction]
@@ -282,7 +260,54 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $this->addChildToTree($tree, $parentUid, $newChild);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
         $this->selectedUid = $uid;
-        $this->refresh('page-content');
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
+    }
+
+    #[LiveAction]
+    public function updateComponentTree(array $params): void
+    {
+        $treeJson = $params['tree'] ?? '[]';
+        $tree = json_decode($treeJson, true);
+        if (!is_array($tree)) {
+            return;
+        }
+        $this->componentTreeJson = $treeJson;
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function saveCurrentTree(): void
+    {
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) {
+            $this->toast('无效的组件数据', 'error');
+            return;
+        }
+
+        $generator = new PageGenerator();
+        $result = $generator->saveComponentTree($this->editingPage, $tree);
+
+        if ($result['success']) {
+            $this->toast('页面已保存');
+        } else {
+            $this->toast($result['error'] ?? '保存失败', 'error');
+        }
+    }
+
+    private function findInTree(array $tree, string $uid): ?array
+    {
+        foreach ($tree as $component) {
+            if (($component['uid'] ?? '') === $uid) {
+                return $component;
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children)) {
+                $found = $this->findInTree($children, $uid);
+                if ($found) return $found;
+            }
+        }
+        return null;
     }
 
     private function updateAllSettingsInTree(array &$tree, string $uid, array $settings): bool
@@ -444,7 +469,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $body = Element::make('div')->class('page-builder-body');
         $body->child($this->renderComponentPanel());
-        $body->child($this->renderCanvas());
+
+        $canvasArea = Element::make('div')->class('page-builder-canvas-area');
+        $canvasArea->child($this->renderCanvasToolbar());
+        $canvasArea->child($this->renderCanvas());
+        $body->child($canvasArea);
+
+        $body->child($this->renderPropertiesPanel());
         $builder->child($body);
 
         return $builder;
@@ -484,16 +515,53 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         return $panel;
     }
 
+    protected function renderCanvasToolbar(): Element
+    {
+        $toolbar = Element::make('div')->class('page-builder-canvas-toolbar');
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-zoom-btn')
+                ->attr('data-zoom-out', '')
+                ->html('<i class="bi bi-dash"></i>')
+        );
+        $toolbar->child(
+            Element::make('span')
+                ->class('page-builder-zoom-label')
+                ->attr('data-zoom-label', '')
+                ->text('100%')
+        );
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-zoom-btn')
+                ->attr('data-zoom-in', '')
+                ->html('<i class="bi bi-plus"></i>')
+        );
+        $toolbar->child(
+            Element::make('button')
+                ->class('page-builder-zoom-btn')
+                ->attr('data-zoom-fit', '')
+                ->html('<i class="bi bi-arrows-fullscreen"></i>')
+        );
+        return $toolbar;
+    }
+
     protected function renderCanvas(): Element
     {
         $canvas = Element::make('div')
             ->class('page-builder-canvas')
-            ->attr('data-builder-canvas', '');
+            ->attr('data-builder-canvas', '')
+            ->liveFragment('canvas');
 
         $tree = json_decode($this->componentTreeJson, true);
         if (empty($tree) || !is_array($tree)) {
             $canvas->child(Element::make('div')->class('page-builder-canvas-empty')->text('拖拽左侧组件到这里'));
             return $canvas;
+        }
+
+        $cssService = new PageBuilderCssService();
+        $dynamicCss = $cssService->generateForTree($tree);
+        if ($dynamicCss) {
+            $canvas->child(Element::make('style')->html($dynamicCss));
         }
 
         $this->renderCanvasItems($canvas, $tree);
@@ -519,45 +587,46 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $isSelected = $uid === $this->selectedUid;
         $isContainer = $componentType && method_exists($componentType, 'isContainer') && $componentType->isContainer();
 
-        $card = Element::make('div')
-            ->class('pb-card', $isSelected ? 'pb-card-expanded' : '', $isContainer ? 'pb-card-container' : '')
+        $comp = Element::make('div')
+            ->class('pb-comp', $isSelected ? 'pb-comp-selected' : '', $isContainer ? 'pb-comp-container' : '')
             ->attr('data-uid', $uid)
-            ->attr('data-component-type', $type);
+            ->attr('data-component-type', $type)
+            ->liveFragment('comp-' . $uid);
 
-        $header = Element::make('div')->class('pb-card-header');
-        $header->child(Element::make('i')->class('bi', 'bi-' . ($componentType?->icon() ?? 'square')));
-        $header->child(Element::make('span')->class('pb-card-name')->text($componentType?->label() ?? $type));
+        $toolbar = Element::make('div')->class('pb-comp-toolbar');
+        $toolbar->child(
+            Element::make('span')->class('pb-comp-label')
+                ->html('<i class="bi bi-' . ($componentType?->icon() ?? 'square') . '"></i> ' . ($componentType?->label() ?? $type))
+        );
         if ($isContainer) {
-            $header->child(Element::make('span')->class('pb-card-badge')->text('容器'));
+            $toolbar->child(Element::make('span')->class('pb-comp-badge')->text('容器'));
         }
-
-        $headerActions = Element::make('div')->class('pb-card-header-actions');
-        $headerActions->child(
+        $toolbar->child(Element::make('div')->class('pb-comp-toolbar-actions'));
+        $toolbar->child(
             Element::make('button')
-                ->class('pb-card-action', 'pb-card-action-danger')
+                ->class('pb-comp-btn')
+                ->attr('data-action:click', 'toggleComponent()')
+                ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->html('<i class="bi bi-pencil"></i>')
+        );
+        $toolbar->child(
+            Element::make('button')
+                ->class('pb-comp-btn', 'pb-comp-btn-danger')
                 ->attr('data-action:click', 'removeComponent()')
                 ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
                 ->html('<i class="bi bi-trash3"></i>')
         );
-        $header->child($headerActions);
-        $card->child($header);
+        $comp->child($toolbar);
 
         if ($componentType) {
             $preview = $componentType->render($settings);
-            $preview->class('pb-card-preview');
-            $preview->attr('data-action:click', 'toggleComponent()');
-            $preview->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE));
-            $card->child($preview);
-        }
-
-        if ($isSelected && $componentType) {
-            $settingsEl = $this->renderInlineSettings($uid, $componentType, $settings);
-            $card->child($settingsEl);
+            $preview->class('pb-comp-preview');
+            $comp->child($preview);
         }
 
         if ($isContainer) {
             $childArea = Element::make('div')
-                ->class('pb-card-children')
+                ->class('pb-comp-children')
                 ->attr('data-builder-canvas', '');
 
             if (!empty($children)) {
@@ -566,92 +635,100 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
             if ($isSelected) {
                 $childArea->child($this->renderAddChildBar($uid));
-            } elseif (empty($children)) {
-                $childArea->child(Element::make('div')->class('pb-card-children-empty')->text('拖入或添加子组件'));
             }
 
-            $card->child($childArea);
+            $comp->child($childArea);
         }
 
-        return $card;
+        return $comp;
     }
 
-    protected function renderInlineSettings(string $uid, $componentType, array $settings): Element
+    protected function renderPropertiesPanel(): Element
     {
-        $panel = Element::make('div')->class('pb-card-settings');
-        $panel->attr('data-state', json_encode($settings, JSON_UNESCAPED_UNICODE));
+        $panel = Element::make('div')
+            ->class('page-builder-properties')
+            ->liveFragment('properties-panel');
 
-        $panel->child(
+        if (empty($this->selectedUid)) {
+            $panel->child(
+                Element::make('div')->class('page-builder-properties-empty')
+                    ->child(Element::make('i')->class('bi', 'bi-cursor'))
+                    ->child(Element::make('p')->text('选择组件以编辑属性'))
+            );
+            return $panel;
+        }
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) {
+            $panel->child(
+                Element::make('div')->class('page-builder-properties-empty')->text('选择组件以编辑属性')
+            );
+            return $panel;
+        }
+
+        $component = $this->findInTree($tree, $this->selectedUid);
+        if (!$component) {
+            $panel->child(
+                Element::make('div')->class('page-builder-properties-empty')->text('选择组件以编辑属性')
+            );
+            return $panel;
+        }
+
+        $componentType = ComponentRegistry::get($component['type'] ?? '');
+        if (!$componentType) {
+            $panel->child(
+                Element::make('div')->class('page-builder-properties-empty')->text('未知组件类型')
+            );
+            return $panel;
+        }
+
+        $panelHeader = Element::make('div')->class('page-builder-properties-header');
+        $panelHeader->child(Element::make('i')->class('bi', 'bi-' . $componentType->icon()));
+        $panelHeader->child(Element::make('span')->text($componentType->label()));
+        $panelHeader->child(
+            Element::make('button')
+                ->class('page-builder-properties-close')
+                ->attr('data-action:click', 'toggleComponent()')
+                ->attr('data-action-params', json_encode(['uid' => $this->selectedUid], JSON_UNESCAPED_UNICODE))
+                ->html('<i class="bi bi-x"></i>')
+        );
+        $panel->child($panelHeader);
+
+        $formBody = Element::make('div')->class('page-builder-properties-body');
+
+        $formBody->child(
             Element::make('input')
                 ->attr('type', 'hidden')
                 ->attr('data-submit-field', 'uid')
-                ->attr('value', $uid)
+                ->attr('value', $this->selectedUid)
         );
 
-        foreach ($componentType->settingsSchema() as $field) {
-            $key = $field['key'] ?? '';
-            $label = $field['label'] ?? '';
-            $fieldType = $field['type'] ?? 'text';
-            $value = $settings[$key] ?? ($field['default'] ?? '');
-            $options = $field['options'] ?? [];
+        $form = new FormBuilder();
+        $componentType->settings($form);
+        $form->fill($component['settings'] ?? []);
 
-            $row = Element::make('div')->class('pb-card-settings-row');
-            $row->child(Element::make('label')->class('pb-card-settings-label')->text($label));
-
-            if ($fieldType === 'select') {
-                $select = Element::make('select')
-                    ->class('pb-card-settings-control')
-                    ->attr('data-model', $key);
-                foreach ($options as $optVal => $optLabel) {
-                    $option = Element::make('option')
-                        ->attr('value', $optVal)
-                        ->text($optLabel);
-                    if ((string)$optVal === (string)$value) {
-                        $option->attr('selected', 'selected');
-                    }
-                    $select->child($option);
-                }
-                $row->child($select);
-            } elseif ($fieldType === 'textarea') {
-                $row->child(
-                    Element::make('textarea')
-                        ->class('pb-card-settings-control', 'pb-card-settings-textarea')
-                        ->attr('data-model', $key)
-                        ->text((string)$value)
-                );
-            } else {
-                $row->child(
-                    Element::make('input')
-                        ->class('pb-card-settings-control')
-                        ->attr('type', $fieldType)
-                        ->attr('data-model', $key)
-                        ->attr('value', (string)$value)
-                );
+        foreach ($form->getComponents() as $formComponent) {
+            if (method_exists($formComponent, 'render')) {
+                $formBody->child($formComponent->render());
             }
-
-            $panel->child($row);
         }
+        $panel->child($formBody);
 
-        $panel->child(
-            Element::make('div')->class('pb-card-settings-actions')->children(
-                Element::make('button')
-                    ->class('pb-card-settings-save')
-                    ->attr('data-submit:click', 'saveComponentSettings')
-                    ->text('保存设置'),
-                Element::make('button')
-                    ->class('pb-card-settings-cancel')
-                    ->attr('data-action:click', 'toggleComponent()')
-                    ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
-                    ->text('收起')
-            )
+        $panelFooter = Element::make('div')->class('page-builder-properties-footer');
+        $panelFooter->child(
+            Element::make('button')
+                ->class('page-btn', 'page-btn-primary', 'page-btn-sm')
+                ->attr('data-submit:click', 'saveComponentSettings')
+                ->text('保存设置')
         );
+        $panel->child($panelFooter);
 
         return $panel;
     }
 
     protected function renderAddChildBar(string $parentUid): Element
     {
-        $bar = Element::make('div')->class('pb-card-add-child');
+        $bar = Element::make('div')->class('pb-comp-add-child');
 
         $categories = ComponentRegistry::byCategory();
         $catLabels = ComponentRegistry::categories();
@@ -660,13 +737,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $types = $categories[$catKey] ?? [];
             if (empty($types)) continue;
 
-            $group = Element::make('div')->class('pb-card-add-child-group');
-            $group->child(Element::make('span')->class('pb-card-add-child-label')->text($catLabel));
+            $group = Element::make('div')->class('pb-comp-add-child-group');
+            $group->child(Element::make('span')->class('pb-comp-add-child-label')->text($catLabel));
 
             foreach ($types as $type) {
                 $isContainer = method_exists($type, 'isContainer') && $type->isContainer();
                 $btn = Element::make('button')
-                    ->class('pb-card-add-child-btn', $isContainer ? 'is-container' : '')
+                    ->class('pb-comp-add-child-btn', $isContainer ? 'is-container' : '')
                     ->attr('data-action:click', 'addChildComponent()')
                     ->attr('data-action-params', json_encode(['parentUid' => $parentUid, 'componentType' => $type->name()], JSON_UNESCAPED_UNICODE))
                     ->html('<i class="bi bi-' . $type->icon() . '"></i> ' . $type->label());
@@ -677,18 +754,5 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         return $bar;
-    }
-
-    private function findInTree(array $tree, string $uid): ?array
-    {
-        foreach ($tree as $component) {
-            if (($component['uid'] ?? '') === $uid) return $component;
-            $children = $component['children'] ?? [];
-            if (!empty($children)) {
-                $found = $this->findInTree($children, $uid);
-                if ($found) return $found;
-            }
-        }
-        return null;
     }
 }

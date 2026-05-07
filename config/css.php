@@ -8,7 +8,8 @@ return [
         'admin/Component',
         'admin/Pages',
         'app/Component',
-        'admin/Contracts/Live'
+        'admin/Contracts/Live',
+        'admin/PageBuilder'
     ],
 
     'always_generated' => [

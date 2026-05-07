@@ -6,6 +6,8 @@ use Admin\Contracts\Resource\AdminResource;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Content\Tag;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\Form\Components\TextInput;
+use Framework\UX\Form\Layout\Grid;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
 use Framework\UX\UI\Button;
@@ -42,8 +44,16 @@ class TagResource extends BaseResource
 
     public function configureForm(FormBuilder $form): void
     {
-        $form->text('name', ['admin:tags.name', [], '名称'], ['required' => true])
-            ->text('slug', ['admin:tags.slug', [], '标识'], []);
+        $form->schema([
+            Grid::make(2)->schema([
+                TextInput::make('name')
+                    ->label(['admin:tags.name', [], '名称'])
+                    ->required(),
+
+                TextInput::make('slug')
+                    ->label(['admin:tags.slug', [], '标识']),
+            ]),
+        ]);
     }
 
     public function configureTable(DataTable $table): void
