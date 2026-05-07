@@ -17,25 +17,18 @@ class PageGenerator
     public function generate(string $name, string $route, string $template = 'blank'): array
     {
         $className = $this->sanitizeClassName($name);
-        $filePath = $this->pagesPath . '/' . $className . '.php';
 
-        if (file_exists($filePath)) {
-            return ['success' => false, 'error' => '页面文件已存在'];
+        $existing = $this->findDbRecord($className);
+        if ($existing) {
+            return ['success' => false, 'error' => '页面已存在'];
         }
-
-        $content = $this->renderTemplate($className, $route, $template);
-
-        if (!is_dir($this->pagesPath)) {
-            mkdir($this->pagesPath, 0755, true);
-        }
-
-        file_put_contents($filePath, $content);
 
         $this->upsertDbRecord($className, $route, []);
 
+        $this->registerDynamicRoute($className, $route);
+
         return [
             'success' => true,
-            'file' => $filePath,
             'class' => $this->namespace . '\\' . $className,
             'route' => $route,
         ];
@@ -44,13 +37,6 @@ class PageGenerator
     public function delete(string $name): array
     {
         $className = $this->sanitizeClassName($name);
-        $filePath = $this->pagesPath . '/' . $className . '.php';
-
-        if (!file_exists($filePath)) {
-            return ['success' => false, 'error' => '页面文件不存在'];
-        }
-
-        unlink($filePath);
 
         try {
             PageBuilderPageModel::where('name', $className)->delete();
@@ -58,7 +44,12 @@ class PageGenerator
             $this->logError('delete db record failed', ['class' => $className, 'error' => $e->getMessage()]);
         }
 
-        return ['success' => true, 'file' => $filePath];
+        $filePath = $this->pagesPath . '/' . $className . '.php';
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+
+        return ['success' => true];
     }
 
     public function listPages(): array
@@ -178,7 +169,7 @@ class PageGenerator
 
         $this->upsertDbRecord($className, null, $tree);
 
-        $this->generatePhpFromTree($className, $tree);
+        $this->ensureDynamicRoute($className);
 
         return ['success' => true];
     }
@@ -230,6 +221,38 @@ class PageGenerator
             return $row->toArray();
         }
         return null;
+    }
+
+    protected function registerDynamicRoute(string $className, string $route): void
+    {
+        try {
+            $app = \Framework\Foundation\Application::getInstance();
+            $router = $app->make(\Framework\Routing\Router::class);
+            $router->addRoute('GET', $route, function () use ($className) {
+                $renderer = new PageRenderer();
+                $response = $renderer->render($className);
+                if ($response) {
+                    return $response;
+                }
+                return \Framework\Http\Response\Response::html(
+                    \Framework\View\Base\Element::make('div')->class('pb-page')->text('页面为空')
+                );
+            }, 'page.' . strtolower($className));
+        } catch (\Throwable $e) {
+            $this->logError('registerDynamicRoute failed', ['class' => $className, 'route' => $route, 'error' => $e->getMessage()]);
+        }
+    }
+
+    protected function ensureDynamicRoute(string $className): void
+    {
+        try {
+            $row = $this->findDbRecord($className);
+            if ($row && !empty($row['route'])) {
+                $this->registerDynamicRoute($className, $row['route']);
+            }
+        } catch (\Throwable $e) {
+            $this->logError('ensureDynamicRoute failed', ['class' => $className, 'error' => $e->getMessage()]);
+        }
     }
 
     protected function logError(string $message, array $context = []): void
@@ -289,12 +312,12 @@ PHP;
             $children = $component['children'] ?? [];
             $uid = $component['uid'] ?? $index;
 
-            $settingsJson = json_encode($settings, JSON_UNESCAPED_UNICODE);
+            $settingsExport = var_export($settings, true);
             $compVar = "\$comp_{$uid}";
 
             $code .= "\n{$pad}\$type_{$uid} = ComponentRegistry::get('{$type}');";
             $code .= "\n{$pad}if (\$type_{$uid}) {";
-            $code .= "\n{$pad}    {$compVar} = \$type_{$uid}->render({$settingsJson});";
+            $code .= "\n{$pad}    {$compVar} = \$type_{$uid}->render({$settingsExport});";
 
             if (!empty($children)) {
                 $childCode = $this->buildRenderCode($children, $compVar, $indent + 2);

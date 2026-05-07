@@ -76,18 +76,22 @@ class PageBuilder {
     }
 
     addComponent(componentType, builder) {
-        const tree = this.getTree(builder);
-        const uid = 'c' + Date.now() + Math.random().toString(36).substr(2, 5);
+        const liveEl = builder.closest('[data-live]');
+        if (liveEl && liveEl.$live) {
+            const tree = this.getTree(builder);
+            const uid = 'c' + Date.now() + Math.random().toString(36).substr(2, 5);
 
-        tree.push({
-            uid,
-            type: componentType,
-            settings: {},
-            children: [],
-        });
+            tree.push({
+                uid,
+                type: componentType,
+                settings: {},
+                children: [],
+            });
 
-        this.setTree(builder, tree);
-        this.callUpdateTree(builder, tree);
+            this.setTree(builder, tree);
+            liveEl.$live.updateComponentTree({ tree: JSON.stringify(tree) });
+            liveEl.$live.toggleComponent({ uid });
+        }
     }
 
     callAddChild(parentUid, componentType, builder) {

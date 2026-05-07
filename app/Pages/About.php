@@ -16,7 +16,11 @@ class About
 
         $type_test123 = ComponentRegistry::get('hero');
         if ($type_test123) {
-            $comp_test123 = $type_test123->render({"title":"My Hero Title","subtitle":"My Subtitle","className":"flex flex-row p-4 bg-blue-500 my-custom"});
+            $comp_test123 = $type_test123->render(array (
+  'title' => 'My Hero Title',
+  'subtitle' => 'My Subtitle',
+  'className' => 'flex flex-row p-4 bg-blue-500 my-custom',
+));
             $page->child($comp_test123);
         }
         return Response::html($page);

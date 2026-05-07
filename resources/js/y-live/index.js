@@ -117,7 +117,10 @@ directive('submit', (el, state, method, { content, modifiers, $execute }) => {
         });
 
         const actionName = content;
-        $execute('$live.' + actionName + '(' + JSON.stringify(formData) + ')', null, e);
+        const liveProxy = scope.$live;
+        if (liveProxy && typeof liveProxy[actionName] === 'function') {
+            liveProxy[actionName](formData);
+        }
     };
 
     if (el._y_submit_bound) return;

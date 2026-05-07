@@ -201,10 +201,16 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     public function saveComponentSettings(array $params): void
     {
         $uid = $params['uid'] ?? '';
-        if (empty($uid)) return;
+        if (empty($uid)) {
+            logger()->error('saveComponentSettings: no uid', ['params' => $params]);
+            return;
+        }
 
         $tree = json_decode($this->componentTreeJson, true);
-        if (!is_array($tree)) return;
+        if (!is_array($tree)) {
+            logger()->error('saveComponentSettings: invalid tree', ['componentTreeJson' => substr($this->componentTreeJson, 0, 200)]);
+            return;
+        }
 
         $settings = [];
         $styleData = [];
@@ -222,6 +228,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $settings['className'] = $styleBuilder->buildClasses($styleData);
         }
 
+        logger()->info('saveComponentSettings', [
+            'uid' => $uid,
+            'settings' => $settings,
+            'styleData' => $styleData,
+        ]);
+
         $this->updateAllSettingsInTree($tree, $uid, $settings);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
@@ -229,7 +241,8 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $generator->saveComponentTree($this->editingPage, $tree);
 
         $this->toast('设置已保存');
-        $this->refresh('comp-' . $uid);
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
     }
 
     #[LiveAction]
@@ -301,6 +314,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $generator->saveComponentTree($this->editingPage, $tree);
 
         $this->refresh('canvas');
+        $this->refresh('properties-panel');
     }
 
     #[LiveAction]
