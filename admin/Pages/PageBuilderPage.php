@@ -1,22 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Admin\Pages;
 
 use Admin\Contracts\Live\AdminLayout;
 use Admin\Contracts\Page\PageInterface;
 use Admin\PageBuilder\PageGenerator;
-use Admin\PageBuilder\ComponentGenerator;
-use Framework\Http\Middleware\AdminAuthenticate;
-use Framework\Routing\Attribute\Middleware;
-use Framework\Routing\Attribute\Route;
+use Admin\PageBuilder\Components\ComponentRegistry;
+use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
-use Framework\UX\Navigation\Tabs;
-use Framework\UX\Form\FormBuilder;
-use Framework\UX\Data\DataTable;
-use Framework\UX\UI\Button;
 
-class PageBuilderPage implements PageInterface
+class PageBuilderPage extends LiveComponent implements PageInterface
 {
+    #[State]
+    public string $editingPage = '';
+
+    #[State]
+    public string $builderOpen = 'false';
+
+    #[State]
+    public string $componentTreeJson = '[]';
+
+    #[State]
+    public string $selectedUid = '';
+
+    #[State]
+    public string $newPageName = '';
+
+    #[State]
+    public string $newPageRoute = '';
+
     public static function getName(): string
     {
         return 'pages';
@@ -48,134 +64,631 @@ class PageBuilderPage implements PageInterface
             'admin.pages' => [
                 'method' => 'GET',
                 'path' => '/pages',
-                'handler' => [static::class, '__invoke'],
+                'handler' => function () {
+                    return static::renderPage();
+                },
             ],
         ];
     }
 
-    #[Route(path: '/admin/pages', methods: ['GET', 'POST'])]
-    #[Middleware(AdminAuthenticate::class)]
-    public function __invoke()
+    public static function renderPage()
     {
-        $request = request();
-
-        if ($request->isMethod('POST')) {
-            $action = $request->input('action', '');
-            $result = $this->handleAction($action, $request->all());
-
-            $content = $this->showPage($result);
-        } else {
-            $content = $this->showPage();
-        }
+        $page = new static();
+        $page->named('admin-page-pages');
 
         $layout = new AdminLayout();
         $layout->activeMenu = 'pages';
-        $layout->setContent($content);
+        $layout->setContent($page);
 
         return $layout;
     }
 
-    protected function handleAction(string $action, array $data): array
+    #[LiveAction]
+    public function createPage(array $params): void
     {
-        return match ($action) {
-            'create_page' => (new PageGenerator())->generate(
-                $data['name'] ?? 'NewPage',
-                $data['route'] ?? '/new-page',
-                $data['template'] ?? 'blank'
-            ),
-            'delete_page' => (new PageGenerator())->delete($data['name'] ?? ''),
-            'create_component' => (new ComponentGenerator())->generate(
-                $data['name'] ?? 'NewComponent',
-                $data['description'] ?? ''
-            ),
-            default => ['success' => false, 'error' => 'Unknown action'],
-        };
-    }
+        $name = trim($params['name'] ?? $this->newPageName);
+        $route = trim($params['route'] ?? $this->newPageRoute);
 
-    protected function showPage(array $result = []): Element
-    {
-        $wrapper = Element::make('div')->class('p-6', 'max-w-6xl', 'mx-auto');
-        $wrapper->child(Element::make('h1')
-            ->class('text-2xl', 'font-bold', 'mb-6')
-            ->intl('admin.pages'));
-
-        if (!empty($result)) {
-            $alertClass = ($result['success'] ?? false) ? 'admin-form-success' : 'admin-form-error';
-            $alertText = ($result['success'] ?? false)
-                ? ($result['file'] ?? t('admin.success'))
-                : ($result['error'] ?? t('admin.error'));
-            $wrapper->child(Element::make('div')->class($alertClass, 'mb-6')->text($alertText));
+        if (empty($name) || empty($route)) {
+            $this->toast('请填写页面名称和路由', 'error');
+            $this->refresh('page-content');
+            return;
         }
 
-        $tabs = Tabs::make();
+        $generator = new PageGenerator();
+        $result = $generator->generate($name, $route);
 
-        $pagesList = $this->renderPagesList();
-        $tabs->item(t('admin.pages'), $pagesList, 'tab-pages');
+        if (!$result['success']) {
+            $this->toast($result['error'] ?? '创建失败', 'error');
+        } else {
+            $this->toast('页面已创建');
+            $this->newPageName = '';
+            $this->newPageRoute = '';
+        }
 
-        $componentsList = $this->renderComponentsList();
-        $tabs->item(t('admin.settings.general'), $componentsList, 'tab-components');
+        $this->refresh('page-content');
+    }
 
-        $createForm = $this->renderCreateForm();
-        $tabs->item(t('admin.create'), $createForm, 'tab-create');
+    #[LiveAction]
+    public function deletePage(array $params): void
+    {
+        $name = $params['name'] ?? '';
+        if (empty($name)) return;
 
-        $wrapper->child($tabs);
+        $generator = new PageGenerator();
+        $result = $generator->delete($name);
+
+        if ($result['success']) {
+            $this->toast('页面已删除');
+        } else {
+            $this->toast($result['error'] ?? '删除失败', 'error');
+        }
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function openBuilder(array $params): void
+    {
+        $name = $params['name'] ?? '';
+        if (empty($name)) return;
+
+        $this->editingPage = $name;
+        $this->builderOpen = 'true';
+        $this->selectedUid = '';
+
+        $generator = new PageGenerator();
+        $tree = $generator->getComponentTree($name);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function closeBuilder(): void
+    {
+        $this->builderOpen = 'false';
+        $this->editingPage = '';
+        $this->selectedUid = '';
+        $this->componentTreeJson = '[]';
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function saveTree(array $params): void
+    {
+        $treeJson = $params['tree'] ?? '[]';
+        $tree = json_decode($treeJson, true);
+        if (!is_array($tree)) {
+            $this->toast('无效的组件数据', 'error');
+            return;
+        }
+
+        $generator = new PageGenerator();
+        $result = $generator->saveComponentTree($this->editingPage, $tree);
+
+        if ($result['success']) {
+            $this->componentTreeJson = $treeJson;
+            $this->toast('已保存');
+        } else {
+            $this->toast($result['error'] ?? '保存失败', 'error');
+        }
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function updateComponentTree(array $params): void
+    {
+        $treeJson = $params['tree'] ?? '[]';
+        $tree = json_decode($treeJson, true);
+        if (!is_array($tree)) {
+            return;
+        }
+        $this->componentTreeJson = $treeJson;
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function saveCurrentTree(): void
+    {
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) {
+            $this->toast('无效的组件数据', 'error');
+            return;
+        }
+
+        $generator = new PageGenerator();
+        $result = $generator->saveComponentTree($this->editingPage, $tree);
+
+        if ($result['success']) {
+            $this->toast('页面已保存');
+        } else {
+            $this->toast($result['error'] ?? '保存失败', 'error');
+        }
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function toggleComponent(array $params): void
+    {
+        $uid = $params['uid'] ?? '';
+        $this->selectedUid = ($this->selectedUid === $uid) ? '' : $uid;
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function saveComponentSettings(array $params): void
+    {
+        $uid = $params['uid'] ?? '';
+        if (empty($uid)) return;
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) return;
+
+        $settings = [];
+        foreach ($params as $key => $value) {
+            if ($key === 'uid') continue;
+            $settings[$key] = $value;
+        }
+
+        $this->updateAllSettingsInTree($tree, $uid, $settings);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+        $this->toast('设置已保存');
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function removeComponent(array $params): void
+    {
+        $uid = $params['uid'] ?? '';
+        if (empty($uid)) return;
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) return;
+
+        $this->removeFromTree($tree, $uid);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        if ($this->selectedUid === $uid) {
+            $this->selectedUid = '';
+        }
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
+    public function addChildComponent(array $params): void
+    {
+        $parentUid = $params['parentUid'] ?? '';
+        $componentType = $params['componentType'] ?? '';
+        if (empty($parentUid) || empty($componentType)) return;
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) return;
+
+        $uid = 'c' . substr(md5(uniqid((string)mt_rand(), true)), 0, 10) ?: 'c' . bin2hex(random_bytes(5));
+        $componentTypeObj = ComponentRegistry::get($componentType);
+        $defaults = $componentTypeObj ? $componentTypeObj->defaultSettings() : [];
+
+        $newChild = [
+            'uid' => $uid,
+            'type' => $componentType,
+            'settings' => $defaults,
+            'children' => [],
+        ];
+
+        $this->addChildToTree($tree, $parentUid, $newChild);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+        $this->selectedUid = $uid;
+        $this->refresh('page-content');
+    }
+
+    private function updateAllSettingsInTree(array &$tree, string $uid, array $settings): bool
+    {
+        foreach ($tree as &$component) {
+            if (($component['uid'] ?? '') === $uid) {
+                $component['settings'] = $settings;
+                return true;
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children) && $this->updateAllSettingsInTree($children, $uid, $settings)) {
+                $component['children'] = $children;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function removeFromTree(array &$tree, string $uid): bool
+    {
+        foreach ($tree as $i => $component) {
+            if (($component['uid'] ?? '') === $uid) {
+                array_splice($tree, $i, 1);
+                return true;
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children) && $this->removeFromTree($children, $uid)) {
+                $tree[$i]['children'] = $children;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function addChildToTree(array &$tree, string $parentUid, array $newChild): bool
+    {
+        foreach ($tree as &$component) {
+            if (($component['uid'] ?? '') === $parentUid) {
+                if (!isset($component['children'])) $component['children'] = [];
+                $component['children'][] = $newChild;
+                return true;
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children) && $this->addChildToTree($children, $parentUid, $newChild)) {
+                $component['children'] = $children;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function render(): Element
+    {
+        $wrapper = Element::make('div')->class('page-builder-page');
+        $wrapper->child(Element::make('h1')->class('page-builder-title')->intl('admin.pages', [], '页面管理'));
+
+        $content = Element::make('div')->liveFragment('page-content');
+
+        if ($this->builderOpen === 'true') {
+            $content->child($this->renderBuilder());
+        } else {
+            $content->child($this->renderPageList());
+        }
+
+        $wrapper->child($content);
 
         return $wrapper;
     }
 
-    protected function renderPagesList(): Element
+    protected function renderPageList(): Element
     {
-        $pages = (new PageGenerator())->listPages();
+        $container = Element::make('div')->class('page-list');
+
+        $generator = new PageGenerator();
+        $pages = $generator->listPages();
+
+        $createRow = Element::make('div')->class('page-create-row');
+        $createRow->child(
+            Element::make('input')
+                ->class('page-input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '页面名称 (如 About)')
+                ->attr('data-live-model', 'newPageName')
+        );
+        $createRow->child(
+            Element::make('input')
+                ->class('page-input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '路由 (如 /about)')
+                ->attr('data-live-model', 'newPageRoute')
+        );
+        $createRow->child(
+            Element::make('button')
+                ->class('page-btn', 'page-btn-primary')
+                ->attr('data-action:click', 'createPage()')
+                ->text('创建页面')
+        );
+        $container->child($createRow);
 
         if (empty($pages)) {
-            return Element::make('div')->class('text-center', 'py-12', 'text-gray-500')
-                ->intl('admin.no_results');
+            $container->child(Element::make('div')->class('page-list-empty')->text('暂无页面，请创建'));
+            return $container;
         }
 
-        $table = DataTable::make()
-            ->column('name', t('admin.fields.name'))
-            ->column('route', 'Route')
-            ->column('modified', t('admin.fields.updated_at'))
-            ->rows($pages);
+        $list = Element::make('div')->class('page-list-items');
+        foreach ($pages as $page) {
+            $item = Element::make('div')->class('page-list-item');
+            $info = Element::make('div')->class('page-list-item-info');
+            $info->child(Element::make('div')->class('page-list-item-name')->text($page['name']));
+            $info->child(Element::make('div')->class('page-list-item-route')->text($page['route'] ?? '/'));
 
-        return Element::make('div')->child($table);
+            $actions = Element::make('div')->class('page-list-item-actions');
+            $actions->child(
+                Element::make('button')
+                    ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
+                    ->attr('data-action:click', 'openBuilder()')
+                    ->attr('data-action-params', json_encode(['name' => $page['name']], JSON_UNESCAPED_UNICODE))
+                    ->html('<i class="bi bi-pencil-square"></i> 编辑')
+            );
+            $actions->child(
+                Element::make('button')
+                    ->class('page-btn', 'page-btn-sm', 'page-btn-danger')
+                    ->attr('data-action:click', 'deletePage()')
+                    ->attr('data-action-params', json_encode(['name' => $page['name']], JSON_UNESCAPED_UNICODE))
+                    ->html('<i class="bi bi-trash3"></i>')
+            );
+
+            $item->child($info);
+            $item->child($actions);
+            $list->child($item);
+        }
+        $container->child($list);
+
+        return $container;
     }
 
-    protected function renderComponentsList(): Element
+    protected function renderBuilder(): Element
     {
-        $components = (new ComponentGenerator())->listComponents();
+        $builder = Element::make('div')
+            ->class('page-builder')
+            ->attr('data-page-builder', '')
+            ->attr('data-component-tree', $this->componentTreeJson);
 
-        if (empty($components)) {
-            return Element::make('div')->class('text-center', 'py-12', 'text-gray-500')
-                ->intl('admin.no_results');
+        $header = Element::make('div')->class('page-builder-header');
+        $header->child(
+            Element::make('button')
+                ->class('page-builder-close')
+                ->attr('data-action:click', 'closeBuilder()')
+                ->html('<i class="bi bi-x-lg"></i>')
+        );
+        $header->child(Element::make('div')->class('page-builder-title-bar')->text('编辑: ' . $this->editingPage));
+        $header->child(
+            Element::make('button')
+                ->class('page-btn', 'page-btn-primary', 'page-btn-sm')
+                ->attr('data-action:click', 'saveCurrentTree()')
+                ->text('保存')
+        );
+        $builder->child($header);
+
+        $body = Element::make('div')->class('page-builder-body');
+        $body->child($this->renderComponentPanel());
+        $body->child($this->renderCanvas());
+        $builder->child($body);
+
+        return $builder;
+    }
+
+    protected function renderComponentPanel(): Element
+    {
+        $panel = Element::make('div')->class('page-builder-components');
+
+        $categories = ComponentRegistry::byCategory();
+        $catLabels = ComponentRegistry::categories();
+
+        foreach ($catLabels as $catKey => $catLabel) {
+            $types = $categories[$catKey] ?? [];
+            if (empty($types)) continue;
+
+            $group = Element::make('div')->class('page-builder-component-group');
+            $group->child(Element::make('div')->class('page-builder-component-group-title')->text($catLabel));
+
+            foreach ($types as $type) {
+                $isContainer = method_exists($type, 'isContainer') && $type->isContainer();
+                $item = Element::make('div')
+                    ->class('page-builder-component-item', $isContainer ? 'is-container' : '')
+                    ->attr('data-component-type', $type->name())
+                    ->attr('draggable', 'true');
+                $item->child(Element::make('i')->class('bi', 'bi-' . $type->icon()));
+                $item->child(Element::make('span')->text($type->label()));
+                if ($isContainer) {
+                    $item->child(Element::make('i')->class('bi', 'bi-layer-stack', 'page-builder-container-badge'));
+                }
+                $group->child($item);
+            }
+
+            $panel->child($group);
         }
 
-        $table = DataTable::make()
-            ->column('name', t('admin.fields.name'))
-            ->column('modified', t('admin.fields.updated_at'))
-            ->rows($components);
-
-        return Element::make('div')->child($table);
+        return $panel;
     }
 
-    protected function renderCreateForm(): Element
+    protected function renderCanvas(): Element
     {
-        $form = FormBuilder::make()
-            ->post()
-            ->action('/admin/pages')
-            ->columns(2)
-            ->hidden('action', 'create_page')
-            ->text('name', t('admin.fields.name'), ['required' => true, 'help' => t('admin:pages.help_class_name', [], '类名，如 AboutPage')])
-            ->text('route', 'Route', ['required' => true, 'help' => t('admin:pages.help_route_path', [], '路由路径，如 /about')])
-            ->select('template', t('admin:pages.template', [], '模板'), [], [
-                'blank' => t('admin:pages.template_blank', [], '空白页'),
-                'list' => t('admin:pages.template_list', [], '列表页'),
-                'detail' => t('admin:pages.template_detail', [], '详情页'),
-                'form' => t('admin:pages.template_form', [], '表单页'),
-                'landing' => t('admin:pages.template_landing', [], '着陆页'),
-            ])
-            ->submitLabel(t('admin.create'));
+        $canvas = Element::make('div')
+            ->class('page-builder-canvas')
+            ->attr('data-builder-canvas', '');
 
-        return Element::make('div')->child($form);
+        $tree = json_decode($this->componentTreeJson, true);
+        if (empty($tree) || !is_array($tree)) {
+            $canvas->child(Element::make('div')->class('page-builder-canvas-empty')->text('拖拽左侧组件到这里'));
+            return $canvas;
+        }
+
+        $this->renderCanvasItems($canvas, $tree);
+
+        return $canvas;
+    }
+
+    protected function renderCanvasItems(Element $parent, array $items): void
+    {
+        foreach ($items as $item) {
+            $parent->child($this->renderCanvasItem($item));
+        }
+    }
+
+    protected function renderCanvasItem(array $item): Element
+    {
+        $uid = $item['uid'] ?? '';
+        $type = $item['type'] ?? '';
+        $settings = $item['settings'] ?? [];
+        $children = $item['children'] ?? [];
+
+        $componentType = ComponentRegistry::get($type);
+        $isSelected = $uid === $this->selectedUid;
+        $isContainer = $componentType && method_exists($componentType, 'isContainer') && $componentType->isContainer();
+
+        $card = Element::make('div')
+            ->class('pb-card', $isSelected ? 'pb-card-expanded' : '', $isContainer ? 'pb-card-container' : '')
+            ->attr('data-uid', $uid)
+            ->attr('data-component-type', $type);
+
+        $header = Element::make('div')->class('pb-card-header');
+        $header->child(Element::make('i')->class('bi', 'bi-' . ($componentType?->icon() ?? 'square')));
+        $header->child(Element::make('span')->class('pb-card-name')->text($componentType?->label() ?? $type));
+        if ($isContainer) {
+            $header->child(Element::make('span')->class('pb-card-badge')->text('容器'));
+        }
+
+        $headerActions = Element::make('div')->class('pb-card-header-actions');
+        $headerActions->child(
+            Element::make('button')
+                ->class('pb-card-action', 'pb-card-action-danger')
+                ->attr('data-action:click', 'removeComponent()')
+                ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->html('<i class="bi bi-trash3"></i>')
+        );
+        $header->child($headerActions);
+        $card->child($header);
+
+        if ($componentType) {
+            $preview = $componentType->render($settings);
+            $preview->class('pb-card-preview');
+            $preview->attr('data-action:click', 'toggleComponent()');
+            $preview->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE));
+            $card->child($preview);
+        }
+
+        if ($isSelected && $componentType) {
+            $settingsEl = $this->renderInlineSettings($uid, $componentType, $settings);
+            $card->child($settingsEl);
+        }
+
+        if ($isContainer) {
+            $childArea = Element::make('div')
+                ->class('pb-card-children')
+                ->attr('data-builder-canvas', '');
+
+            if (!empty($children)) {
+                $this->renderCanvasItems($childArea, $children);
+            }
+
+            if ($isSelected) {
+                $childArea->child($this->renderAddChildBar($uid));
+            } elseif (empty($children)) {
+                $childArea->child(Element::make('div')->class('pb-card-children-empty')->text('拖入或添加子组件'));
+            }
+
+            $card->child($childArea);
+        }
+
+        return $card;
+    }
+
+    protected function renderInlineSettings(string $uid, $componentType, array $settings): Element
+    {
+        $panel = Element::make('div')->class('pb-card-settings');
+        $panel->attr('data-state', json_encode($settings, JSON_UNESCAPED_UNICODE));
+
+        $panel->child(
+            Element::make('input')
+                ->attr('type', 'hidden')
+                ->attr('data-submit-field', 'uid')
+                ->attr('value', $uid)
+        );
+
+        foreach ($componentType->settingsSchema() as $field) {
+            $key = $field['key'] ?? '';
+            $label = $field['label'] ?? '';
+            $fieldType = $field['type'] ?? 'text';
+            $value = $settings[$key] ?? ($field['default'] ?? '');
+            $options = $field['options'] ?? [];
+
+            $row = Element::make('div')->class('pb-card-settings-row');
+            $row->child(Element::make('label')->class('pb-card-settings-label')->text($label));
+
+            if ($fieldType === 'select') {
+                $select = Element::make('select')
+                    ->class('pb-card-settings-control')
+                    ->attr('data-model', $key);
+                foreach ($options as $optVal => $optLabel) {
+                    $option = Element::make('option')
+                        ->attr('value', $optVal)
+                        ->text($optLabel);
+                    if ((string)$optVal === (string)$value) {
+                        $option->attr('selected', 'selected');
+                    }
+                    $select->child($option);
+                }
+                $row->child($select);
+            } elseif ($fieldType === 'textarea') {
+                $row->child(
+                    Element::make('textarea')
+                        ->class('pb-card-settings-control', 'pb-card-settings-textarea')
+                        ->attr('data-model', $key)
+                        ->text((string)$value)
+                );
+            } else {
+                $row->child(
+                    Element::make('input')
+                        ->class('pb-card-settings-control')
+                        ->attr('type', $fieldType)
+                        ->attr('data-model', $key)
+                        ->attr('value', (string)$value)
+                );
+            }
+
+            $panel->child($row);
+        }
+
+        $panel->child(
+            Element::make('div')->class('pb-card-settings-actions')->children(
+                Element::make('button')
+                    ->class('pb-card-settings-save')
+                    ->attr('data-submit:click', 'saveComponentSettings')
+                    ->text('保存设置'),
+                Element::make('button')
+                    ->class('pb-card-settings-cancel')
+                    ->attr('data-action:click', 'toggleComponent()')
+                    ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                    ->text('收起')
+            )
+        );
+
+        return $panel;
+    }
+
+    protected function renderAddChildBar(string $parentUid): Element
+    {
+        $bar = Element::make('div')->class('pb-card-add-child');
+
+        $categories = ComponentRegistry::byCategory();
+        $catLabels = ComponentRegistry::categories();
+
+        foreach ($catLabels as $catKey => $catLabel) {
+            $types = $categories[$catKey] ?? [];
+            if (empty($types)) continue;
+
+            $group = Element::make('div')->class('pb-card-add-child-group');
+            $group->child(Element::make('span')->class('pb-card-add-child-label')->text($catLabel));
+
+            foreach ($types as $type) {
+                $isContainer = method_exists($type, 'isContainer') && $type->isContainer();
+                $btn = Element::make('button')
+                    ->class('pb-card-add-child-btn', $isContainer ? 'is-container' : '')
+                    ->attr('data-action:click', 'addChildComponent()')
+                    ->attr('data-action-params', json_encode(['parentUid' => $parentUid, 'componentType' => $type->name()], JSON_UNESCAPED_UNICODE))
+                    ->html('<i class="bi bi-' . $type->icon() . '"></i> ' . $type->label());
+                $group->child($btn);
+            }
+
+            $bar->child($group);
+        }
+
+        return $bar;
+    }
+
+    private function findInTree(array $tree, string $uid): ?array
+    {
+        foreach ($tree as $component) {
+            if (($component['uid'] ?? '') === $uid) return $component;
+            $children = $component['children'] ?? [];
+            if (!empty($children)) {
+                $found = $this->findInTree($children, $uid);
+                if ($found) return $found;
+            }
+        }
+        return null;
     }
 }
