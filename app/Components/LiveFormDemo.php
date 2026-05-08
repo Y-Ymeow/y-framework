@@ -31,6 +31,11 @@ class LiveFormDemo extends LiveComponent
 
     public function mount(): void {}
 
+    /**
+     * 可选：处理子组件 emit 的 fieldChanged 事件。
+     * 父组件不需要预先定义此方法——子组件通过 $emit() 发送事件，
+     * 前端 JS 捕获事件后可以选择性地调用此 Action。
+     */
     #[LiveAction]
     public function onFieldChange(array $params = []): void
     {

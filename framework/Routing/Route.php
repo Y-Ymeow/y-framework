@@ -122,7 +122,7 @@ class Route
         if ($this->compiledRegex === null) {
             return false;
         }
-
+        
         if (!preg_match($this->compiledRegex, $path, $matches)) {
             return false;
         }

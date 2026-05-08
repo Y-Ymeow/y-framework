@@ -31,7 +31,7 @@ class Asset
         if (self::$distPath === null) {
             $composerPath = base_path('public/build/.vite/manifest.json');
             $srcDir = dirname((new \ReflectionClass(self::class))->getFileName(), 2);
-            $devPath = $srcDir . '/statics/dist';
+            $devPath = base_path('public/build');
 
             self::$distPath = is_dir($composerPath) ? $composerPath : $devPath;
         }
@@ -140,7 +140,8 @@ class Asset
             self::$manifest = json_decode((string) file_get_contents($manifestPath), true) ?: [];
         }
 
-        $key = basename($entry);
+        $key = str_replace('./', '', $entry);
+
         if (isset(self::$manifest[$key]['file'])) {
             return self::distUrl() . '/' . self::$manifest[$key]['file'];
         }
@@ -164,7 +165,7 @@ class Asset
             self::$manifest = json_decode((string) file_get_contents($manifestPath), true) ?: [];
         }
 
-        $key = basename($entry);
+        $key = str_replace('./', '', $entry);
         $css = [];
         if (isset(self::$manifest[$key]['css'])) {
             foreach (self::$manifest[$key]['css'] as $file) {

@@ -26,6 +26,7 @@ abstract class AbstractLiveComponent
     protected bool $mountCalled = false;
     private array $computedCache = [];
     protected bool $loading = false;
+    private array $emittedEvents = [];
 
     public function __construct()
     {
@@ -188,5 +189,20 @@ abstract class AbstractLiveComponent
     {
         $this->routeParams = $params;
         $this->injectProps();
+    }
+
+    public function emit(string $event, array $params = []): void
+    {
+        $this->emittedEvents[] = ['event' => $event, 'params' => $params];
+    }
+
+    public function getEmittedEvents(): array
+    {
+        return $this->emittedEvents;
+    }
+
+    public function clearEmittedEvents(): void
+    {
+        $this->emittedEvents = [];
     }
 }

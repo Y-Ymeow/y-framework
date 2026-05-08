@@ -38,7 +38,7 @@ class EmbeddedLiveComponentTest extends TestCase
         $this->assertStringContainsString('data-live=', $html);
         $this->assertStringContainsString('data-live-id=', $html);
         $this->assertStringContainsString('data-live-state=', $html);
-        $this->assertStringContainsString('data-live-model', $html);
+        $this->assertStringContainsString('data-live-model.live', $html);
     }
 
     public function test_live_text_input_inherits_embedded_live_component(): void
@@ -72,31 +72,31 @@ class EmbeddedLiveComponentTest extends TestCase
         $this->assertStringNotContainsString('data-live-parent-id=', $html);
     }
 
-    public function test_live_text_input_dispatches_to_parent(): void
+    public function test_live_text_input_emit_events(): void
     {
-        $parent = new LiveFormDemo();
         $input = LiveTextInput::make('title');
-        $input->setParent($parent);
+        $input->_invoke();
 
         $input->inputValue = 'Hello World';
-        $input->updateValue(['value' => 'Hello World']);
+        $input->onUpdate();
 
-        $this->assertEquals('Hello World', $input->inputValue);
-        $this->assertEquals('title', $parent->lastChangedField);
-        $this->assertEquals('Hello World', $parent->lastChangedValue);
-        $this->assertEquals(1, $parent->changeCount);
+        $events = $input->getEmittedEvents();
+        $this->assertCount(1, $events);
+        $this->assertEquals('fieldChanged', $events[0]['event']);
+        $this->assertEquals('title', $events[0]['params']['field']);
+        $this->assertEquals('Hello World', $events[0]['params']['value']);
     }
 
-    public function test_live_text_input_dispatch_generates_slug(): void
+    public function test_live_text_input_emit_empty_value_is_ignored(): void
     {
-        $parent = new LiveFormDemo();
         $input = LiveTextInput::make('title');
-        $input->setParent($parent);
+        $input->_invoke();
 
-        $input->updateValue(['value' => 'Hello World PHP']);
+        $input->inputValue = '';
+        $input->onUpdate();
 
-        $this->assertEquals('Hello World PHP', $parent->title);
-        $this->assertEquals('hello-world-php', $parent->slug);
+        $events = $input->getEmittedEvents();
+        $this->assertCount(0, $events);
     }
 
     public function test_parent_live_component_renders_with_children(): void
@@ -120,7 +120,7 @@ class EmbeddedLiveComponentTest extends TestCase
 
         $this->assertStringContainsString('data-live-parent-id=', $html);
 
-        $this->assertStringContainsString('data-live-model', $html);
+        $this->assertStringContainsString('data-live-model.live', $html);
     }
 
     public function test_parent_state_updates_via_live_action(): void
@@ -170,13 +170,33 @@ class EmbeddedLiveComponentTest extends TestCase
         $this->assertStringContainsString('data-live-parent-id="' . $parent->getComponentId() . '"', $html);
     }
 
-    public function test_live_text_input_update_value_action(): void
+    public function test_state_update_endpoint_returns_events(): void
     {
         $input = LiveTextInput::make('title');
         $input->_invoke();
 
-        $input->updateValue(['value' => 'New Value']);
+        $input->inputValue = 'Test Value';
+        $serializedState = $input->serializeState();
 
-        $this->assertEquals('New Value', $input->inputValue);
+        $request = \Framework\Http\Request\Request::create('/live/state', 'POST', [
+            '_component' => LiveTextInput::class,
+            '_state' => $serializedState,
+            '_data' => ['inputValue' => 'Test Value'],
+            '_token' => 'test-token',
+        ]);
+
+        $session = $this->app->make(\Framework\Http\Session\Session::class);
+        $session->set('_token', 'test-token');
+
+        $resolver = $this->app->make(\Framework\Component\Live\LiveComponentResolver::class);
+        $response = $resolver->handle($request);
+
+        $decoded = json_decode($response->getContent(), true);
+
+        $this->assertTrue($decoded['success']);
+        $this->assertArrayHasKey('events', $decoded);
+        $this->assertCount(1, $decoded['events']);
+        $this->assertEquals('fieldChanged', $decoded['events'][0]['event']);
+        $this->assertEquals('title', $decoded['events'][0]['params']['field']);
     }
 }

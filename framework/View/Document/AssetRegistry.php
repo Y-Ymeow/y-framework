@@ -98,7 +98,7 @@ class AssetRegistry
         }
 
         $this->js(dist('./resources/js/ui.js'), true, 'ui-js', true);
-        foreach (dist_css('./resources/css/ui.js') as $index => $cssUrl) {
+        foreach (dist_css('./resources/js/ui.js') as $index => $cssUrl) {
             $this->css($cssUrl, 'dist-ui-css-' . $index);
         }
         return $this;
@@ -106,8 +106,8 @@ class AssetRegistry
 
     public function ux(): self
     {
-        $this->js(dist('./resources/js/ux.js'), true, 'ux-js', true);
-        foreach (dist_css('./resources/css/ux.js') as $index => $cssUrl) {
+        $this->js(dist('resources/js/ux.js'), true, 'ux-js', true);
+        foreach (dist_css('resources/js/ux.js') as $index => $cssUrl) {
             $this->css($cssUrl, 'dist-ux-css-' . $index);
         }
         return $this;

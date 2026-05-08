@@ -139,6 +139,7 @@ class StaticFile
             }
         }
 
+        
         if ($this->defaultDir) {
             $filePath = $this->defaultDir . $path;
             $realPath = realpath($filePath);

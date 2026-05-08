@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Framework\Events;
 
-use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\AbstractLiveComponent;
 use Framework\Http\Request\Request;
 
 class LiveActionEvent extends Event
 {
     private array $response;
-    private LiveComponent $component;
+    private AbstractLiveComponent $component;
     private Request $request;
 
-    public function __construct(array $response, LiveComponent $component, Request $request)
+    public function __construct(array $response, AbstractLiveComponent $component, Request $request)
     {
         parent::__construct('live.action.completed');
         $this->response = $response;
@@ -32,7 +32,7 @@ class LiveActionEvent extends Event
         return $this;
     }
 
-    public function getComponent(): LiveComponent
+    public function getComponent(): AbstractLiveComponent
     {
         return $this->component;
     }

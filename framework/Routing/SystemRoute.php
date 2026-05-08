@@ -101,6 +101,10 @@ class SystemRoute
             return new Response(\Framework\Error\ErrorPage::render(404), 404);
         }
 
+        if (str_contains($path, 'resources')) {
+            $path = str_replace('resources/', '', $path);
+        }
+
         $distPath = \Framework\Support\Asset::distPath();
         $static = new StaticFile($distPath);
         $static->disableHotlinkProtection();

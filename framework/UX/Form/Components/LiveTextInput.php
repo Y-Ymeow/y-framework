@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Framework\UX\Form\Components;
 
-use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
 
@@ -18,14 +17,10 @@ class LiveTextInput extends BaseField
         return 'text';
     }
 
-    #[LiveAction]
-    public function updateValue(array $params = []): void
+    public function onUpdate(): void
     {
-        $this->inputValue = $params['value'] ?? '';
-        $this->value = $this->inputValue;
-
-        if ($this->hasParent()) {
-            $this->dispatchToParent('onFieldChange', [
+        if ($this->inputValue !== '') {
+            $this->emit('fieldChanged', [
                 'field' => $this->name,
                 'value' => $this->inputValue,
             ]);
@@ -42,8 +37,7 @@ class LiveTextInput extends BaseField
             ->attr('type', 'text')
             ->attr('id', $this->name)
             ->attr('name', $this->name)
-            ->attr('data-live-model', $this->name)
-            ->attr('data-live-debounce', '300');
+            ->attr('data-live-model.live', 'inputValue');
 
         if ($this->placeholder) {
             $input->attr('placeholder', $this->placeholder);

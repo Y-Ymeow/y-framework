@@ -219,6 +219,30 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
         if (data.operations) {
             data.operations.forEach(op => executeOperation(op));
         }
+
+        // 处理组件级 Events（子组件 emit 的事件冒泡到父组件）
+        if (data.events && data.events.length > 0) {
+            const liveEl = el.closest('[data-live]') || el;
+            data.events.forEach(evt => {
+                const eventName = 'live:' + evt.event;
+                const customEvent = new CustomEvent(eventName, {
+                    detail: evt.params || {},
+                    bubbles: true,
+                    cancelable: true,
+                });
+                liveEl.dispatchEvent(customEvent);
+
+                // 如果有父级 Live 组件，也 dispatch 到父级
+                const parentEl = liveEl.parentElement?.closest('[data-live]');
+                if (parentEl && parentEl !== liveEl) {
+                    parentEl.dispatchEvent(new CustomEvent(eventName, {
+                        detail: evt.params || {},
+                        bubbles: true,
+                        cancelable: true,
+                    }));
+                }
+            });
+        }
     } finally {
         hideProgress();
     }

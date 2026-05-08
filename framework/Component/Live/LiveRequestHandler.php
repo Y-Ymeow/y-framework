@@ -99,6 +99,7 @@ class LiveRequestHandler
                 'fragments' => [],
                 'operations' => [],
                 'componentUpdates' => [],
+                'events' => $component->getEmittedEvents(),
             ];
 
             $this->collectEmittedEvents($response, $component);
@@ -174,6 +175,7 @@ class LiveRequestHandler
                 'component' => $componentClass,
                 'state' => $newState,
                 'patches' => $patches,
+                'events' => $component->getEmittedEvents(),
             ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
