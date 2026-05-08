@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Pages;
+namespace App\Service;
 
 use Admin\PageBuilder\Components\ComponentRegistry;
 use Admin\PageBuilder\PageBuilderCssService;
 use Admin\PageBuilder\PageGenerator;
 use Framework\Http\Response\Response;
 use Framework\View\Base\Element;
+use Framework\View\Document\AssetRegistry;
 use Framework\View\Document\Document;
 
 class PageRenderer
@@ -26,8 +27,7 @@ class PageRenderer
         $this->renderTree($tree, $page);
 
         $css = $this->buildPageCss($tree);
-
-        Document::injectStatic('head', '<style>' . "\n" . $css . "\n" . '</style>');
+        AssetRegistry::getInstance()->addCssSnippet('pages', $css);
 
         return Response::html($page);
     }

@@ -85,7 +85,9 @@ class CssRoute
             }
         }
 
-        $collector->loadFromCache();
+        if (!app()->isDebug()) {
+            $collector->loadFromCache($snippetsParam);
+        }
 
         $snippets = $collector->collect();
         if (!empty($snippets)) {

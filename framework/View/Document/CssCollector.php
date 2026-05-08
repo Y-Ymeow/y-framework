@@ -78,11 +78,11 @@ class CssCollector
         return array_keys($this->loaded);
     }
 
-    public function loadFromCache(): self
+    public function loadFromCache(string $key = ''): self
     {
         if (!function_exists('\\cache')) return $this;
 
-        $ids = \cache()->get('css_snippet_ids');
+        $ids = \cache()->get('css_snippet_ids:' . $key);
         if (!is_array($ids)) return $this;
 
         foreach ($ids as $id) {

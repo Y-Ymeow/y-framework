@@ -27,7 +27,7 @@ class PageBuilderServiceProvider extends ServiceProvider
                 if (empty($className) || empty($route)) continue;
 
                 $router->addRoute('GET', $route, function () use ($className) {
-                    $renderer = new \App\Pages\PageRenderer();
+                    $renderer = new \App\Service\PageRenderer();
                     $response = $renderer->render($className);
                     if ($response) {
                         return $response;

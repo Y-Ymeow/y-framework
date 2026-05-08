@@ -43,9 +43,6 @@ class AdminLayout extends LiveComponent
         }
 
         $registry = AssetRegistry::getInstance();
-        if (!$registry->isLoaded('bootstrap-icons')) {
-            $registry->css('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css', 'bootstrap-icons');
-        }
 
         $request = app()->make(\Framework\Http\Request\Request::class);
         $path = $request->path();
