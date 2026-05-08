@@ -79,4 +79,34 @@ class LiveEventBus
         
         return $listeners;
     }
+
+    /**
+     * 查找指定组件 ID 对某个事件的监听器
+     */
+    public static function findListenerForComponent(string $componentId, string $event): ?array
+    {
+        $stateInfo = self::$componentStates[$componentId] ?? null;
+        if (!$stateInfo) return null;
+
+        $class = $stateInfo['class'];
+        if (!class_exists($class)) return null;
+
+        $ref = new \ReflectionClass($class);
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(LiveListener::class);
+            foreach ($attrs as $attr) {
+                $listener = $attr->newInstance();
+                if ($listener->event === $event) {
+                    return [
+                        'componentId' => $componentId,
+                        'class' => $class,
+                        'handler' => $method->getName(),
+                        'state' => $stateInfo['state'],
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
 }

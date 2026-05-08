@@ -295,4 +295,63 @@ class EmbeddedLiveComponentTest extends TestCase
 
         $input->callAction('unsafe', []);
     }
+
+    public function test_emit_with_target_id_sends_to_specific_component(): void
+    {
+        // 创建两个组件，一个发送定向事件，一个接收
+        $sender = new LiveFormDemo();
+        $sender->named('sender-demo');
+        $sender->_invoke();
+
+        $receiver = new LiveFormDemo();
+        $receiver->named('receiver-demo');
+        $receiver->_invoke();
+
+        // 发送定向事件到 receiver
+        $sender->emit('fieldChanged', ['field' => 'title', 'value' => 'Targeted'], 'receiver-demo');
+
+        $events = $sender->getEmittedEvents();
+        $this->assertCount(1, $events);
+        $this->assertEquals('fieldChanged', $events[0]['event']);
+        $this->assertEquals('receiver-demo', $events[0]['targetId']);
+        $this->assertEquals('Targeted', $events[0]['params']['value']);
+    }
+
+    public function test_emit_without_target_id_is_broadcast(): void
+    {
+        $sender = new LiveFormDemo();
+        $sender->named('sender-demo');
+        $sender->_invoke();
+
+        // 发送广播事件（无 targetId）
+        $sender->emit('fieldChanged', ['field' => 'title', 'value' => 'Broadcast']);
+
+        $events = $sender->getEmittedEvents();
+        $this->assertCount(1, $events);
+        $this->assertEquals('fieldChanged', $events[0]['event']);
+        $this->assertNull($events[0]['targetId'] ?? null);
+    }
+
+    public function test_component_id_can_be_set_via_named(): void
+    {
+        $component = new LiveFormDemo();
+        $component->named('my-custom-id');
+        $component->_invoke();
+
+        $this->assertEquals('my-custom-id', $component->getComponentId());
+        $this->assertEquals('my-custom-id', $component->id());
+    }
+
+    public function test_component_auto_generates_id(): void
+    {
+        $component1 = new LiveFormDemo();
+        $component1->_invoke();
+
+        $component2 = new LiveFormDemo();
+        $component2->_invoke();
+
+        // 自动生成的 ID 应该是唯一的
+        $this->assertNotEquals($component1->getComponentId(), $component2->getComponentId());
+        $this->assertStringStartsWith('live-form-demo-', $component1->getComponentId());
+    }
 }

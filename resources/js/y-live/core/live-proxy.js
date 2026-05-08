@@ -62,8 +62,8 @@ function findParentLiveEl(el) {
 /**
  * Process emitted events from child components.
  * 1. Dispatch local CustomEvent
- * 2. Walk up $parent chain to find listener
- * 3. Send /live/event to parent if it has #[LiveListener]
+ * 2. If targetId is specified, send directly to that component
+ * 3. Otherwise walk up $parent chain to find listener
  */
 async function processEvents(el, events) {
     if (!events || events.length === 0) return;
@@ -79,7 +79,20 @@ async function processEvents(el, events) {
             cancelable: true,
         }));
 
-        // 2. Walk up $parent chain to find listener
+        // 2. If targetId is specified, send directly to that component
+        if (evt.targetId) {
+            const targetEl = document.querySelector(`[data-live-id="${evt.targetId}"]`);
+            if (targetEl) {
+                const targetInfo = getComponentInfo(targetEl);
+                const targetListeners = targetInfo.__listeners || [];
+                if (targetListeners.includes(evt.event)) {
+                    await dispatchEventToParent(targetEl, evt.event, evt.params);
+                }
+            }
+            continue;
+        }
+
+        // 3. Walk up $parent chain to find listener
         let currentEl = liveEl;
         while (currentEl) {
             const parentEl = findParentLiveEl(currentEl);
@@ -90,7 +103,7 @@ async function processEvents(el, events) {
 
             // Check if parent listens for this event
             if (parentListeners.includes(evt.event)) {
-                // 3. Send /live/event to parent
+                // 4. Send /live/event to parent
                 await dispatchEventToParent(parentEl, evt.event, evt.params);
                 break; // Only trigger the nearest listener
             }

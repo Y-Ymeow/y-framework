@@ -192,9 +192,13 @@ abstract class AbstractLiveComponent
         $this->injectProps();
     }
 
-    public function emit(string $event, array $params = []): void
+    public function emit(string $event, array $params = [], ?string $targetId = null): void
     {
-        $this->emittedEvents[] = ['event' => $event, 'params' => $params];
+        $this->emittedEvents[] = [
+            'event' => $event,
+            'params' => $params,
+            'targetId' => $targetId,
+        ];
     }
 
     public function getEmittedEvents(): array

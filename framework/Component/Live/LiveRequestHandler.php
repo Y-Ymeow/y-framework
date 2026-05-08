@@ -603,20 +603,36 @@ class LiveRequestHandler
 
     private function collectEmittedEvents(array &$response, AbstractLiveComponent $component): void
     {
-        $emittedEvents = LiveEventBus::getEmittedEvents();
+        $emittedEvents = $component->getEmittedEvents();
         foreach ($emittedEvents as $emittedEvent) {
-            $listeners = LiveEventBus::findListenersForEvent(
-                $emittedEvent['event'],
-                $component->getComponentId()
-            );
+            $targetId = $emittedEvent['targetId'] ?? null;
 
-            foreach ($listeners as $listener) {
-                $this->processComponentUpdate($listener['componentId'], $response, function ($comp) use ($listener, $emittedEvent) {
-                    $handler = $listener['handler'];
-                    if (method_exists($comp, $handler)) {
-                        $comp->$handler($emittedEvent['data']);
-                    }
-                });
+            if ($targetId !== null) {
+                // 定向事件：直接发送到指定组件
+                $listener = LiveEventBus::findListenerForComponent($targetId, $emittedEvent['event']);
+                if ($listener) {
+                    $this->processComponentUpdate($listener['componentId'], $response, function ($comp) use ($listener, $emittedEvent) {
+                        $handler = $listener['handler'];
+                        if (method_exists($comp, $handler)) {
+                            $comp->$handler($emittedEvent['params']);
+                        }
+                    });
+                }
+            } else {
+                // 广播事件：查找所有监听器（排除自己）
+                $listeners = LiveEventBus::findListenersForEvent(
+                    $emittedEvent['event'],
+                    $component->getComponentId()
+                );
+
+                foreach ($listeners as $listener) {
+                    $this->processComponentUpdate($listener['componentId'], $response, function ($comp) use ($listener, $emittedEvent) {
+                        $handler = $listener['handler'];
+                        if (method_exists($comp, $handler)) {
+                            $comp->$handler($emittedEvent['params']);
+                        }
+                    });
+                }
             }
         }
     }
