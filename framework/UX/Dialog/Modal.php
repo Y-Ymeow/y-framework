@@ -53,7 +53,7 @@ class Modal extends UXComponent
     protected static ?string $componentName = 'modal';
 
     protected string $title = '';
-    protected string $content = '';
+    protected mixed $content = '';
     protected string $size = 'md';
     protected bool $closeable = true;
     protected bool $backdrop = true;

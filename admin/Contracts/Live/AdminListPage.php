@@ -6,10 +6,10 @@ namespace Admin\Contracts\Live;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Admin\Contracts\Resource\ResourceInterface;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Services\AdminManager;
-use Framework\Component\Live\Attribute\Prop;
 use Framework\UX\Data\DataTable;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
@@ -17,14 +17,25 @@ use Framework\UX\UXComponent;
 
 class AdminListPage extends LiveComponent
 {
-    #[Prop()]
+    #[State(frontendEditable: false)]
     public string $resourceName = '';
 
+    #[State]
     public int $page = 1;
+
+    #[State]
     public int $perPage = 15;
+
+    #[State]
     public string $sortField = '';
+
+    #[State]
     public string $sortDirection = 'asc';
+
+    #[State]
     public string $searchQuery = '';
+
+    #[State]
     public array $selectedKeys = [];
 
     public function mount(): void
@@ -42,7 +53,7 @@ class AdminListPage extends LiveComponent
         // 从 Resource 获取手动注册的 LiveActions
         $resourceActions = $resource->getLiveActions();
         foreach ($resourceActions as $name => $config) {
-            $this->addLiveAction($name, $config);
+            $this->registerAction($name, $config);
         }
     }
 
@@ -95,7 +106,7 @@ class AdminListPage extends LiveComponent
         }
 
         if (empty($keys)) {
-            parent::toast(t('admin:actions.select_first', [], '请先选择要删除的项目'), 'error');
+            $this->toast(t('admin:actions.select_first', [], '请先选择要删除的项目'), 'error');
             return;
         }
 
@@ -107,14 +118,13 @@ class AdminListPage extends LiveComponent
             $modelClass::destroy($key);
         }
         $this->selectedKeys = [];
-        parent::toast(t('admin:actions.delete_success', [], '删除成功'));
+        $this->toast(t('admin:actions.delete_success', [], '删除成功'));
         $this->refresh('admin-list-table');
     }
 
     #[LiveAction]
-    public function editRow(array $params): void
+    public function editRow(int $rowKey): void
     {
-        $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
         $resourceName = $this->getResource()->getName();
@@ -126,9 +136,8 @@ class AdminListPage extends LiveComponent
     }
 
     #[LiveAction]
-    public function deleteRow(array $params): void
+    public function deleteRow(int $rowKey): void
     {
-        $rowKey = $params['rowKey'] ?? null;
         if (!$rowKey) return;
 
         $resourceName = $this->getResource()->getName();

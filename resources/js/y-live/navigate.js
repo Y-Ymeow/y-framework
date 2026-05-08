@@ -83,12 +83,15 @@ export async function navigate(url, options = {}) {
     showProgress();
 
     try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
         const response = await fetch('/live/navigate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Navigate': 'true',
                 'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': csrfToken,
             },
             body: JSON.stringify({ url, fragment, state }),
         });

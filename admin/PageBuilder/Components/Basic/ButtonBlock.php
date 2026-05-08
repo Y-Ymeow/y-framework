@@ -8,6 +8,7 @@ use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Components\Select;
+use Framework\UX\Form\Components\LinkSelector;
 use Framework\UX\Form\Layout\Grid;
 use Framework\View\Base\Element;
 
@@ -21,15 +22,13 @@ class ButtonBlock extends ComponentType
     public function settings(FormBuilder $form): void
     {
         $form->schema([
-            Grid::make(2)->schema([
-                TextInput::make('text')
-                    ->label('按钮文字')
-                    ->default('点击'),
+            TextInput::make('text')
+                ->label('按钮文字')
+                ->default('点击'),
 
-                TextInput::make('url')
-                    ->label('链接')
-                    ->default(''),
-            ]),
+            LinkSelector::make('link')
+                ->label('链接设置')
+                ->default(['url' => '', 'target' => '_self']),
 
             Grid::make(3)->schema([
                 Select::make('variant')
@@ -64,7 +63,9 @@ class ButtonBlock extends ComponentType
     public function render(array $settings): Element
     {
         $text = $this->setting($settings, 'text', '点击');
-        $url = $this->setting($settings, 'url', '');
+        $link = $this->setting($settings, 'link', []);
+        $url = $link['url'] ?? '';
+        $target = $link['target'] ?? '_self';
         $variant = $this->setting($settings, 'variant', 'primary');
         $align = $this->setting($settings, 'align', 'left');
 
@@ -88,6 +89,7 @@ class ButtonBlock extends ComponentType
 
         if ($url) {
             $btn->attr('href', $url);
+            $btn->attr('target', $target);
         }
 
         $wrapper = Element::make('div')

@@ -8,6 +8,7 @@ use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Components\Select;
+use Framework\UX\Form\Components\MediaPicker;
 use Framework\UX\Form\Layout\Grid;
 use Framework\View\Base\Element;
 
@@ -21,16 +22,14 @@ class ImageBlock extends ComponentType
     public function settings(FormBuilder $form): void
     {
         $form->schema([
-            Grid::make(2)->schema([
-                TextInput::make('src')
-                    ->label('图片地址')
-                    ->placeholder('https://...')
-                    ->default(''),
+            MediaPicker::make('src')
+                ->label('图片')
+                ->accept('image/*')
+                ->maxSize(2048),
 
-                TextInput::make('alt')
-                    ->label('替代文本')
-                    ->default(''),
-            ]),
+            TextInput::make('alt')
+                ->label('替代文本')
+                ->default(''),
 
             Grid::make(3)->schema([
                 TextInput::make('width')

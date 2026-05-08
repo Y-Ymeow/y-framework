@@ -210,4 +210,39 @@ abstract class AbstractLiveComponent
     {
         $this->emittedEvents = [];
     }
+
+    /**
+     * 检查用户是否已认证。未认证时抛出 401 异常。
+     * 子组件可在 mount() 或 action 中调用此方法实现懒人权验。
+     */
+    public function checkAuth(): void
+    {
+        if (!auth()->check()) {
+            throw new \Framework\Exception\AuthenticationException('Unauthenticated.');
+        }
+    }
+
+    /**
+     * 检查用户是否具有指定角色。
+     */
+    public function checkRole(string|array $roles): void
+    {
+        $this->checkAuth();
+
+        if (!auth()->hasRole($roles)) {
+            throw new \Framework\Exception\AuthorizationException('无权访问');
+        }
+    }
+
+    /**
+     * 检查用户是否具有指定权限。
+     */
+    public function checkPermission(string|array $permissions): void
+    {
+        $this->checkAuth();
+
+        if (!auth()->hasPermission($permissions)) {
+            throw new \Framework\Exception\AuthorizationException('无权访问');
+        }
+    }
 }

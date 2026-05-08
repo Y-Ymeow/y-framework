@@ -134,21 +134,6 @@ class RichEditor extends FormField
     }
 
     /**
-     * 设置 LiveAction 和触发事件
-     * @param string $action Action 名称
-     * @param string $event 触发事件
-     * @return static
-     * @ux-example RichEditor::make()->liveAction('updateContent', 'change')
-     * @ux-default event='change'
-     */
-    public function liveAction(string $action, string $event = 'change'): static
-    {
-        $this->liveAction = $action;
-        $this->liveEvent = $event;
-        return $this;
-    }
-
-    /**
      * 设置编辑器行数
      * @param int $rows 行数
      * @return static

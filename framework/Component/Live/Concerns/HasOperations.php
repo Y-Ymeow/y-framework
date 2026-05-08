@@ -20,6 +20,7 @@ trait HasOperations
         foreach ($this->operations as $existing) {
             if ($existing === $newOp) return;
         }
+
         $this->operations[] = $newOp;
     }
 

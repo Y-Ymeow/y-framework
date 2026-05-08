@@ -8,6 +8,8 @@ use Admin\PageBuilder\Components\ComponentType;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Components\Select;
+use Framework\UX\Form\Components\LinkSelector;
+use Framework\UX\Form\Components\MediaPicker;
 use Framework\UX\Form\Layout\Grid;
 use Framework\View\Base\Element;
 
@@ -27,16 +29,16 @@ class Hero extends ComponentType
             TextInput::make('subtitle')
                 ->label('副标题')
                 ->default('构建卓越的数字体验'),
-            Grid::make(2)->schema([
-                TextInput::make('button_text')
-                    ->label('按钮文字')
-                    ->default('了解更多'),
-                TextInput::make('button_url')
-                    ->label('按钮链接')
-                    ->default('#'),
-            ]),
-            TextInput::make('background_image')
-                ->label('背景图片 URL'),
+            TextInput::make('button_text')
+                ->label('按钮文字')
+                ->default('了解更多'),
+            LinkSelector::make('button_link')
+                ->label('按钮链接')
+                ->default(['url' => '#', 'target' => '_self']),
+            MediaPicker::make('background_image')
+                ->label('背景图片')
+                ->accept('image/*')
+                ->maxSize(2048),
             Grid::make(2)->schema([
                 Select::make('align')
                     ->label('对齐')
@@ -65,7 +67,9 @@ class Hero extends ComponentType
         $title = $this->setting($settings, 'title', '欢迎来到我们的网站');
         $subtitle = $this->setting($settings, 'subtitle', '');
         $buttonText = $this->setting($settings, 'button_text', '了解更多');
-        $buttonUrl = $this->setting($settings, 'button_url', '#');
+        $buttonLink = $this->setting($settings, 'button_link', []);
+        $buttonUrl = $buttonLink['url'] ?? '#';
+        $buttonTarget = $buttonLink['target'] ?? '_self';
         $bgImage = $this->setting($settings, 'background_image', '');
         $align = $this->setting($settings, 'align', 'center');
         $size = $this->setting($settings, 'size', 'lg');
@@ -105,13 +109,13 @@ class Hero extends ComponentType
         }
 
         if ($buttonText) {
-            $content->child(
-                Element::make('a')
-                    ->class('inline-flex', 'px-8', 'py-3', 'text-base', 'font-semibold', 'bg-blue-600', 'text-white', 'rounded-lg', 'no-underline', 'hover:bg-blue-700')
-                    ->attr('data-pb-style', 'button')
-                    ->attr('href', $buttonUrl)
-                    ->text($buttonText)
-            );
+            $btn = Element::make('a')
+                ->class('inline-flex', 'px-8', 'py-3', 'text-base', 'font-semibold', 'bg-blue-600', 'text-white', 'rounded-lg', 'no-underline', 'hover:bg-blue-700')
+                ->attr('data-pb-style', 'button')
+                ->attr('href', $buttonUrl)
+                ->attr('target', $buttonTarget)
+                ->text($buttonText);
+            $content->child($btn);
         }
 
         $hero->child($content);

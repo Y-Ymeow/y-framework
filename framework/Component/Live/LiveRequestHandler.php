@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Framework\Component\Live;
 
 use Framework\Events\LiveActionEvent;
+use Framework\Http\Upload\Upload;
 use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
 use Framework\Http\Middleware\VerifyCsrfToken;
@@ -328,6 +329,7 @@ class LiveRequestHandler
     #[Route('/navigate', ['POST'], name: 'live.navigate', middleware: [VerifyCsrfToken::class])]
     public function navigate(Request $request): Response
     {
+        logger()->info('navigate', $request->all());
         $error = $this->guardCsrf($request);
         if ($error) return $error;
 
@@ -401,6 +403,42 @@ class LiveRequestHandler
             'success' => true,
             'locale' => \Framework\Intl\Translator::getLocale(),
             'translations' => $translations,
+        ]);
+    }
+
+    #[Route('/upload', ['POST'], name: 'live.upload', middleware: [VerifyCsrfToken::class])]
+    public function upload(Request $request): Response
+    {
+        $error = $this->guardCsrf($request);
+        if ($error) return $error;
+
+        $file = Upload::from('file');
+        if (!$file) {
+            return Response::json(['success' => false, 'error' => 'No file uploaded'], 400);
+        }
+
+        if (!$file->isValid()) {
+            return Response::json(['success' => false, 'error' => $file->getErrorMessage()], 400);
+        }
+
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'video/mp4', 'application/pdf'];
+        $errors = $file->allowedMimes($allowedMimes)->maxSize(10 * 1024 * 1024)->validate();
+        if (!empty($errors)) {
+            return Response::json(['success' => false, 'error' => implode(', ', $errors)], 400);
+        }
+
+        $datePath = date('Y/m');
+        $directory = paths()->uploads() . '/' . $datePath;
+        $storedName = $file->store($directory);
+
+        $url = '/uploads/' . $datePath . '/' . $storedName;
+
+        return Response::json([
+            'success' => true,
+            'url' => $url,
+            'name' => $file->getName(),
+            'size' => $file->getSize(),
+            'mime' => $file->getMime(),
         ]);
     }
 
@@ -688,6 +726,7 @@ class LiveRequestHandler
     private function collectComponentOperations(array &$response, AbstractLiveComponent $component): void
     {
         $componentOps = $component->getOperations();
+
         if (!empty($componentOps)) {
             $response['operations'] = array_merge($response['operations'], $componentOps);
         }

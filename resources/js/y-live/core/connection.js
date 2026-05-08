@@ -1,11 +1,6 @@
 // Live Connection - 与后端通信
 export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-action',
-    'data-action-event',
-    'data-action-params',
-    'data-live-action',
-    'data-live-action-params',
-    'data-live-disabled',
     'data-live',
     'data-live-id',
     'data-live-state',
@@ -13,8 +8,6 @@ export const LIVE_SAFE_DATA_ATTRS = new Set([
     'data-live-listeners',
     'data-live-model',
     'data-live-debounce',
-    'data-live-event',
-    'data-uxModel',
     'data-ux-action',
     'data-intl',
     'data-intl-params',

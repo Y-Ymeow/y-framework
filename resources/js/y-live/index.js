@@ -169,6 +169,72 @@ directive('submit', (el, state, method, { content, modifiers, $execute }) => {
     };
 });
 
+// 5. 注册 data-live-upload 指令 — 文件上传
+//    元素上 data-live-upload 标记文件上传区
+//    选中文件后自动 POST 到 /live/upload，将 URL 回填到 data-media-value 的 hidden input
+directive('live-upload', (el, state, method, { content }) => {
+    const fileInput = el.querySelector('input[type="file"]');
+    const hiddenInput = el.querySelector('[data-media-value]');
+    if (!fileInput) return;
+
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const handleUpload = async (file) => {
+        el.classList.add('y-uploading');
+        const fd = new FormData();
+        fd.append('file', file);
+
+        try {
+            const resp = await fetch('/live/upload', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken() },
+                body: fd,
+            });
+            const data = await resp.json();
+            if (data.success && hiddenInput) {
+                hiddenInput.value = data.url;
+                hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                const preview = el.querySelector('.ux-form-media-preview');
+                if (preview) {
+                    preview.classList.add('has-image');
+                    preview.classList.remove('empty');
+                    const img = preview.querySelector('img');
+                    if (img) img.src = data.url;
+                    const placeholder = preview.querySelector('.ux-form-media-placeholder');
+                    if (placeholder) placeholder.remove();
+                }
+            } else {
+                alert(data.error || 'Upload failed');
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Upload failed');
+        } finally {
+            el.classList.remove('y-uploading');
+        }
+    };
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (file) handleUpload(file);
+        fileInput.value = '';
+    });
+
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('y-dragover'); });
+    el.addEventListener('dragleave', () => el.classList.remove('y-dragover'));
+    el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('y-dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) handleUpload(file);
+    });
+
+    const trigger = el.querySelector('[data-media-trigger]');
+    if (trigger) {
+        trigger.addEventListener('click', () => fileInput.click());
+    }
+});
+
 async function dispatchAction(el, componentClass, action, stateRef, state, event, params = {}, isStream = false) {
     showProgress();
 

@@ -6,6 +6,7 @@ namespace Admin\Contracts\Live;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Admin\Services\AdminManager;
 use Admin\Contracts\Resource\ResourceInterface;
 use Admin\Contracts\Resource\BaseResource;
@@ -15,10 +16,19 @@ use Framework\UX\UXComponent;
 
 class AdminFormPage extends LiveComponent
 {
+    #[State(frontendEditable: false)]
     public string $resourceName = '';
+
+    #[State(frontendEditable: false)]
     public ?int $recordId = null;
+
+    #[State]
     public array $formData = [];
+
+    #[State]
     public array $formErrors = [];
+
+    #[State]
     public bool $saved = false;
 
     public function mount(): void
@@ -60,7 +70,7 @@ class AdminFormPage extends LiveComponent
         }
 
         $this->saved = true;
-        parent::toast($this->recordId ? t('admin:actions.update_success', [], '更新成功') : t('admin:actions.create_success', [], '创建成功'));
+        $this->toast($this->recordId ? t('admin:actions.update_success', [], '更新成功') : t('admin:actions.create_success', [], '创建成功'));
         $this->refresh('admin-form');
     }
 

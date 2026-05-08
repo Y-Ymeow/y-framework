@@ -3,4 +3,6 @@ import './y-ux/index.js';
 import './y-ux/ux.css';
 import './y-ux/menu-manager.js';
 import './y-ux/media-upload.js';
+import './y-ux/media-picker.js';
+import './y-ux/link-picker.js';
 import './y-ux/page-builder.js';

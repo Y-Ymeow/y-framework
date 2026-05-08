@@ -500,3 +500,28 @@
 #30 /computer/Project/frameworks/php/public/index.php(22): Framework\Foundation\Kernel->handle()
 #31 {main}
 
+2026-05-08 19:53:05 - Method columns does not exist on Framework\UX\Form\FormBuilder
+#0 /computer/Project/frameworks/php/admin/Pages/SettingPage.php(112): Framework\UX\Form\FormBuilder->__call()
+#1 /computer/Project/frameworks/php/admin/Pages/SettingPage.php(97): Admin\Pages\SettingPage->renderGroupForm()
+#2 /computer/Project/frameworks/php/admin/Pages/SettingPage.php(63): Admin\Pages\SettingPage->showSettings()
+#3 [internal function]: Admin\Pages\SettingPage->__invoke()
+#4 /computer/Project/frameworks/php/framework/Routing/Router.php(321): ReflectionMethod->invoke()
+#5 /computer/Project/frameworks/php/framework/Routing/Router.php(289): Framework\Routing\Router->invoke()
+#6 /computer/Project/frameworks/php/framework/Http/Middleware/AdminAuthenticate.php(24): Framework\Routing\Router->{closure:Framework\Routing\Router::invokeWithMiddleware():288}()
+#7 /computer/Project/frameworks/php/framework/Routing/MiddlewareManager.php(122): Framework\Http\Middleware\AdminAuthenticate->handle()
+#8 /computer/Project/frameworks/php/framework/Routing/MiddlewareManager.php(106): Framework\Routing\MiddlewareManager->{closure:Framework\Routing\MiddlewareManager::createMiddlewareHandler():111}()
+#9 /computer/Project/frameworks/php/framework/Routing/Router.php(292): Framework\Routing\MiddlewareManager->pipe()
+#10 /computer/Project/frameworks/php/framework/Routing/Router.php(245): Framework\Routing\Router->invokeWithMiddleware()
+#11 /computer/Project/frameworks/php/framework/Component/Live/LiveRequestHandler.php(352): Framework\Routing\Router->dispatch()
+#12 [internal function]: Framework\Component\Live\LiveRequestHandler->navigate()
+#13 /computer/Project/frameworks/php/framework/Routing/Router.php(321): ReflectionMethod->invoke()
+#14 /computer/Project/frameworks/php/framework/Routing/Router.php(289): Framework\Routing\Router->invoke()
+#15 /computer/Project/frameworks/php/framework/Http/Middleware/VerifyCsrfToken.php(36): Framework\Routing\Router->{closure:Framework\Routing\Router::invokeWithMiddleware():288}()
+#16 /computer/Project/frameworks/php/framework/Routing/MiddlewareManager.php(122): Framework\Http\Middleware\VerifyCsrfToken->handle()
+#17 /computer/Project/frameworks/php/framework/Routing/MiddlewareManager.php(106): Framework\Routing\MiddlewareManager->{closure:Framework\Routing\MiddlewareManager::createMiddlewareHandler():111}()
+#18 /computer/Project/frameworks/php/framework/Routing/Router.php(292): Framework\Routing\MiddlewareManager->pipe()
+#19 /computer/Project/frameworks/php/framework/Routing/Router.php(245): Framework\Routing\Router->invokeWithMiddleware()
+#20 /computer/Project/frameworks/php/framework/Foundation/Kernel.php(72): Framework\Routing\Router->dispatch()
+#21 /computer/Project/frameworks/php/public/index.php(22): Framework\Foundation\Kernel->handle()
+#22 {main}
+

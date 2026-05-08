@@ -109,7 +109,6 @@ class SettingPage implements PageInterface
         $form = FormBuilder::make()
             ->post()
             ->action(request()->url())
-            ->columns(2)
             ->submitLabel(t('admin.settings.save'));
 
         foreach ($definitions as $key => $field) {
