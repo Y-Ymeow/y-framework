@@ -4,11 +4,25 @@ declare(strict_types=1);
 
 namespace Framework\Cache;
 
-class CacheManager implements \Psr\SimpleCache\CacheInterface
+use Framework\Cache\Contracts\LockInterface;
+use Framework\Cache\Contracts\StoreInterface;
+use Framework\Cache\Drivers\ArrayDriver;
+use Framework\Cache\Drivers\FileDriver;
+use Framework\Cache\Drivers\RedisDriver;
+use Framework\Cache\Events\CacheHit;
+use Framework\Cache\Events\CacheMissed;
+use Framework\Cache\Events\KeyForgotten;
+use Framework\Cache\Events\KeyWritten;
+use Framework\Cache\Tag\TagSet;
+use Framework\Cache\Tag\TaggedCache;
+use Psr\SimpleCache\CacheInterface;
+
+class CacheManager implements CacheInterface
 {
     private array $stores = [];
     private string $default;
     private array $config;
+    private ?object $dispatcher = null;
 
     public function __construct(array $config)
     {
@@ -16,7 +30,12 @@ class CacheManager implements \Psr\SimpleCache\CacheInterface
         $this->default = $config['default'] ?? 'file';
     }
 
-    public function store(?string $name = null): \Psr\SimpleCache\CacheInterface
+    public function setDispatcher(object $dispatcher): void
+    {
+        $this->dispatcher = $dispatcher;
+    }
+
+    public function store(?string $name = null): StoreInterface
     {
         $name = $name ?: $this->default;
 
@@ -27,35 +46,95 @@ class CacheManager implements \Psr\SimpleCache\CacheInterface
         return $this->stores[$name];
     }
 
-    private function createDriver(string $name): \Psr\SimpleCache\CacheInterface
+    public function tags(array|string $names): TaggedCache
     {
-        $config = $this->config['stores'][$name] ?? null;
+        $store = $this->store();
+        $tagSet = new TagSet($store, $names);
+        return new TaggedCache($store, $tagSet);
+    }
 
-        if (!$config) {
-            throw new \InvalidArgumentException("Cache store [{$name}] is not defined.");
+    public function lock(string $key, int $seconds = 0): LockInterface
+    {
+        return $this->store()->lock($key, $seconds);
+    }
+
+    public function increment(string $key, int $step = 1): int
+    {
+        return $this->store()->increment($key, $step);
+    }
+
+    public function decrement(string $key, int $step = 1): int
+    {
+        return $this->store()->decrement($key, $step);
+    }
+
+    public function remember(string $key, \Closure $callback, \DateInterval|int|null $ttl = null): mixed
+    {
+        if ($this->has($key)) {
+            return $this->get($key);
         }
 
-        return match ($config['driver']) {
-            'file' => new FileCache($config['path']),
-            'redis' => new RedisCache($config),
-            'memory', 'array' => new ArrayCache(),
-            default => throw new \InvalidArgumentException("Cache driver [{$config['driver']}] is not supported."),
-        };
+        $value = $callback();
+        $this->set($key, $value, $ttl);
+        return $value;
+    }
+
+    public function rememberForever(string $key, \Closure $callback): mixed
+    {
+        if ($this->has($key)) {
+            return $this->get($key);
+        }
+
+        $value = $callback();
+        $this->set($key, $value);
+        return $value;
+    }
+
+    public function pull(string $key, mixed $default = null): mixed
+    {
+        $value = $this->get($key, $default);
+        $this->delete($key);
+        return $value;
+    }
+
+    public function putMany(array $values, \DateInterval|int|null $ttl = null): bool
+    {
+        return $this->store()->setMultiple($values, $ttl);
     }
 
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->store()->get($key, $default);
+        $value = $this->store()->get($key, $default);
+
+        if ($value !== $default) {
+            $this->dispatchEvent(new CacheHit($key, $value, $this->default));
+        } else {
+            $this->dispatchEvent(new CacheMissed($key, $this->default));
+        }
+
+        return $value;
     }
 
     public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool
     {
-        return $this->store()->set($key, $value, $ttl);
+        $result = $this->store()->set($key, $value, $ttl);
+
+        if ($result) {
+            $this->dispatchEvent(new KeyWritten($key, $value, is_int($ttl) ? $ttl : null, $this->default));
+        }
+
+        return $result;
     }
 
     public function delete(string $key): bool
     {
-        return $this->store()->delete($key);
+        $result = $this->store()->delete($key);
+
+        if ($result) {
+            $this->dispatchEvent(new KeyForgotten($key, $this->default));
+        }
+
+        return $result;
     }
 
     public function has(string $key): bool
@@ -83,401 +162,45 @@ class CacheManager implements \Psr\SimpleCache\CacheInterface
         return $this->store()->deleteMultiple($keys);
     }
 
-    public function remember(string $key, \Closure $callback, \DateInterval|int|null $ttl = null): mixed
+    public function getDefaultStore(): string
     {
-        if ($this->has($key)) {
-            return $this->get($key);
-        }
-
-        $value = $callback();
-        $this->set($key, $value, $ttl);
-        return $value;
-    }
-}
-
-class FileCache implements \Psr\SimpleCache\CacheInterface
-{
-    private string $path;
-    private int $gcProbability = 10;
-    private int $gcDivisor = 100;
-
-    public function __construct(string $path, int $gcProbability = 10, int $gcDivisor = 100)
-    {
-        $this->path = rtrim($path, '/');
-        if (!is_dir($this->path)) {
-            mkdir($this->path, 0755, true);
-        }
-        $this->gcProbability = $gcProbability;
-        $this->gcDivisor = $gcDivisor;
+        return $this->default;
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function getConfig(): array
     {
-        $this->gc();
-        $file = $this->path . '/' . md5($key);
-        if (!is_file($file)) {
-            return $default;
-        }
-
-        $content = file_get_contents($file);
-        $data = unserialize($content);
-
-        if ($data === false) {
-            return $default;
-        }
-
-        if (isset($data['expires']) && $data['expires'] < time()) {
-            $this->delete($key);
-            return $default;
-        }
-
-        return $data['value'];
+        return $this->config;
     }
 
-    /**
-     * 垃圾回收：按概率清理过期文件
-     */
-    public function gc(): int
+    public function forgetStore(string $name): void
     {
-        if (mt_rand(1, $this->gcDivisor) > $this->gcProbability) {
-            return 0;
-        }
-
-        $now = time();
-        $count = 0;
-        $files = glob($this->path . '/*');
-
-        foreach ($files as $file) {
-            if (!is_file($file)) {
-                continue;
-            }
-
-            $content = @file_get_contents($file);
-            if ($content === false) {
-                @unlink($file);
-                $count++;
-                continue;
-            }
-
-            $data = @unserialize($content);
-            if ($data === false) {
-                @unlink($file);
-                $count++;
-                continue;
-            }
-
-            if (isset($data['expires']) && $data['expires'] < $now) {
-                @unlink($file);
-                $count++;
-            }
-        }
-
-        return $count;
+        unset($this->stores[$name]);
     }
 
-    /**
-     * 强制清理所有过期文件（不受概率限制）
-     */
-    public function gcForce(): int
+    private function createDriver(string $name): StoreInterface
     {
-        $now = time();
-        $count = 0;
-        $files = glob($this->path . '/*');
+        $config = $this->config['stores'][$name] ?? null;
 
-        foreach ($files as $file) {
-            if (!is_file($file)) {
-                continue;
-            }
-
-            $content = @file_get_contents($file);
-            if ($content === false) {
-                @unlink($file);
-                $count++;
-                continue;
-            }
-
-            $data = @unserialize($content);
-            if ($data === false) {
-                @unlink($file);
-                $count++;
-                continue;
-            }
-
-            if (isset($data['expires']) && $data['expires'] < $now) {
-                @unlink($file);
-                $count++;
-            }
+        if (!$config) {
+            throw new \InvalidArgumentException("Cache store [{$name}] is not defined.");
         }
 
-        return $count;
+        $driverConfig = array_merge($config, [
+            'prefix' => $this->config['prefix'] ?? '',
+        ]);
+
+        return match ($config['driver']) {
+            'file' => new FileDriver($driverConfig),
+            'redis' => new RedisDriver($driverConfig),
+            'array', 'memory' => new ArrayDriver($driverConfig),
+            default => throw new \InvalidArgumentException("Cache driver [{$config['driver']}] is not supported."),
+        };
     }
 
-    public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool
+    private function dispatchEvent(object $event): void
     {
-        $expires = $this->resolveTtl($ttl);
-
-        $data = [
-            'value' => $value,
-            'expires' => $expires,
-        ];
-
-        $file = $this->path . '/' . md5($key);
-        return file_put_contents($file, serialize($data)) !== false;
-    }
-
-    public function delete(string $key): bool
-    {
-        $file = $this->path . '/' . md5($key);
-        if (is_file($file)) {
-            return unlink($file);
+        if ($this->dispatcher !== null && method_exists($this->dispatcher, 'dispatch')) {
+            $this->dispatcher->dispatch($event);
         }
-        return true;
-    }
-
-    public function has(string $key): bool
-    {
-        $file = $this->path . '/' . md5($key);
-        if (!is_file($file)) {
-            return false;
-        }
-
-        $content = file_get_contents($file);
-        $data = unserialize($content);
-
-        if ($data === false) {
-            return false;
-        }
-
-        if (isset($data['expires']) && $data['expires'] < time()) {
-            $this->delete($key);
-            return false;
-        }
-
-        return true;
-    }
-
-    public function clear(): bool
-    {
-        $files = glob($this->path . '/*');
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            }
-        }
-        return true;
-    }
-
-    public function getMultiple(iterable $keys, mixed $default = null): iterable
-    {
-        $result = [];
-        foreach ($keys as $key) {
-            $result[$key] = $this->get($key, $default);
-        }
-        return $result;
-    }
-
-    public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool
-    {
-        foreach ($values as $key => $value) {
-            $this->set($key, $value, $ttl);
-        }
-        return true;
-    }
-
-    public function deleteMultiple(iterable $keys): bool
-    {
-        foreach ($keys as $key) {
-            $this->delete($key);
-        }
-        return true;
-    }
-
-    private function resolveTtl(\DateInterval|int|null $ttl): ?int
-    {
-        if ($ttl === null) {
-            return null;
-        }
-
-        if ($ttl instanceof \DateInterval) {
-            $now = new \DateTime();
-            return $now->add($ttl)->getTimestamp();
-        }
-
-        return time() + $ttl;
-    }
-}
-
-class ArrayCache implements \Psr\SimpleCache\CacheInterface
-{
-    private array $data = [];
-    private array $expires = [];
-
-    public function get(string $key, mixed $default = null): mixed
-    {
-        if (!$this->has($key)) {
-            return $default;
-        }
-
-        return $this->data[$key];
-    }
-
-    public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool
-    {
-        $this->data[$key] = $value;
-        $this->expires[$key] = $this->resolveTtl($ttl);
-        return true;
-    }
-
-    public function delete(string $key): bool
-    {
-        unset($this->data[$key], $this->expires[$key]);
-        return true;
-    }
-
-    public function has(string $key): bool
-    {
-        if (!isset($this->data[$key])) {
-            return false;
-        }
-
-        if (isset($this->expires[$key]) && $this->expires[$key] < time()) {
-            $this->delete($key);
-            return false;
-        }
-
-        return true;
-    }
-
-    public function clear(): bool
-    {
-        $this->data = [];
-        $this->expires = [];
-        return true;
-    }
-
-    public function getMultiple(iterable $keys, mixed $default = null): iterable
-    {
-        $result = [];
-        foreach ($keys as $key) {
-            $result[$key] = $this->get($key, $default);
-        }
-        return $result;
-    }
-
-    public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool
-    {
-        foreach ($values as $key => $value) {
-            $this->set($key, $value, $ttl);
-        }
-        return true;
-    }
-
-    public function deleteMultiple(iterable $keys): bool
-    {
-        foreach ($keys as $key) {
-            $this->delete($key);
-        }
-        return true;
-    }
-
-    private function resolveTtl(\DateInterval|int|null $ttl): ?int
-    {
-        if ($ttl === null) {
-            return null;
-        }
-
-        if ($ttl instanceof \DateInterval) {
-            $now = new \DateTime();
-            return $now->add($ttl)->getTimestamp();
-        }
-
-        return time() + $ttl;
-    }
-}
-
-class RedisCache implements \Psr\SimpleCache\CacheInterface
-{
-    private \Redis $redis;
-    private string $prefix;
-
-    public function __construct(array $config)
-    {
-        $this->redis = new \Redis();
-        $this->redis->connect($config['host'], $config['port'] ?? 6379);
-        $this->prefix = $config['prefix'] ?? '';
-    }
-
-    public function get(string $key, mixed $default = null): mixed
-    {
-        $value = $this->redis->get($this->prefix . $key);
-        return $value !== false ? unserialize($value) : $default;
-    }
-
-    public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool
-    {
-        $serialized = serialize($value);
-        if ($ttl !== null) {
-            $seconds = $this->resolveTtlSeconds($ttl);
-            return $this->redis->setex($this->prefix . $key, $seconds, $serialized);
-        }
-        return $this->redis->set($this->prefix . $key, $serialized);
-    }
-
-    public function delete(string $key): bool
-    {
-        return $this->redis->del($this->prefix . $key) > 0;
-    }
-
-    public function has(string $key): bool
-    {
-        return $this->redis->exists($this->prefix . $key) > 0;
-    }
-
-    public function clear(): bool
-    {
-        $keys = $this->redis->keys($this->prefix . '*');
-        foreach ($keys as $key) {
-            $this->redis->del($key);
-        }
-        return true;
-    }
-
-    public function getMultiple(iterable $keys, mixed $default = null): iterable
-    {
-        $result = [];
-        foreach ($keys as $key) {
-            $result[$key] = $this->get($key, $default);
-        }
-        return $result;
-    }
-
-    public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool
-    {
-        foreach ($values as $key => $value) {
-            $this->set($key, $value, $ttl);
-        }
-        return true;
-    }
-
-    public function deleteMultiple(iterable $keys): bool
-    {
-        foreach ($keys as $key) {
-            $this->delete($key);
-        }
-        return true;
-    }
-
-    private function resolveTtlSeconds(\DateInterval|int|null $ttl): int
-    {
-        if ($ttl === null) {
-            return 3600;
-        }
-
-        if ($ttl instanceof \DateInterval) {
-            $now = new \DateTime();
-            return $now->add($ttl)->getTimestamp() - time();
-        }
-
-        return $ttl;
     }
 }

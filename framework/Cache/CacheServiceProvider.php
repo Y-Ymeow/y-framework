@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Cache;
 
+use Framework\Cache\Contracts\StoreInterface;
 use Framework\Foundation\ServiceProvider;
 use Psr\SimpleCache\CacheInterface;
 
@@ -16,6 +17,7 @@ class CacheServiceProvider extends ServiceProvider
         });
 
         $this->app->alias(CacheManager::class, CacheInterface::class);
+        $this->app->alias(CacheManager::class, StoreInterface::class);
         $this->app->alias(CacheManager::class, 'cache');
     }
 }

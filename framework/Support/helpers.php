@@ -306,13 +306,13 @@ function db(?string $connection = null): \Framework\Database\Contracts\Connectio
  * 获取缓存实例
  *
  * @param string|null $store 缓存存储名（默认使用配置中的默认存储）
- * @return \Psr\SimpleCache\CacheInterface
+ * @return \Framework\Cache\Contracts\StoreInterface
  *
  * @example cache()->set('key', 'value', 3600)
  * @example cache()->get('key', 'default')
  * @example cache()->remember('key', fn() => expensiveOperation(), 3600)
  */
-function cache(?string $store = null): \Psr\SimpleCache\CacheInterface
+function cache(?string $store = null): \Framework\Cache\Contracts\StoreInterface
 {
     return app()->make(\Framework\Cache\CacheManager::class)->store($store);
 }

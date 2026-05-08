@@ -6,9 +6,10 @@ namespace Framework\UX\Form\Components;
 
 use Framework\UX\Form\Contracts\FormField;
 use Framework\UX\Form\Concerns\HasMeta;
+use Framework\UX\UXLiveComponent;
 use Framework\View\Base\Element;
 
-abstract class BaseField implements FormField
+abstract class BaseField extends UXLiveComponent implements FormField
 {
     use HasMeta;
 
@@ -25,17 +26,21 @@ abstract class BaseField implements FormField
     protected array $extraClasses = [];
     protected bool $submitMode = false;
 
+    public static function make(string|array $nameOrProps = [], array $routeParams = []): static
+    {
+        if (is_string($nameOrProps)) {
+            $instance = new static();
+            $instance->name = $nameOrProps;
+            return $instance;
+        }
+
+        return parent::make($nameOrProps, $routeParams);
+    }
+
     public function submitMode(bool $submitMode = true): static
     {
         $this->submitMode = $submitMode;
         return $this;
-    }
-
-    public static function make(string $name): static
-    {
-        $instance = new static();
-        $instance->name = $name;
-        return $instance;
     }
 
     public function getName(): string
