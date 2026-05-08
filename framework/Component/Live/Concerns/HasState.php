@@ -7,6 +7,7 @@ namespace Framework\Component\Live\Concerns;
 use Framework\Component\Live\Attribute\Session as SessionAttribute;
 use Framework\Component\Live\Attribute\Cookie as CookieAttribute;
 use Framework\Component\Live\Attribute\Persistent as PersistentAttribute;
+use Framework\Component\Live\Checksum;
 use Framework\Component\Live\Persistent\PersistentStateManager;
 use Framework\Http\Session\Session;
 
@@ -41,13 +42,14 @@ trait HasState
         }
 
         $publicData = $this->getPublicProperties();
-        $data['__checksum'] = $this->generateDataChecksum($publicData);
+        $data['__checksum'] = Checksum::checksum($publicData);
+        $data['_raw'] = $publicData; // Carry public property values through serialization round-trip
 
         $editableProps = $this->frontendEditableProperties();
         $lockedChecksums = [];
         foreach ($publicData as $propName => $value) {
             if (!in_array($propName, $editableProps, true)) {
-                $lockedChecksums[$propName] = $this->generateDataChecksum([$propName => $value]);
+                $lockedChecksums[$propName] = Checksum::checksum([$propName => $value]);
             }
         }
         if (!empty($lockedChecksums)) {
@@ -55,11 +57,8 @@ trait HasState
         }
 
         $serialized = serialize($data);
-        $compressed = function_exists('gzcompress') ? gzcompress($serialized) : $serialized;
 
-        $sig = hash_hmac('sha256', static::class . 'state' . $compressed, $this->liveSigningKey(), true);
-
-        return base64_encode($sig . $compressed);
+        return Checksum::seal(static::class, $serialized);
     }
 
     /**
@@ -67,18 +66,11 @@ trait HasState
      */
     public function deserializeState(string $state): void
     {
-        $decoded = base64_decode($state, true);
-        if (!$decoded || strlen($decoded) < 32) return;
-
-        $sig = substr($decoded, 0, 32);
-        $compressed = substr($decoded, 32);
-
-        $expectedSig = hash_hmac('sha256', static::class . 'state' . $compressed, $this->liveSigningKey(), true);
-        if ($sig !== $expectedSig) {
-            throw new \RuntimeException('Live component state signature verification failed. Possible tampering detected.');
+        if (empty($state)) {
+            return;
         }
 
-        $serialized = function_exists('gzuncompress') ? gzuncompress($compressed) : $compressed;
+        $serialized = Checksum::unseal(static::class, $state);
         $data = unserialize($serialized);
 
         if ($data === false && $serialized !== 'b:0;') {
@@ -95,6 +87,13 @@ trait HasState
             unset($data['__locked_checksums']);
         }
 
+        // Extract _raw data before restoring non-public properties
+        $rawData = null;
+        if (isset($data['_raw']) && is_array($data['_raw'])) {
+            $rawData = $data['_raw'];
+            unset($data['_raw']);
+        }
+
         // 恢复非公开属性
         foreach ($data as $key => $value) {
             $prop = new \ReflectionProperty($this, $key);
@@ -106,9 +105,9 @@ trait HasState
         // 恢复公开属性：Session / Cookie / Persistent 驱动
         $this->restoreDrivenProperties();
 
-        // 恢复 _raw 原始数据（前端提交的公开属性值）
-        if (isset($data['_raw']) && is_array($data['_raw'])) {
-            foreach ($data['_raw'] as $name => $value) {
+        // 恢复 _raw 原始数据（序列化时保存的公开属性值）
+        if ($rawData !== null) {
+            foreach ($rawData as $name => $value) {
                 $ref = new \ReflectionProperty($this, $name);
                 if (!$ref->isStatic() && $ref->isPublic()) {
                     $ref->setValue($this, $value);
@@ -169,12 +168,13 @@ trait HasState
 
     private function generateDataChecksum(array $data): string
     {
-        $this->recursiveNormalize($data);
-        return md5(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+        return Checksum::checksum($data);
     }
 
     private function recursiveNormalize(array &$array): void
     {
+        // Delegated to Checksum.
+        // Kept for backward compatibility — external traits may call this.
         ksort($array);
         foreach ($array as &$value) {
             if (is_array($value)) {
@@ -197,8 +197,7 @@ trait HasState
 
     protected function liveSigningKey(): string
     {
-        $appKey = config('app.key', 'default-key');
-        return hash_hmac('sha256', 'live-component-state', $appKey);
+        return Checksum::signingKey();
     }
 
     /**

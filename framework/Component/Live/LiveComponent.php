@@ -118,6 +118,15 @@ abstract class LiveComponent
 
     public function hydrate(): void {}
 
+    /**
+     * Called after state properties have been updated via /live/state endpoint.
+     * Override in subclasses to react to state changes without a full action cycle.
+     *
+     * This hook fires during handleStateUpdate() after the new state is merged,
+     * before the response is serialized.
+     */
+    public function onUpdate(): void {}
+
     public function dehydrate(): void
     {
         $this->persistProperties();

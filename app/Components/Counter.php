@@ -6,6 +6,7 @@ namespace App\Components;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
 use function Framework\View\div;
 use function Framework\View\button;
@@ -13,6 +14,7 @@ use function Framework\View\span;
 
 class Counter extends LiveComponent
 {
+    #[State]
     public int $count = 0;
 
     public function mount(): void

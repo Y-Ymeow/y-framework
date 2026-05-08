@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Concerns;
 
+use Framework\Component\Live\Attribute\Locked;
 use Framework\Component\Live\Attribute\Prop;
 use Framework\Component\Live\Attribute\State;
 use Framework\Component\Live\Attribute\Session as SessionAttribute;
@@ -123,15 +124,31 @@ trait HasProperties
 
     /**
      * 获取前端可编辑的属性列表
+     *
+     * A property is frontend-editable if it is:
+     * 1. Not annotated with #[Locked]
+     * 2. Either annotated with #[State(frontendEditable: true)] (the default)
+     *    OR is a #[Prop] / #[Session] / #[Cookie] / #[Persistent] that is
+     *    explicitly marked as frontendEditable via #[State]
+     *
+     * #[Locked] takes precedence over any other annotation.
      */
     protected function frontendEditableProperties(): array
     {
         $ref = new \ReflectionClass($this);
         $props = [];
+
         foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
             if ($prop->isStatic()) {
                 continue;
             }
+
+            // #[Locked] overrides everything — property is immutable
+            $lockedAttrs = $prop->getAttributes(Locked::class);
+            if (!empty($lockedAttrs)) {
+                continue;
+            }
+
             $attrs = $prop->getAttributes(State::class);
             if (!empty($attrs)) {
                 $attr = $attrs[0]->newInstance();
@@ -140,11 +157,34 @@ trait HasProperties
                 }
             }
         }
+
         return $props;
     }
 
     /**
-     * 从前端数据填充公开属性，含 checksum 校验
+     * 获取被 #[Locked] 标记的属性名列表
+     */
+    protected function getLockedProperties(): array
+    {
+        $ref = new \ReflectionClass($this);
+        $props = [];
+
+        foreach ($ref->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isStatic()) {
+                continue;
+            }
+
+            $lockedAttrs = $prop->getAttributes(Locked::class);
+            if (!empty($lockedAttrs)) {
+                $props[] = $prop->getName();
+            }
+        }
+
+        return $props;
+    }
+
+    /**
+     * 从前端数据填充公开属性，含 checksum 校验和 #[Locked] 检查
      */
     public function fillPublicProperties(array $data): void
     {
@@ -155,15 +195,23 @@ trait HasProperties
         $ref = new \ReflectionClass($this);
         $publicProps = $this->allowedStateProperties();
         $editableProps = $this->frontendEditableProperties();
+        $lockedProps = $this->getLockedProperties();
 
         $cleanedData = [];
         foreach ($publicProps as $propName) {
             if (array_key_exists($propName, $data)) {
+                // Reject if property is #[Locked] — immutable from frontend
+                if (in_array($propName, $lockedProps, true)) {
+                    if (\Framework\Foundation\Application::isDebug()) {
+                        error_log("Rejected attempt to modify locked property [{$propName}] on " . static::class);
+                    }
+                    continue;
+                }
                 $cleanedData[$propName] = $data[$propName];
             }
         }
 
-        // 分级校验：#[State] 允许前端直接修改，其他属性严格 checksum 校验
+        // 分级校验：#[State(frontendEditable:true)] 允许前端直接修改，其他属性严格 checksum 校验
         if (!empty($this->lockedChecksums)) {
             foreach ($cleanedData as $propName => $value) {
                 if (!in_array($propName, $editableProps, true)) {
@@ -220,8 +268,17 @@ trait HasProperties
 
         $editableProps = $this->frontendEditableProperties();
         $publicProps = $this->allowedStateProperties();
+        $lockedProps = $this->getLockedProperties();
 
         if (!in_array($property, $publicProps, true)) return;
+
+        // #[Locked] properties are immutable from the frontend
+        if (in_array($property, $lockedProps, true)) {
+            if (\Framework\Foundation\Application::isDebug()) {
+                error_log("Rejected attempt to modify locked property [{$property}] on " . static::class);
+            }
+            return;
+        }
 
         if (!empty($this->lockedChecksums) && !in_array($property, $editableProps, true)) {
             return;

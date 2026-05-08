@@ -97,14 +97,29 @@ export function updateLiveStateAttr(el, newBase64State, patches) {
     }
 }
 
-function buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
+function buildActionBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
     const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
     const actionParams = collectParams(el, event, extraParams);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const componentsSnapshot = collectAllLiveComponents(el);
     const componentId = el.dataset.liveId || '';
+    const parentId = extractParentId(el);
 
     const info = getComponentInfo(el)
+
+    const body = {
+        _component: componentClass,
+        _component_id: componentId,
+        _action: action,
+        _state: info.__state,
+        _data: publicData,
+        _params: actionParams,
+        _components: componentsSnapshot,
+    };
+
+    if (parentId) {
+        body._parent_id = parentId;
+    }
 
     return {
         headers: {
@@ -114,25 +129,69 @@ function buildRequestBody(el, componentClass, action, stateRef, state, event, ex
             'X-CSRF-Token': csrfToken,
             'X-Component-Id': componentId,
         },
-        body: JSON.stringify({
-            _component: componentClass,
-            _component_id: componentId,
-            _action: action,
-            _state: info.__state,
-            _data: publicData,
-            _params: actionParams,
-            _components: componentsSnapshot,
-        }),
+        body: JSON.stringify(body),
     };
 }
 
+function buildStateBody(el, componentClass, stateRef, state) {
+    const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const componentId = el.dataset.liveId || '';
+    const parentId = extractParentId(el);
+
+    const info = getComponentInfo(el)
+
+    const body = {
+        _component: componentClass,
+        _component_id: componentId,
+        _state: info.__state,
+        _data: publicData,
+    };
+
+    if (parentId) {
+        body._parent_id = parentId;
+    }
+
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Live-Component': componentClass,
+            'X-CSRF-Token': csrfToken,
+            'X-Component-Id': componentId,
+        },
+        body: JSON.stringify(body),
+    };
+}
+
+/**
+ * Extract the parent Live component ID via DOM hierarchy.
+ * Walks up from the element to find the closest ancestor [data-live]
+ * element, which represents the parent component.
+ */
+function extractParentId(el) {
+    if (!el || !el.parentElement) return null;
+    const parentLiveEl = el.parentElement.closest('[data-live]');
+    if (parentLiveEl && parentLiveEl !== el) {
+        return parentLiveEl.dataset.liveId || null;
+    }
+    return null;
+}
+
+function buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
+    return buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
+}
+
 export async function dispatchLive(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    const { headers, body } = buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams);
+    return dispatchAction(el, componentClass, action, stateRef, state, event, extraParams);
+}
+
+export async function dispatchAction(el, componentClass, action, stateRef, state, event, extraParams = {}) {
+    const { headers, body } = buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
 
     setLoading(el, true);
 
     try {
-        const response = await fetch('/live/update', {
+        const response = await fetch('/live/action', {
             method: 'POST',
             headers,
             body,
@@ -146,7 +205,34 @@ export async function dispatchLive(el, componentClass, action, stateRef, state, 
         
         return { success: true, data };
     } catch (err) {
-        console.error('Live network error:', err);
+        console.error('Live action error:', err);
+        return { success: false, error: err };
+    } finally {
+        setLoading(el, false);
+    }
+}
+
+export async function dispatchState(el, componentClass, stateRef, state) {
+    const { headers, body } = buildStateBody(el, componentClass, stateRef, state);
+
+    setLoading(el, true);
+
+    try {
+        const response = await fetch('/live/state', {
+            method: 'POST',
+            headers,
+            body,
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+        }
+        
+        return { success: true, data };
+    } catch (err) {
+        console.error('Live state update error:', err);
         return { success: false, error: err };
     } finally {
         setLoading(el, false);
@@ -154,7 +240,7 @@ export async function dispatchLive(el, componentClass, action, stateRef, state, 
 }
 
 export function dispatchStream(el, componentClass, action, stateRef, state, event, extraParams = {}, onChunk = null, onDone = null) {
-    const { headers, body } = buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams);
+    const { headers, body } = buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
 
     setLoading(el, true);
 

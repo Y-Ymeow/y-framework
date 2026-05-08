@@ -1,4 +1,4 @@
-import { dispatchLive, getComponentInfo, updateLiveStateAttr } from './connection.js'
+import { dispatchLive, dispatchAction, dispatchState, getComponentInfo, updateLiveStateAttr } from './connection.js'
 import { replaceLiveHtml, applyLiveFragment } from './dom.js'
 import { initDirectives } from '../../y-directive/index.js'
 import { executeOperation } from '../operations.js'
@@ -50,7 +50,7 @@ async function callActionViaProxy(el, state, action, params) {
     showLiveProgress()
 
     try {
-        const result = await dispatchLive(el, componentClass, action, { value: info.__state }, state, null, params)
+        const result = await dispatchAction(el, componentClass, action, { value: info.__state }, state, null, params)
 
         if (result && result.success) {
             const data = result.data
@@ -107,6 +107,11 @@ function dispatchRefresh(el, state, name) {
 }
 
 export function createLiveProxy(el, state, actions) {
+    // Track local draft changes (deferred sync)
+    if (!el._y_live_drafts) {
+        el._y_live_drafts = {};
+    }
+
     return new Proxy({}, {
         get(target, prop) {
             if (prop === 'loading') {
@@ -136,12 +141,82 @@ export function createLiveProxy(el, state, actions) {
             }
 
             if (prop === 'update') {
-                return (propName, value) => {
+                return async (propName, value) => {
                     if (state && typeof state.set === 'function') {
                         state.set(propName, value)
                     }
-                    callActionViaProxy(el, state, '__updateProperty', { property: propName, value })
+                    // Use the lightweight /live/state endpoint for property updates
+                    await dispatchStateUpdate(el, state, { property: propName, value })
                 }
+            }
+
+            if (prop === 'setDraft') {
+                return (key, value) => {
+                    // Store locally, do NOT roundtrip
+                    el._y_live_drafts[key] = value;
+                    if (state && typeof state.set === 'function') {
+                        state.set(key, value)
+                    }
+                }
+            }
+
+            if (prop === 'commitDraft') {
+                return async () => {
+                    const drafts = { ...el._y_live_drafts };
+                    el._y_live_drafts = {};
+                    if (Object.keys(drafts).length === 0) return;
+
+                    // Batch all draft properties to the state endpoint
+                    const info = getComponentInfo(el)
+                    const componentClass = info.__component
+                    if (!componentClass) return;
+
+                    showLiveProgress()
+                    try {
+                        const result = await dispatchState(el, componentClass, { value: info.__state }, state)
+                        if (result && result.success) {
+                            const data = result.data
+                            updateLiveStateAttr(el, data.state, data.patches)
+                            if (data.patches && state && typeof state.merge === 'function') {
+                                batch(() => { state.merge(data.patches) })
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[y-live] commitDraft error:', err)
+                    } finally {
+                        hideLiveProgress()
+                    }
+                }
+            }
+
+            // $live.$parent — returns a proxy targeting the parent component
+            if (prop === '$parent') {
+                const parentLiveEl = el.parentElement?.closest('[data-live]')
+                if (!parentLiveEl || parentLiveEl === el) return undefined
+
+                const parentInfo = getComponentInfo(parentLiveEl)
+                const parentActions = new Set(parentInfo.__actions || [])
+                const parentState = parentLiveEl._y_state
+
+                return new Proxy({}, {
+                    get(_, parentProp) {
+                        if (parentProp === 'get') {
+                            return () => parentState ? parentState.all() : {}
+                        }
+                        if (parentProp === 'refresh') {
+                            return (name) => dispatchRefresh(parentLiveEl, parentState, name)
+                        }
+                        if (parentActions.has(parentProp)) {
+                            return (...args) => {
+                                const params = parseActionArgs(args)
+                                return callActionViaProxy(parentLiveEl, parentState, parentProp, params)
+                            }
+                        }
+                        if (parentState && typeof parentState.get === 'function') return parentState.get(parentProp)
+                        if (parentState && parentProp in parentState) return parentState[parentProp]
+                        return undefined
+                    }
+                })
             }
 
             if (actions && actions.has(prop)) {
@@ -159,7 +234,8 @@ export function createLiveProxy(el, state, actions) {
         },
 
         set(target, prop, value) {
-            if (prop === 'loading' || prop === 'get' || prop === 'refresh' || prop === 'dispatch' || prop === 'update') {
+            if (prop === 'loading' || prop === 'get' || prop === 'refresh' || prop === 'dispatch' || prop === 'update'
+                || prop === 'setDraft' || prop === 'commitDraft' || prop === '$parent' || prop === 'drafts') {
                 return false
             }
 
@@ -173,4 +249,29 @@ export function createLiveProxy(el, state, actions) {
             return true
         },
     })
+}
+
+/**
+ * Dispatch a state update via the lightweight /live/state endpoint.
+ */
+async function dispatchStateUpdate(el, state, params) {
+    const info = getComponentInfo(el)
+    const componentClass = info.__component
+    if (!componentClass) return
+
+    showLiveProgress()
+    try {
+        const result = await dispatchState(el, componentClass, { value: info.__state }, state)
+        if (result && result.success) {
+            const data = result.data
+            if (data.state) updateLiveStateAttr(el, data.state, data.patches)
+            if (data.patches && state && typeof state.merge === 'function') {
+                batch(() => { state.merge(data.patches) })
+            }
+        }
+    } catch (err) {
+        console.error('[y-live] State update error:', err)
+    } finally {
+        hideLiveProgress()
+    }
 }

@@ -20,8 +20,25 @@ use Framework\View\FragmentRegistry;
 #[RouteGroup('/live', name: 'live')]
 class LiveRequestHandler
 {
-    #[Route('/update', ['POST'], name: 'live.update', middleware: [VerifyCsrfToken::class])]
-    public function handle(Request $request): Response
+    /**
+     * Component class allowlist.
+     *
+     * When non-empty, only classes in this list (or classes whose namespace
+     * is prefixed by an entry ending with a backslash) may be instantiated
+     * via live endpoints.
+     *
+     * Configure via config('live.component_whitelist', []) or extend
+     * the getComponentWhitelist() method.
+     */
+    private static array $componentWhitelist = [];
+
+    // ─── Endpoints ──────────────────────────────
+
+    /**
+     * POST /live/action — full action dispatch
+     */
+    #[Route('/action', ['POST'], name: 'live.action', middleware: [VerifyCsrfToken::class])]
+    public function handleAction(Request $request): Response
     {
         $params = $this->extractParams($request);
         if ($params === null) {
@@ -38,6 +55,7 @@ class LiveRequestHandler
             );
 
             $this->registerPeerComponents($request);
+            $this->injectParentComponent($component, $request);
 
             if (!empty($params['state'])) {
                 $component->deserializeState($params['state']);
@@ -99,7 +117,82 @@ class LiveRequestHandler
         }
     }
 
-    #[Route('/stream', ['POST'], name: 'live.stream')]
+    /**
+     * POST /live/state — lightweight state property update
+     *
+     * No action invocation. Purely deserialize → validate → merge → onUpdate → serialize.
+     * Returns a minimal response with patches and new state only.
+     */
+    #[Route('/state', ['POST'], name: 'live.state', middleware: [VerifyCsrfToken::class])]
+    public function handleStateUpdate(Request $request): Response
+    {
+        $componentClass = $request->header('x-live-component')
+            ?? $request->input('_component');
+
+        if (empty($componentClass)) {
+            return Response::json(['success' => false, 'error' => 'Missing component class'], 400);
+        }
+
+        $error = $this->guardComponentClass($componentClass);
+        if ($error) return $error;
+
+        try {
+            $component = $this->resolveComponent(
+                $componentClass,
+                $request->input('_component_id', ''),
+            );
+
+            $this->injectParentComponent($component, $request);
+
+            $state = $request->input('_state', '');
+            $publicData = $request->input('_data', []);
+            if (!is_array($publicData)) $publicData = [];
+
+            $before = $component->getDataForFrontend();
+
+            if (!empty($state)) {
+                $component->deserializeState($state);
+                $component->fillPublicProperties($publicData);
+            }
+
+            // Fire onUpdate lifecycle hook after state merge
+            $component->onUpdate();
+
+            $after = $component->getDataForFrontend();
+
+            $patches = [];
+            foreach ($after as $key => $value) {
+                if (!array_key_exists($key, $before) || $before[$key] !== $value) {
+                    $patches[$key] = $value;
+                }
+            }
+
+            $newState = $component->serializeState();
+
+            return Response::json([
+                'success' => true,
+                'component' => $componentClass,
+                'state' => $newState,
+                'patches' => $patches,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e);
+        }
+    }
+
+    /**
+     * POST /live/update — backward-compatible alias for /live/action
+     *
+     * @deprecated Use /live/action for action calls, /live/state for state updates.
+     * Will be removed in a future version.
+     */
+    #[Route('/update', ['POST'], name: 'live.update', middleware: [VerifyCsrfToken::class])]
+    public function handle(Request $request): Response
+    {
+        return $this->handleAction($request);
+    }
+
+    #[Route('/stream', ['POST'], name: 'live.stream', middleware: [VerifyCsrfToken::class])]
     public function stream(Request $request): Response
     {
         $error = $this->guardCsrf($request);
@@ -148,9 +241,12 @@ class LiveRequestHandler
         }
     }
 
-    #[Route('/navigate', ['POST'], name: 'live.navigate')]
+    #[Route('/navigate', ['POST'], name: 'live.navigate', middleware: [VerifyCsrfToken::class])]
     public function navigate(Request $request): Response
     {
+        $error = $this->guardCsrf($request);
+        if ($error) return $error;
+
         $url = $request->input('url', '');
         if (empty($url)) {
             return Response::json(['error' => 'Missing URL'], 400);
@@ -193,9 +289,12 @@ class LiveRequestHandler
         }
     }
 
-    #[Route('/intl', ['POST'], name: 'live.intl')]
+    #[Route('/intl', ['POST'], name: 'live.intl', middleware: [VerifyCsrfToken::class])]
     public function intl(Request $request): Response
     {
+        $error = $this->guardCsrf($request);
+        if ($error) return $error;
+
         $keys = $request->input('keys', []);
         if (!is_array($keys)) {
             $keys = [];
@@ -268,7 +367,118 @@ class LiveRequestHandler
             return Response::json(['success' => false, 'error' => "Component [{$class}] not found"], 404);
         }
 
+        // Ensure the class is a LiveComponent
+        if (!is_subclass_of($class, LiveComponent::class)) {
+            return Response::json(['success' => false, 'error' => "Class [{$class}] is not a valid Live component"], 403);
+        }
+
+        // Check allowlist if configured
+        $whitelist = static::getComponentWhitelist();
+        if (!empty($whitelist) && !$this->isInWhitelist($class, $whitelist)) {
+            return Response::json([
+                'success' => false,
+                'error' => "Component [{$class}] is not on the allowed components list",
+            ], 403);
+        }
+
         return null;
+    }
+
+    /**
+     * Inject a parent LiveComponent into an EmbeddedLiveComponent child.
+     *
+     * When the request payload contains a _parent_id, the handler looks up
+     * the parent component via LiveEventBus, hydrates it, and calls
+     * setParent() on the child.
+     */
+    private function injectParentComponent(LiveComponent $component, Request $request): void
+    {
+        if (!($component instanceof EmbeddedLiveComponent)) {
+            return;
+        }
+
+        $parentId = $request->input('_parent_id');
+        if (empty($parentId)) {
+            return;
+        }
+
+        $parentState = LiveEventBus::getComponentState($parentId);
+        if ($parentState === null) {
+            // Try to find parent from peer components snapshot
+            $components = $request->input('_components');
+            if (is_array($components)) {
+                foreach ($components as $compData) {
+                    if (($compData['id'] ?? '') === $parentId && !empty($compData['class']) && !empty($compData['state'])) {
+                        $parentState = [
+                            'class' => $compData['class'],
+                            'state' => $compData['state'],
+                        ];
+                        LiveEventBus::storeComponentState(
+                            $compData['id'],
+                            $compData['class'],
+                            $compData['state']
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($parentState !== null) {
+            /** @var LiveComponent $parent */
+            $parent = app()->make($parentState['class']);
+            $parent->named($parentId);
+            $parent->deserializeState($parentState['state']);
+            $component->setParent($parent);
+        }
+    }
+
+    /**
+     * Get the component class allowlist.
+     *
+     * Returns entries from config('live.component_whitelist', []) or
+     * the statically set list via setComponentWhitelist().
+     *
+     * Each entry can be a full class name or a namespace prefix (ending
+     * with a backslash) that matches all classes under that namespace.
+     */
+    public static function getComponentWhitelist(): array
+    {
+        if (!empty(static::$componentWhitelist)) {
+            return static::$componentWhitelist;
+        }
+
+        $config = config('live.component_whitelist', null);
+        if (is_array($config)) {
+            static::$componentWhitelist = $config;
+        }
+
+        return static::$componentWhitelist;
+    }
+
+    /**
+     * Set the component class allowlist statically (e.g. for tests).
+     */
+    public static function setComponentWhitelist(array $whitelist): void
+    {
+        static::$componentWhitelist = $whitelist;
+    }
+
+    /**
+     * Check if a class is in the whitelist.
+     */
+    private function isInWhitelist(string $class, array $whitelist): bool
+    {
+        foreach ($whitelist as $entry) {
+            if ($class === $entry) {
+                return true;
+            }
+            // Namespace prefix match (ends with backslash)
+            if (str_ends_with($entry, '\\') && str_starts_with($class, $entry)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function registerPeerComponents(Request $request): void
