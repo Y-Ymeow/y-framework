@@ -26,15 +26,11 @@ abstract class BaseField extends UXLiveComponent implements FormField
     protected array $extraClasses = [];
     protected bool $submitMode = false;
 
-    public static function make(string|array $nameOrProps = [], array $routeParams = []): static
+    public static function make(string $name): static
     {
-        if (is_string($nameOrProps)) {
-            $instance = new static();
-            $instance->name = $nameOrProps;
-            return $instance;
-        }
-
-        return parent::make($nameOrProps, $routeParams);
+        $instance = new static();
+        $instance->name = $name;
+        return $instance;
     }
 
     public function submitMode(bool $submitMode = true): static

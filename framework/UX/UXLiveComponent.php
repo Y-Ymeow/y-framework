@@ -4,48 +4,37 @@ declare(strict_types=1);
 
 namespace Framework\UX;
 
-use Framework\Component\Live\EmbeddedLiveComponent;
+use Framework\Component\Live\Concerns\HasParentInjection;
 use Framework\View\Base\Element;
 use Framework\View\Document\AssetRegistry;
 
 /**
- * Base class for UX components that are also Live components.
+ * Base class for UX components that participate in the Live parent-child
+ * hierarchy without carrying full LiveComponent state management.
  *
- * Combines the UX component lifecycle (boot-then-render) with
- * Live component state management, parent injection, and #[LiveAction]
- * support. Subclasses implement toElement() to define their DOM structure
- * and optionally override mount(), hydrate(), dehydrate(), onUpdate(), etc.
+ * UXLiveComponent provides:
+ *  - Parent injection via HasParentInjection trait (setParent, dispatchToParent)
+ *  - UX lifecycle (boot-then-render with AssetRegistry registration)
+ *  - render() → toElement() bridge for HTML fragment output
  *
- * A UXLiveComponent renders as a plain HTML *fragment* (no data-live wrapper),
- * making it suitable for use as an embedded child inside a parent LiveComponent
- * or as a widget that participates in reactive patches.
+ * Unlike EmbeddedLiveComponent (which extends LiveComponent), this class
+ * does NOT carry checksum, #[Locked], serializeState, mount/hydrate/dehydrate,
+ * or the full Live action lifecycle. It is intentionally lightweight —
+ * suitable for form fields, UI widgets, and other components that need
+ * parent awareness but not independent state management.
  *
- * To get the full Live wrapper (data-live, data-live-state), override
- * __toString() to call parent::toHtml().
+ * Subclasses implement toElement() to define their DOM structure, or
+ * override render() directly for full control.
  */
-abstract class UXLiveComponent extends EmbeddedLiveComponent
+abstract class UXLiveComponent
 {
-    /**
-     * UX components are typically used as child elements.
-     */
+    use HasParentInjection;
+
     protected bool $isUxComponent = true;
-
-    /**
-     * Whether this UX component should auto-refresh when
-     * its parent component's state changes.
-     */
     protected bool $autoRefreshOnParentUpdate = false;
-
-    /**
-     * Called when the parent's state has been updated.
-     * Override in subclasses to react to parent changes.
-     */
-    public function onParentUpdate(): void {}
 
     public function __construct()
     {
-        parent::__construct();
-
         AssetRegistry::getInstance()->ui();
         AssetRegistry::getInstance()->ux();
 
@@ -59,11 +48,19 @@ abstract class UXLiveComponent extends EmbeddedLiveComponent
      */
     protected function boot(): void {}
 
-    public function init(): void
-    {
-        parent::init();
-    }
+    /**
+     * Called when the parent's state has been updated.
+     * Override in subclasses to react to parent changes.
+     */
+    public function onParentUpdate(): void {}
 
+    /**
+     * Render the component as an HTML Element.
+     *
+     * Subclasses MUST implement toElement(). If a subclass defines
+     * its own render() method, it takes precedence over this default
+     * which delegates to toElement().
+     */
     public function render(): Element
     {
         return $this->toElement();
@@ -78,6 +75,9 @@ abstract class UXLiveComponent extends EmbeddedLiveComponent
         return Element::make('div');
     }
 
+    /**
+     * Render as an HTML string (fragment, no Live wrapper).
+     */
     public function __toString(): string
     {
         return $this->render()->render();
