@@ -53,13 +53,20 @@ class ButtonBlock extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'button' => '按钮',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $text = $this->setting($settings, 'text', '点击');
         $url = $this->setting($settings, 'url', '');
         $variant = $this->setting($settings, 'variant', 'primary');
         $align = $this->setting($settings, 'align', 'left');
-        $className = $this->setting($settings, 'className', '');
 
         $variantClass = match ($variant) {
             'secondary' => 'pb-btn-secondary',
@@ -75,15 +82,21 @@ class ButtonBlock extends ComponentType
 
         $tag = $url ? 'a' : 'button';
         $btn = Element::make($tag)
-            ->class('pb-btn', $variantClass, $className)
+            ->class('pb-btn', $variantClass)
+            ->attr('data-pb-style', 'button')
             ->text($text);
 
         if ($url) {
             $btn->attr('href', $url);
         }
 
-        return Element::make('div')
+        $wrapper = Element::make('div')
             ->class('pb-button-wrapper', $alignClass)
+            ->attr('data-pb-style', 'root')
             ->child($btn);
+
+        $this->applyStyles($wrapper, $settings);
+
+        return $wrapper;
     }
 }

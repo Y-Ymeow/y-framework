@@ -31,14 +31,25 @@ class FeatureGrid extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'card' => '卡片',
+            'icon' => '图标',
+            'title' => '标题',
+            'description' => '描述',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $columns = $this->setting($settings, 'columns', '3');
         $featuresRaw = $this->setting($settings, 'features', '');
-        $className = $this->setting($settings, 'className', '');
 
         $grid = Element::make('div')
-            ->class('grid', "grid-cols-{$columns}", 'gap-8', 'py-12', 'px-8', $className);
+            ->class('grid', "grid-cols-{$columns}", 'gap-8', 'py-12', 'px-8')
+            ->attr('data-pb-style', 'root');
 
         $features = explode("\n", $featuresRaw);
         foreach ($features as $feature) {
@@ -49,26 +60,33 @@ class FeatureGrid extends ComponentType
             $title = trim($parts[1]);
             $desc = isset($parts[2]) ? trim($parts[2]) : '';
 
-            $item = Element::make('div')->class('text-center', 'p-6');
+            $item = Element::make('div')
+                ->class('text-center', 'p-6')
+                ->attr('data-pb-style', 'card');
             $item->child(
                 Element::make('div')
                     ->class('text-3xl', 'mb-3', 'text-blue-600')
+                    ->attr('data-pb-style', 'icon')
                     ->html('<i class="bi bi-' . $icon . '"></i>')
             );
             $item->child(
                 Element::make('div')
                     ->class('text-lg', 'font-semibold', 'mb-2', 'text-gray-900')
+                    ->attr('data-pb-style', 'title')
                     ->text($title)
             );
             if ($desc) {
                 $item->child(
                     Element::make('div')
                         ->class('text-sm', 'text-gray-500', 'leading-relaxed')
+                        ->attr('data-pb-style', 'description')
                         ->text($desc)
                 );
             }
             $grid->child($item);
         }
+
+        $this->applyStyles($grid, $settings);
 
         return $grid;
     }

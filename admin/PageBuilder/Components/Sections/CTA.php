@@ -46,20 +46,31 @@ class CTA extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'title' => '标题',
+            'subtitle' => '副标题',
+            'button' => '按钮',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $title = $this->setting($settings, 'title', '准备好开始了吗？');
         $subtitle = $this->setting($settings, 'subtitle', '');
         $buttonText = $this->setting($settings, 'button_text', '立即开始');
         $buttonUrl = $this->setting($settings, 'button_url', '#');
-        $className = $this->setting($settings, 'className', '');
 
         $cta = Element::make('section')
-            ->class('text-center', 'py-12', 'px-8', 'bg-gray-50', 'border-t', 'border-gray-200', $className);
+            ->class('text-center', 'py-12', 'px-8', 'bg-gray-50', 'border-t', 'border-gray-200')
+            ->attr('data-pb-style', 'root');
 
         $cta->child(
             Element::make('h2')
                 ->class('text-2xl', 'font-bold', 'mb-3', 'text-gray-900')
+                ->attr('data-pb-style', 'title')
                 ->text($title)
         );
 
@@ -67,6 +78,7 @@ class CTA extends ComponentType
             $cta->child(
                 Element::make('p')
                     ->class('text-gray-500', 'mb-6')
+                    ->attr('data-pb-style', 'subtitle')
                     ->text($subtitle)
             );
         }
@@ -75,10 +87,13 @@ class CTA extends ComponentType
             $cta->child(
                 Element::make('a')
                     ->class('inline-flex', 'px-6', 'py-3', 'text-sm', 'font-semibold', 'bg-blue-600', 'text-white', 'rounded-md', 'no-underline', 'hover:bg-blue-700')
+                    ->attr('data-pb-style', 'button')
                     ->attr('href', $buttonUrl)
                     ->text($buttonText)
             );
         }
+
+        $this->applyStyles($cta, $settings);
 
         return $cta;
     }

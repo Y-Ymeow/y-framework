@@ -66,7 +66,6 @@ class Heading extends ComponentType
         $level = $this->setting($settings, 'level', 'h2');
         $text = $this->setting($settings, 'text', '');
         $align = $this->setting($settings, 'align', 'left');
-        $className = $this->setting($settings, 'className', '');
 
         $alignClass = match ($align) {
             'center' => 'text-center',
@@ -74,8 +73,13 @@ class Heading extends ComponentType
             default => '',
         };
 
-        return Element::make($level)
-            ->class('pb-heading', $alignClass, $className)
+        $el = Element::make($level)
+            ->class('pb-heading', $alignClass)
+            ->attr('data-pb-style', 'root')
             ->text($text);
+
+        $this->applyStyles($el, $settings);
+
+        return $el;
     }
 }

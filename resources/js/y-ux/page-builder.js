@@ -254,6 +254,126 @@ class PageBuilder {
                 if (targetPanel) targetPanel.classList.add('page-builder-properties-tab-content--active');
             });
         });
+
+        this.initStyleEditor(builder);
+    }
+
+    initStyleEditor(builder) {
+        const stylePanel = builder.querySelector('[data-properties-panel="style"]');
+        if (!stylePanel) return;
+
+        stylePanel.querySelectorAll('.page-builder-style-classes').forEach(input => {
+            input.removeEventListener('input', this._syncStylesJson);
+            input.addEventListener('input', this._syncStylesJson);
+        });
+
+        stylePanel.querySelectorAll('[data-style-remove]').forEach(btn => {
+            btn.removeEventListener('click', this._removeStyleRow);
+            btn.addEventListener('click', this._removeStyleRow);
+        });
+
+        const addBtn = stylePanel.querySelector('[data-style-add]');
+        if (addBtn) {
+            addBtn.removeEventListener('click', this._addStyleRow);
+            addBtn.addEventListener('click', this._addStyleRow);
+        }
+    }
+
+    _syncStylesJson() {
+        const panel = this.closest('[data-properties-panel]');
+        if (!panel) return;
+
+        const styles = {};
+        panel.querySelectorAll('[data-style-target]').forEach(input => {
+            const target = input.dataset.styleTarget;
+            const value = input.value.trim();
+            if (target && value) {
+                styles[target] = value;
+            }
+        });
+
+        const hiddenInput = panel.querySelector('[data-submit-field="styles_json"]');
+        if (hiddenInput) {
+            hiddenInput.value = JSON.stringify(styles);
+        }
+    }
+
+    _removeStyleRow(e) {
+        const btn = e.currentTarget;
+        const row = btn.closest('.page-builder-style-row');
+        if (row) {
+            row.remove();
+            const panel = btn.closest('[data-properties-panel]');
+            const input = panel?.querySelector('[data-submit-field="styles_json"]');
+            if (input) {
+                const styles = {};
+                panel.querySelectorAll('[data-style-target]').forEach(i => {
+                    const target = i.dataset.styleTarget;
+                    const value = i.value.trim();
+                    if (target && value) styles[target] = value;
+                });
+                input.value = JSON.stringify(styles);
+            }
+        }
+    }
+
+    _addStyleRow() {
+        const panel = this.closest('[data-properties-panel]');
+        if (!panel) return;
+
+        const select = panel.querySelector('[data-style-target-select]');
+        if (!select) return;
+
+        const target = select.value;
+        if (!target) return;
+
+        const existing = panel.querySelector(`[data-style-target="${target}"]`);
+        if (existing) {
+            existing.focus();
+            return;
+        }
+
+        const option = select.querySelector(`option[value="${target}"]`);
+        const label = option ? option.textContent : target;
+
+        const row = document.createElement('div');
+        row.className = 'page-builder-style-row';
+
+        const rowHeader = document.createElement('div');
+        rowHeader.className = 'page-builder-style-row-header';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'page-builder-style-target';
+        labelSpan.textContent = label;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'page-builder-style-remove';
+        removeBtn.type = 'button';
+        removeBtn.dataset.styleRemove = target;
+        removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+        removeBtn.addEventListener('click', PageBuilder._removeStyleRow);
+
+        rowHeader.appendChild(labelSpan);
+        rowHeader.appendChild(removeBtn);
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'ux-form-input page-builder-style-classes';
+        textarea.dataset.styleTarget = target;
+        textarea.rows = 2;
+        textarea.placeholder = 'CSS 类名，空格分隔';
+        textarea.addEventListener('input', PageBuilder._syncStylesJson);
+
+        row.appendChild(rowHeader);
+        row.appendChild(textarea);
+
+        const addRow = panel.querySelector('.page-builder-style-add');
+        if (addRow) {
+            panel.insertBefore(row, addRow);
+        } else {
+            panel.appendChild(row);
+        }
+
+        textarea.focus();
     }
 
     destroy() {
@@ -282,5 +402,6 @@ window.addEventListener('y:updated', (e) => {
         window.PageBuilder.initZoomControls(builder);
         window.PageBuilder.initPreviewControls(builder);
         window.PageBuilder.initPropertiesTabs(builder);
+        window.PageBuilder.initStyleEditor(builder);
     }
 });

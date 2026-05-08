@@ -43,7 +43,6 @@ class TextBlock extends ComponentType
     {
         $content = $this->setting($settings, 'content', '');
         $align = $this->setting($settings, 'align', 'left');
-        $className = $this->setting($settings, 'className', '');
 
         $alignClass = match ($align) {
             'center' => 'text-center',
@@ -51,8 +50,13 @@ class TextBlock extends ComponentType
             default => '',
         };
 
-        return Element::make('div')
-            ->class('pb-text-block', $alignClass, $className)
+        $el = Element::make('div')
+            ->class('pb-text-block', $alignClass)
+            ->attr('data-pb-style', 'root')
             ->html(nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8')));
+
+        $this->applyStyles($el, $settings);
+
+        return $el;
     }
 }

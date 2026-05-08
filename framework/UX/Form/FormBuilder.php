@@ -25,6 +25,7 @@ class FormBuilder extends UXComponent
     protected ?string $submitLabel = null;
     protected array $data = [];
     protected array $liveBind = [];
+    protected bool $submitMode = false;
 
     protected static array $macros = [];
     protected static array $registeredComponents = [];
@@ -32,6 +33,12 @@ class FormBuilder extends UXComponent
     public static function make(): static
     {
         return new static();
+    }
+
+    public function submitMode(bool $submitMode = true): static
+    {
+        $this->submitMode = $submitMode;
+        return $this;
     }
 
     public function method(string $method): static
@@ -132,6 +139,9 @@ class FormBuilder extends UXComponent
                 if ($name && isset($data[$name])) {
                     $component->setValue($data[$name]);
                 }
+                if ($this->submitMode && method_exists($component, 'submitMode')) {
+                    $component->submitMode(true);
+                }
             }
 
             if (method_exists($component, 'getComponents')) {
@@ -227,6 +237,10 @@ class FormBuilder extends UXComponent
             $input->default($options['default']);
         }
         
+        if ($this->submitMode) {
+            $input->submitMode(true);
+        }
+
         $this->components[] = $input;
         return $this;
     }

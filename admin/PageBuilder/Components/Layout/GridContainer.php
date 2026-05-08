@@ -46,7 +46,6 @@ class GridContainer extends ComponentType
     {
         $columns = (int)$this->setting($settings, 'columns', '2');
         $gap = $this->setting($settings, 'gap', 'md');
-        $className = $this->setting($settings, 'className', '');
 
         $gapClass = match ($gap) {
             'sm' => 'pb-grid-gap-sm',
@@ -54,8 +53,13 @@ class GridContainer extends ComponentType
             default => 'pb-grid-gap-md',
         };
 
-        return Element::make('div')
-            ->class('pb-grid', "pb-grid-{$columns}", $gapClass, $className);
+        $el = Element::make('div')
+            ->class('pb-grid', "pb-grid-{$columns}", $gapClass)
+            ->attr('data-pb-style', 'root');
+
+        $this->applyStyles($el, $settings);
+
+        return $el;
     }
 
     public function isContainer(): bool { return true; }

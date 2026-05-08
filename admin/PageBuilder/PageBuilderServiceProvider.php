@@ -6,12 +6,15 @@ namespace Admin\PageBuilder;
 
 use Framework\Foundation\Application;
 use Framework\Foundation\ServiceProvider;
+use Framework\Routing\CssRoute;
 use Framework\Routing\Router;
 
 class PageBuilderServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        $this->registerCssClassProvider();
+
         try {
             $router = $this->app->make(Router::class);
             $rows = PageBuilderPageModel::all();
@@ -39,5 +42,30 @@ class PageBuilderServiceProvider extends ServiceProvider
                 logger()->error('[PageBuilderServiceProvider] boot failed', ['error' => $e->getMessage()]);
             } catch (\Throwable) {}
         }
+    }
+
+    private function registerCssClassProvider(): void
+    {
+        CssRoute::registerClassProvider(function () {
+            $classes = [];
+
+            try {
+                $rows = PageBuilderPageModel::all();
+                $cssService = new PageBuilderCssService();
+
+                foreach ($rows as $row) {
+                    $item = ($row instanceof \Framework\Support\Collection) ? $row->toArray() : (method_exists($row, 'toArray') ? $row->toArray() : (array) $row);
+                    $treeJson = $item['tree'] ?? '[]';
+                    $tree = json_decode($treeJson, true);
+                    if (!is_array($tree)) continue;
+
+                    $cssService->collectClassesFromTree($tree, $classes);
+                }
+            } catch (\Throwable $e) {
+                // database may not be ready yet
+            }
+
+            return array_keys($classes);
+        });
     }
 }

@@ -45,8 +45,13 @@ class RadioGroup extends BaseField
                 ->class('ux-form-radio-input', ...$this->extraClasses)
                 ->attr('type', 'radio')
                 ->attr('name', $this->name)
-                ->attr('value', (string)$value)
-                ->attr('data-model', $this->name);
+                ->attr('value', (string)$value);
+
+            if ($this->submitMode) {
+                $radio->attr('data-submit-field', $this->name);
+            } else {
+                $radio->attr('data-model', $this->name);
+            }
 
             if ((string)$value === (string)$currentValue) {
                 $radio->attr('checked', '');

@@ -53,7 +53,12 @@ class Divider extends ComponentType
             default => 'pb-divider-md',
         };
 
-        return Element::make('hr')
-            ->class('pb-divider', "pb-divider-{$style}", $spacingClass);
+        $el = Element::make('hr')
+            ->class('pb-divider', "pb-divider-{$style}", $spacingClass)
+            ->attr('data-pb-style', 'root');
+
+        $this->applyStyles($el, $settings);
+
+        return $el;
     }
 }

@@ -31,26 +31,42 @@ class Banner extends ComponentType
             ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'text' => '公告文字',
+            'link' => '链接',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $text = $this->setting($settings, 'text', '🎉 新功能上线！');
         $linkText = $this->setting($settings, 'link_text', '查看详情');
         $linkUrl = $this->setting($settings, 'link_url', '#');
-        $className = $this->setting($settings, 'className', '');
 
         $banner = Element::make('div')
-            ->class('flex', 'items-center', 'justify-center', 'gap-4', 'px-8', 'py-3', 'bg-blue-50', 'border-b', 'border-blue-200', 'text-sm', 'text-blue-800', $className);
+            ->class('flex', 'items-center', 'justify-center', 'gap-4', 'px-8', 'py-3', 'bg-blue-50', 'border-b', 'border-blue-200', 'text-sm', 'text-blue-800')
+            ->attr('data-pb-style', 'root');
 
-        $banner->child(Element::make('span')->text($text));
+        $banner->child(
+            Element::make('span')
+                ->attr('data-pb-style', 'text')
+                ->text($text)
+        );
 
         if ($linkText) {
             $banner->child(
                 Element::make('a')
                     ->class('font-semibold', 'text-blue-700', 'underline')
+                    ->attr('data-pb-style', 'link')
                     ->attr('href', $linkUrl)
                     ->text($linkText)
             );
         }
+
+        $this->applyStyles($banner, $settings);
 
         return $banner;
     }

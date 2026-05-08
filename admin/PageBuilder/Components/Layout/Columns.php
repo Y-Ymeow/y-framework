@@ -42,11 +42,20 @@ class Columns extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'column_0' => '第1列',
+            'column_1' => '第2列',
+            'column_2' => '第3列',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $count = (int)$this->setting($settings, 'count', '2');
         $ratio = $this->setting($settings, 'ratio', 'equal');
-        $className = $this->setting($settings, 'className', '');
 
         $ratioClass = match ($ratio) {
             'sidebar' => 'pb-columns-sidebar',
@@ -55,13 +64,17 @@ class Columns extends ComponentType
         };
 
         $row = Element::make('div')
-            ->class('pb-columns', "pb-columns-{$count}", $ratioClass, $className);
+            ->class('pb-columns', "pb-columns-{$count}", $ratioClass)
+            ->attr('data-pb-style', 'root');
 
         for ($i = 0; $i < $count; $i++) {
             $col = Element::make('div')
-                ->class('pb-column', "pb-column-{$i}");
+                ->class('pb-column', "pb-column-{$i}")
+                ->attr('data-pb-style', "column_{$i}");
             $row->child($col);
         }
+
+        $this->applyStyles($row, $settings);
 
         return $row;
     }

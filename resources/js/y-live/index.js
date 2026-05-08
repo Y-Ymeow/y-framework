@@ -113,7 +113,15 @@ directive('submit', (el, state, method, { content, modifiers, $execute }) => {
         scope.querySelectorAll('[data-submit-field]').forEach(input => {
             const key = input.getAttribute('data-submit-field');
             if (!key) return;
-            formData[key] = input.type === 'checkbox' ? input.checked : input.value;
+            if (input.type === 'checkbox') {
+                formData[key] = input.checked;
+            } else if (input.tagName === 'SELECT') {
+                formData[key] = input.value;
+            } else if (input.type === 'radio') {
+                if (input.checked) formData[key] = input.value;
+            } else {
+                formData[key] = input.value;
+            }
         });
 
         const actionName = content;

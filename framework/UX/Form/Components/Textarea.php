@@ -37,8 +37,13 @@ class Textarea extends BaseField
             ->class('ux-form-input', ...$this->extraClasses)
             ->attr('id', $this->name)
             ->attr('name', $this->name)
-            ->attr('rows', (string)$this->rows)
-            ->attr('data-model', $this->name);
+            ->attr('rows', (string)$this->rows);
+
+        if ($this->submitMode) {
+            $textarea->attr('data-submit-field', $this->name);
+        } else {
+            $textarea->attr('data-model', $this->name);
+        }
 
         if ($this->cols > 0) {
             $textarea->attr('cols', (string)$this->cols);

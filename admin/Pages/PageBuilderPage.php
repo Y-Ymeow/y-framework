@@ -14,8 +14,6 @@ use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
 use Framework\View\Base\Element;
 use Framework\UX\Form\FormBuilder;
-use Framework\UX\Display\Collapse;
-use Admin\PageBuilder\StylePanel\StylePanelBuilder;
 
 class PageBuilderPage extends LiveComponent implements PageInterface
 {
@@ -213,25 +211,23 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         $settings = [];
-        $styleData = [];
+        $stylesJson = $params['styles_json'] ?? '';
         foreach ($params as $key => $value) {
-            if ($key === 'uid' || $key === 'className') continue;
-            if (str_starts_with($key, 'style_') || $key === '_custom_classes') {
-                $styleData[$key] = $value;
-            } else {
-                $settings[$key] = $value;
-            }
+            if ($key === 'uid' || $key === 'className' || $key === 'styles_json') continue;
+            if (str_starts_with($key, 'style_') || $key === '_custom_classes') continue;
+            $settings[$key] = $value;
         }
 
-        if (!empty($styleData)) {
-            $styleBuilder = new StylePanelBuilder();
-            $settings['className'] = $styleBuilder->buildClasses($styleData);
+        if (!empty($stylesJson)) {
+            $styles = json_decode($stylesJson, true);
+            if (is_array($styles)) {
+                $settings['styles'] = array_filter($styles, fn($v) => !empty($v));
+            }
         }
 
         logger()->info('saveComponentSettings', [
             'uid' => $uid,
             'settings' => $settings,
-            'styleData' => $styleData,
         ]);
 
         $this->updateAllSettingsInTree($tree, $uid, $settings);
@@ -791,6 +787,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             ->attr('data-properties-panel', 'content');
 
         $contentForm = new FormBuilder();
+        $contentForm->submitMode();
         $componentType->settings($contentForm);
         $contentForm->fill($component['settings'] ?? []);
 
@@ -804,11 +801,79 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             ->class('page-builder-properties-tab-content')
             ->attr('data-properties-panel', 'style');
 
-        $styleBuilder = new StylePanelBuilder();
-        $styleCollapses = $styleBuilder->buildCollapses($component['settings']['className'] ?? '');
-        foreach ($styleCollapses as $collapse) {
-            $stylePanel->child($collapse->render());
+        $currentStyles = $component['settings']['styles'] ?? [];
+        $className = $component['settings']['className'] ?? '';
+        if (empty($currentStyles) && !empty($className)) {
+            $currentStyles = ['root' => $className];
         }
+
+        $styleTargets = $componentType->styleTargets();
+
+        $stylePanel->child(
+            Element::make('input')
+                ->attr('type', 'hidden')
+                ->attr('data-submit-field', 'styles_json')
+                ->attr('value', json_encode($currentStyles, JSON_UNESCAPED_UNICODE))
+        );
+
+        $stylePanel->child(
+            Element::make('div')->class('page-builder-style-editor')->attr('data-style-editor', '')
+        );
+
+        foreach ($currentStyles as $target => $classes) {
+            if (empty($classes)) continue;
+            $targetLabel = $styleTargets[$target] ?? $target;
+
+            $row = Element::make('div')->class('page-builder-style-row');
+            $rowHeader = Element::make('div')->class('page-builder-style-row-header');
+            $rowHeader->child(
+                Element::make('span')->class('page-builder-style-target')->text($targetLabel)
+            );
+            $rowHeader->child(
+                Element::make('button')
+                    ->class('page-builder-style-remove')
+                    ->attr('type', 'button')
+                    ->attr('data-style-remove', $target)
+                    ->html('<i class="bi bi-x"></i>')
+            );
+            $row->child($rowHeader);
+            $row->child(
+                Element::make('textarea')
+                    ->class('ux-form-input', 'page-builder-style-classes')
+                    ->attr('data-style-target', $target)
+                    ->attr('rows', '2')
+                    ->attr('placeholder', 'CSS 类名，空格分隔')
+                    ->text($classes)
+            );
+            $stylePanel->child($row);
+        }
+
+        $addRow = Element::make('div')->class('page-builder-style-add');
+        $select = Element::make('select')
+            ->class('ux-form-input', 'page-builder-style-target-select')
+            ->attr('data-style-target-select', '');
+        foreach ($styleTargets as $key => $label) {
+            $select->child(
+                Element::make('option')
+                    ->attr('value', $key)
+                    ->text($label)
+            );
+        }
+        $addRow->child($select);
+        $addRow->child(
+            Element::make('button')
+                ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
+                ->attr('type', 'button')
+                ->attr('data-style-add', '')
+                ->text('+ 添加')
+        );
+        $stylePanel->child($addRow);
+
+        $stylePanel->child(
+            Element::make('div')
+                ->class('page-builder-style-hint')
+                ->html('输入 CSS 引擎类名，如 <code>bg-blue-100</code> <code>p-4</code> <code>hover:bg-red-500</code> <code>md:text-lg</code>')
+        );
 
         $panelBody = Element::make('div')->class('page-builder-properties-body');
         $panelBody->child($hiddenUid);

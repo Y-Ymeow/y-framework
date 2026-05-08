@@ -50,13 +50,20 @@ class ImageBlock extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'image' => '图片',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $src = $this->setting($settings, 'src', '');
         $alt = $this->setting($settings, 'alt', '');
         $width = $this->setting($settings, 'width', '');
         $align = $this->setting($settings, 'align', 'center');
-        $className = $this->setting($settings, 'className', '');
 
         $alignClass = match ($align) {
             'left' => 'pb-align-left',
@@ -66,6 +73,7 @@ class ImageBlock extends ComponentType
 
         $img = Element::make('img')
             ->class('pb-image')
+            ->attr('data-pb-style', 'image')
             ->attr('src', $src)
             ->attr('alt', $alt)
             ->attr('loading', 'lazy');
@@ -74,8 +82,13 @@ class ImageBlock extends ComponentType
             $img->attr('width', $width);
         }
 
-        return Element::make('div')
-            ->class('pb-image-wrapper', $alignClass, $className)
+        $wrapper = Element::make('div')
+            ->class('pb-image-wrapper', $alignClass)
+            ->attr('data-pb-style', 'root')
             ->child($img);
+
+        $this->applyStyles($wrapper, $settings);
+
+        return $wrapper;
     }
 }

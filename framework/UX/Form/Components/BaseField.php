@@ -23,6 +23,13 @@ abstract class BaseField implements FormField
     protected ?string $help = null;
     protected array $rules = [];
     protected array $extraClasses = [];
+    protected bool $submitMode = false;
+
+    public function submitMode(bool $submitMode = true): static
+    {
+        $this->submitMode = $submitMode;
+        return $this;
+    }
 
     public static function make(string $name): static
     {

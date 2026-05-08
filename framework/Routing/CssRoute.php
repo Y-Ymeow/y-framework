@@ -28,6 +28,13 @@ class CssRoute
     private string $outputPath;
     private bool $debug;
 
+    private static array $classProviders = [];
+
+    public static function registerClassProvider(callable $provider): void
+    {
+        self::$classProviders[] = $provider;
+    }
+
     public function __construct(string $basePath, bool $debug = true)
     {
         $this->basePath = $basePath;
@@ -105,6 +112,21 @@ class CssRoute
         $alwaysGenerated = config('css.always_generated', CSSEngine::$alwaysGenerated);
         foreach ($alwaysGenerated as $cls) {
             $classes[$cls] = true;
+        }
+
+        foreach (self::$classProviders as $provider) {
+            try {
+                $extraClasses = $provider();
+                if (is_array($extraClasses)) {
+                    foreach ($extraClasses as $cls) {
+                        if (is_string($cls) && !empty($cls)) {
+                            $classes[$cls] = true;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // skip provider errors during CSS generation
+            }
         }
 
         return $classes;

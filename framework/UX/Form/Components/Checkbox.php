@@ -39,8 +39,13 @@ class Checkbox extends BaseField
             ->attr('type', 'checkbox')
             ->attr('id', $this->name)
             ->attr('name', $this->name)
-            ->attr('value', (string)$this->checkedValue)
-            ->attr('data-model', $this->name);
+            ->attr('value', (string)$this->checkedValue);
+
+        if ($this->submitMode) {
+            $input->attr('data-submit-field', $this->name);
+        } else {
+            $input->attr('data-model', $this->name);
+        }
 
         if ($this->isChecked()) {
             $input->attr('checked', '');

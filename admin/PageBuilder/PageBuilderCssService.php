@@ -29,7 +29,7 @@ class PageBuilderCssService
         return $this->buildCss($classes);
     }
 
-    private function collectClassesFromTree(array $tree, array &$classes): void
+    public function collectClassesFromTree(array $tree, array &$classes): void
     {
         foreach ($tree as $component) {
             $type = ComponentRegistry::get($component['type'] ?? '');

@@ -36,8 +36,13 @@ class Select extends BaseField
         $select = Element::make('select')
             ->class('ux-form-input', ...$this->extraClasses)
             ->attr('id', $this->name)
-            ->attr('name', $this->name)
-            ->attr('data-model', $this->name);
+            ->attr('name', $this->name);
+
+        if ($this->submitMode) {
+            $select->attr('data-submit-field', $this->name);
+        } else {
+            $select->attr('data-model', $this->name);
+        }
 
         if ($this->multiple) {
             $select->attr('multiple', '');

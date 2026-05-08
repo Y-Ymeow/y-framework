@@ -38,22 +38,37 @@ class Header extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'logo' => 'Logo',
+            'nav' => '导航',
+            'cta_button' => 'CTA按钮',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $logoText = $this->setting($settings, 'logo_text', 'My Site');
         $ctaText = $this->setting($settings, 'cta_text', '联系我们');
         $ctaUrl = $this->setting($settings, 'cta_url', '#');
         $navItems = $this->setting($settings, 'nav_items', '首页,关于,服务,博客');
-        $className = $this->setting($settings, 'className', '');
 
         $header = Element::make('header')
-            ->class('flex', 'items-center', 'justify-between', 'px-8', 'py-4', 'border-b', 'border-gray-200', $className);
+            ->class('flex', 'items-center', 'justify-between', 'px-8', 'py-4', 'border-b', 'border-gray-200')
+            ->attr('data-pb-style', 'root');
 
         $header->child(
-            Element::make('div')->class('text-xl', 'font-bold', 'text-gray-900')->text($logoText)
+            Element::make('div')
+                ->class('text-xl', 'font-bold', 'text-gray-900')
+                ->attr('data-pb-style', 'logo')
+                ->text($logoText)
         );
 
-        $nav = Element::make('ul')->class('flex', 'gap-6', 'list-none', 'm-0', 'p-0');
+        $nav = Element::make('ul')
+            ->class('flex', 'gap-6', 'list-none', 'm-0', 'p-0')
+            ->attr('data-pb-style', 'nav');
         foreach (explode(',', $navItems) as $item) {
             $item = trim($item);
             if ($item) {
@@ -73,10 +88,13 @@ class Header extends ComponentType
             $header->child(
                 Element::make('a')
                     ->class('px-5', 'py-2', 'text-sm', 'font-medium', 'bg-blue-600', 'text-white', 'rounded-md', 'no-underline', 'hover:bg-blue-700')
+                    ->attr('data-pb-style', 'cta_button')
                     ->attr('href', $ctaUrl)
                     ->text($ctaText)
             );
         }
+
+        $this->applyStyles($header, $settings);
 
         return $header;
     }

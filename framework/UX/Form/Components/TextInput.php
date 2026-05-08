@@ -56,8 +56,13 @@ class TextInput extends BaseField
             ->class('ux-form-input', ...$this->extraClasses)
             ->attr('type', $this->inputType ?? $this->type)
             ->attr('id', $this->name)
-            ->attr('name', $this->name)
-            ->attr('data-model', $this->name);
+            ->attr('name', $this->name);
+
+        if ($this->submitMode) {
+            $input->attr('data-submit-field', $this->name);
+        } else {
+            $input->attr('data-model', $this->name);
+        }
 
         if ($this->placeholder) {
             $input->attr('placeholder', $this->placeholder);

@@ -50,6 +50,16 @@ class Hero extends ComponentType
         ]);
     }
 
+    public function styleTargets(): array
+    {
+        return [
+            'root' => '根容器',
+            'title' => '标题',
+            'subtitle' => '副标题',
+            'button' => '按钮',
+        ];
+    }
+
     public function render(array $settings): Element
     {
         $title = $this->setting($settings, 'title', '欢迎来到我们的网站');
@@ -59,7 +69,6 @@ class Hero extends ComponentType
         $bgImage = $this->setting($settings, 'background_image', '');
         $align = $this->setting($settings, 'align', 'center');
         $size = $this->setting($settings, 'size', 'lg');
-        $className = $this->setting($settings, 'className', '');
 
         $paddingClass = match ($size) {
             'sm' => 'p-8',
@@ -70,7 +79,8 @@ class Hero extends ComponentType
         $alignClass = $align === 'left' ? 'text-left' : 'text-center';
 
         $hero = Element::make('section')
-            ->class('flex', 'items-center', 'justify-center', $alignClass, $paddingClass, 'bg-cover', 'bg-center', $className);
+            ->class('flex', 'items-center', 'justify-center', $alignClass, $paddingClass, 'bg-cover', 'bg-center')
+            ->attr('data-pb-style', 'root');
 
         if ($bgImage) {
             $hero->style("background-image:url({$bgImage})");
@@ -81,6 +91,7 @@ class Hero extends ComponentType
         $content->child(
             Element::make('h1')
                 ->class('text-4xl', 'font-extrabold', 'mb-4', 'leading-tight', 'text-gray-900')
+                ->attr('data-pb-style', 'title')
                 ->text($title)
         );
 
@@ -88,6 +99,7 @@ class Hero extends ComponentType
             $content->child(
                 Element::make('p')
                     ->class('text-xl', 'text-gray-500', 'mb-8')
+                    ->attr('data-pb-style', 'subtitle')
                     ->text($subtitle)
             );
         }
@@ -96,12 +108,15 @@ class Hero extends ComponentType
             $content->child(
                 Element::make('a')
                     ->class('inline-flex', 'px-8', 'py-3', 'text-base', 'font-semibold', 'bg-blue-600', 'text-white', 'rounded-lg', 'no-underline', 'hover:bg-blue-700')
+                    ->attr('data-pb-style', 'button')
                     ->attr('href', $buttonUrl)
                     ->text($buttonText)
             );
         }
 
         $hero->child($content);
+
+        $this->applyStyles($hero, $settings);
 
         return $hero;
     }
