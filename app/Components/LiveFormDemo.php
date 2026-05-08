@@ -6,6 +6,7 @@ namespace App\Components;
 
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\State;
 use Framework\Routing\Attribute\Route;
 use Framework\UX\Form\Components\LiveTextInput;
@@ -32,11 +33,10 @@ class LiveFormDemo extends LiveComponent
     public function mount(): void {}
 
     /**
-     * 可选：处理子组件 emit 的 fieldChanged 事件。
-     * 父组件不需要预先定义此方法——子组件通过 $emit() 发送事件，
-     * 前端 JS 捕获事件后可以选择性地调用此 Action。
+     * 监听子组件 emit 的 fieldChanged 事件。
+     * 通过 #[LiveListener] 注解注册，前端通过 /live/event 端点触发。
      */
-    #[LiveAction]
+    #[LiveListener('fieldChanged')]
     public function onFieldChange(array $params = []): void
     {
         $field = $params['field'] ?? '';
@@ -69,13 +69,15 @@ class LiveFormDemo extends LiveComponent
         $titleInput = LiveTextInput::make('title')
             ->label('标题')
             ->required()
-            ->placeholder('输入文章标题...');
+            ->placeholder('输入文章标题...')
+            ->live();
         $titleInput->inputValue = $this->title;
         $titleInput->setParent($this);
 
         $slugInput = LiveTextInput::make('slug')
             ->label('标识')
-            ->placeholder('auto-generated-slug');
+            ->placeholder('auto-generated-slug')
+            ->live();
         $slugInput->inputValue = $this->slug;
         $slugInput->setParent($this);
 

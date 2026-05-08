@@ -53,8 +53,13 @@ trait HasActions
         foreach ($this->liveActions as $name => $config) {
             if (is_string($config)) {
                 $this->actionCache[$name] = $config;
-            } elseif (is_array($config) && isset($config['method'])) {
-                $this->actionCache[$name] = $config['method'];
+            } elseif (is_array($config)) {
+                // 区分配置数组 ['method' => 'xxx'] 和类方法引用 ['ClassName', 'methodName']
+                if (isset($config['method'])) {
+                    $this->actionCache[$name] = $config['method'];
+                } elseif (count($config) === 2 && is_string($config[0]) && is_string($config[1])) {
+                    $this->actionCache[$name] = $config;
+                }
             }
         }
 
@@ -110,14 +115,15 @@ trait HasActions
      * 手动注册 LiveAction
      *
      * @param string $name Action 名称
-     * @param string|callable $method 方法名或回调函数
+     * @param string|array $method 方法名或 ['ClassName', 'methodName'] 外部类引用
      * @param string $event 触发事件（默认 click）
      */
-    public function registerAction(string $name, string|callable $method, string $event = 'click'): void
+    public function registerAction(string $name, string|array $method, string $event = 'click'): void
     {
-        if (is_callable($method)) {
+        if (is_array($method) && count($method) === 2 && is_string($method[0]) && is_string($method[1])) {
+            // ['ClassName', 'methodName'] 外部类方法引用
             $this->liveActions[$name] = $method;
-        } else {
+        } elseif (is_string($method)) {
             $this->liveActions[$name] = [
                 'method' => $method,
                 'event' => $event,
@@ -154,7 +160,32 @@ trait HasActions
             throw new \RuntimeException("LiveAction [{$actionName}] is not registered on " . static::class);
         }
 
-        $methodName = $actions[$actionName];
+        $handler = $actions[$actionName];
+
+        // 支持外部类方法引用 ['ClassName', 'methodName']
+        if (is_array($handler) && count($handler) === 2 && is_string($handler[0]) && is_string($handler[1])) {
+            [$className, $methodName] = $handler;
+
+            if (!class_exists($className)) {
+                throw new \RuntimeException("Action class [{$className}] not found");
+            }
+
+            if (!method_exists($className, $methodName)) {
+                throw new \RuntimeException("Action method [{$className}::{$methodName}] not found");
+            }
+
+            // 校验 #[LiveAction] 标记
+            $ref = new \ReflectionMethod($className, $methodName);
+            $attrs = $ref->getAttributes(LiveAction::class);
+            if (empty($attrs)) {
+                throw new \RuntimeException("Method [{$className}::{$methodName}] is not marked with #[LiveAction]");
+            }
+
+            return $className::$methodName($this, $params);
+        }
+
+        // 原有 string 方法名逻辑（本组件方法）
+        $methodName = $handler;
 
         if (!method_exists($this, $methodName)) {
             throw new \RuntimeException("LiveAction [{$actionName}] method [{$methodName}] not found on " . static::class);

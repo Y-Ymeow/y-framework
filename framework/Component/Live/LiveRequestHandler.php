@@ -194,6 +194,88 @@ class LiveRequestHandler
         return $this->handleAction($request);
     }
 
+    /**
+     * POST /live/event — event dispatch to parent component listener
+     *
+     * Lightweight endpoint for triggering #[LiveListener] methods on parent components.
+     * Used by child components to notify parent components via $emit().
+     */
+    #[Route('/event', ['POST'], name: 'live.event', middleware: [VerifyCsrfToken::class])]
+    public function handleEvent(Request $request): Response
+    {
+        $componentClass = $request->header('x-live-component')
+            ?? $request->input('_component');
+
+        if (empty($componentClass)) {
+            return Response::json(['success' => false, 'error' => 'Missing component class'], 400);
+        }
+
+        $error = $this->guardComponentClass($componentClass);
+        if ($error) return $error;
+
+        try {
+            $component = $this->resolveComponent(
+                $componentClass,
+                $request->input('_component_id', ''),
+            );
+
+            $state = $request->input('_state', '');
+            $publicData = $request->input('_data', []);
+            if (!is_array($publicData)) $publicData = [];
+
+            if (!empty($state)) {
+                $component->deserializeState($state);
+                $component->fillPublicProperties($publicData);
+            }
+
+            $eventName = $request->input('_event');
+            $eventParams = $request->input('_params', []);
+
+            $handlerMethod = $this->findEventHandler($component, $eventName);
+            if (!$handlerMethod) {
+                return Response::json(['success' => false, 'error' => "No listener for event: {$eventName}"], 404);
+            }
+
+            $before = $component->getDataForFrontend();
+            $component->$handlerMethod($eventParams);
+            $after = $component->getDataForFrontend();
+
+            $patches = [];
+            foreach ($after as $key => $value) {
+                if (!array_key_exists($key, $before) || $before[$key] !== $value) {
+                    $patches[$key] = $value;
+                }
+            }
+
+            $newState = $component->serializeState();
+
+            return Response::json([
+                'success' => true,
+                'component' => $componentClass,
+                'event' => $eventName,
+                'state' => $newState,
+                'patches' => $patches,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->errorResponse($e);
+        }
+    }
+
+    private function findEventHandler(AbstractLiveComponent $component, string $eventName): ?string
+    {
+        $ref = new \ReflectionClass($component);
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attrs = $method->getAttributes(\Framework\Component\Live\Attribute\LiveListener::class);
+            foreach ($attrs as $attr) {
+                $listener = $attr->newInstance();
+                if ($listener->event === $eventName) {
+                    return $method->getName();
+                }
+            }
+        }
+        return null;
+    }
+
     #[Route('/stream', ['POST'], name: 'live.stream', middleware: [VerifyCsrfToken::class])]
     public function stream(Request $request): Response
     {

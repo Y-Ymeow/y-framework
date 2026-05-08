@@ -28,6 +28,12 @@ class LiveComponentResolver
     {
         $handler = new LiveRequestHandler();
 
+        // Route to event handler if _event is present
+        $event = $request->input('_event');
+        if (!empty($event)) {
+            return $handler->handleEvent($request);
+        }
+
         // If no _action is specified, treat as state update
         $action = $request->input('_action');
         if (empty($action)) {

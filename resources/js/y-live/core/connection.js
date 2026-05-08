@@ -239,6 +239,57 @@ export async function dispatchState(el, componentClass, stateRef, state) {
     }
 }
 
+function buildEventBody(el, componentClass, state, publicData, eventName, eventParams) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const componentId = el.dataset.liveId || '';
+
+    const body = {
+        _component: componentClass,
+        _component_id: componentId,
+        _state: state,
+        _data: publicData,
+        _event: eventName,
+        _params: eventParams,
+    };
+
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Live-Component': componentClass,
+            'X-CSRF-Token': csrfToken,
+            'X-Component-Id': componentId,
+        },
+        body: JSON.stringify(body),
+    };
+}
+
+export async function dispatchEvent(el, componentClass, state, publicData, eventName, eventParams) {
+    const { headers, body } = buildEventBody(el, componentClass, state, publicData, eventName, eventParams);
+
+    setLoading(el, true);
+
+    try {
+        const response = await fetch('/live/event', {
+            method: 'POST',
+            headers,
+            body,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+        }
+
+        return { success: true, data };
+    } catch (err) {
+        console.error('Live event dispatch error:', err);
+        return { success: false, error: err };
+    } finally {
+        setLoading(el, false);
+    }
+}
+
 export function dispatchStream(el, componentClass, action, stateRef, state, event, extraParams = {}, onChunk = null, onDone = null) {
     const { headers, body } = buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
 

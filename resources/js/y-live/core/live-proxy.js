@@ -1,4 +1,4 @@
-import { dispatchAction, dispatchState, getComponentInfo, updateLiveStateAttr } from './connection.js'
+import { dispatchAction, dispatchState, dispatchEvent, getComponentInfo, updateLiveStateAttr } from './connection.js'
 import { replaceLiveHtml, applyLiveFragment } from './dom.js'
 import { initDirectives } from '../../y-directive/index.js'
 import { executeOperation } from '../operations.js'
@@ -39,6 +39,95 @@ function parseActionArgs(args) {
     const result = {}
     args.forEach((val, i) => { result[i] = val })
     return result
+}
+
+/**
+ * Find parent Live component via data-live-parent-id or DOM traversal.
+ */
+function findParentLiveEl(el) {
+    // Priority 1: exact match via data-live-parent-id
+    const parentId = el.dataset.liveParentId;
+    if (parentId) {
+        const parentById = document.querySelector(`[data-live-id="${parentId}"]`);
+        if (parentById && parentById !== el) return parentById;
+    }
+
+    // Priority 2: DOM traversal fallback
+    const parentLiveEl = el.parentElement?.closest('[data-live]');
+    if (parentLiveEl && parentLiveEl !== el) return parentLiveEl;
+
+    return null;
+}
+
+/**
+ * Process emitted events from child components.
+ * 1. Dispatch local CustomEvent
+ * 2. Walk up $parent chain to find listener
+ * 3. Send /live/event to parent if it has #[LiveListener]
+ */
+async function processEvents(el, events) {
+    if (!events || events.length === 0) return;
+
+    const liveEl = el.closest('[data-live]') || el;
+
+    for (const evt of events) {
+        // 1. Dispatch local CustomEvent
+        const eventName = 'live:' + evt.event;
+        liveEl.dispatchEvent(new CustomEvent(eventName, {
+            detail: evt.params || {},
+            bubbles: true,
+            cancelable: true,
+        }));
+
+        // 2. Walk up $parent chain to find listener
+        let currentEl = liveEl;
+        while (currentEl) {
+            const parentEl = findParentLiveEl(currentEl);
+            if (!parentEl) break;
+
+            const parentInfo = getComponentInfo(parentEl);
+            const parentListeners = parentInfo.__listeners || [];
+
+            // Check if parent listens for this event
+            if (parentListeners.includes(evt.event)) {
+                // 3. Send /live/event to parent
+                await dispatchEventToParent(parentEl, evt.event, evt.params);
+                break; // Only trigger the nearest listener
+            }
+
+            currentEl = parentEl;
+        }
+    }
+}
+
+/**
+ * Dispatch event to parent component via /live/event endpoint.
+ */
+async function dispatchEventToParent(parentEl, eventName, params) {
+    const info = getComponentInfo(parentEl);
+    const componentClass = info.__component;
+    if (!componentClass) return;
+
+    const parentState = parentEl._y_state;
+    const publicData = parentState && typeof parentState.all === 'function'
+        ? parentState.all()
+        : (parentState || {});
+
+    showLiveProgress();
+    try {
+        const result = await dispatchEvent(parentEl, componentClass, info.__state, publicData, eventName, params);
+        if (result && result.success) {
+            const data = result.data;
+            if (data.state) updateLiveStateAttr(parentEl, data.state, data.patches);
+            if (data.patches && parentState && typeof parentState.merge === 'function') {
+                batch(() => { parentState.merge(data.patches) });
+            }
+        }
+    } catch (err) {
+        console.error('[y-live] Event dispatch error:', err);
+    } finally {
+        hideLiveProgress();
+    }
 }
 
 async function callActionViaProxy(el, state, action, params) {
@@ -93,6 +182,9 @@ async function callActionViaProxy(el, state, action, params) {
             if (data.operations) {
                 data.operations.forEach(op => executeOperation(op))
             }
+
+            // Process emitted events
+            await processEvents(el, data.events);
         }
     } catch (err) {
         console.error('[y-live] Proxy action error:', err)
@@ -191,8 +283,8 @@ export function createLiveProxy(el, state, actions) {
 
             // $live.$parent — returns a recursive proxy targeting the parent component
             if (prop === '$parent') {
-                const parentLiveEl = el.parentElement?.closest('[data-live]');
-                if (!parentLiveEl || parentLiveEl === el) return undefined;
+                const parentLiveEl = findParentLiveEl(el);
+                if (!parentLiveEl) return undefined;
 
                 const parentInfo = getComponentInfo(parentLiveEl);
                 const parentActions = new Set(parentInfo.__actions || []);
@@ -251,6 +343,9 @@ async function dispatchStateUpdate(el, state, params) {
             if (data.patches && state && typeof state.merge === 'function') {
                 batch(() => { state.merge(data.patches) })
             }
+
+            // Process emitted events
+            await processEvents(el, data.events);
         }
     } catch (err) {
         console.error('[y-live] State update error:', err)

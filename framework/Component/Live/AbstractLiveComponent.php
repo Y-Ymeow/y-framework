@@ -91,6 +91,7 @@ abstract class AbstractLiveComponent
             '__state' => $state,
             '__props' => $publicProps,
             '__actions' => array_keys($liveActions),
+            '__listeners' => $this->getListenerEvents(),
         ];
     }
 

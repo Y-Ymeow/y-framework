@@ -7,6 +7,8 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use Tests\InteractsWithLiveComponents;
 use App\Components\LiveFormDemo;
+use App\Actions\SlugGenerator;
+use App\Actions\UnsafeAction;
 use Framework\UX\Form\Components\LiveTextInput;
 use Framework\Component\Live\AbstractLiveComponent;
 use Framework\Component\Live\EmbeddedLiveComponent;
@@ -28,17 +30,31 @@ class EmbeddedLiveComponentTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_live_text_input_renders_with_live_attributes(): void
+    public function test_live_text_input_renders_with_default_model(): void
     {
         $input = LiveTextInput::make('title');
         $input->label('标题');
 
         $html = $input->toHtml();
 
+        // 默认使用 data-model（本地状态），不是 data-live-model
         $this->assertStringContainsString('data-live=', $html);
         $this->assertStringContainsString('data-live-id=', $html);
         $this->assertStringContainsString('data-live-state=', $html);
+        $this->assertStringContainsString('data-model="inputValue"', $html);
+        $this->assertStringNotContainsString('data-live-model', $html);
+    }
+
+    public function test_live_text_input_renders_with_live_model_when_enabled(): void
+    {
+        $input = LiveTextInput::make('title')->live();
+        $input->label('标题');
+
+        $html = $input->toHtml();
+
+        // 调用 live() 后才使用 data-live-model.live
         $this->assertStringContainsString('data-live-model.live', $html);
+        $this->assertStringNotContainsString('data-model="inputValue"', $html);
     }
 
     public function test_live_text_input_inherits_embedded_live_component(): void
@@ -123,24 +139,45 @@ class EmbeddedLiveComponentTest extends TestCase
         $this->assertStringContainsString('data-live-model.live', $html);
     }
 
-    public function test_parent_state_updates_via_live_action(): void
+    public function test_live_event_endpoint_triggers_listener(): void
     {
-        $response = $this->liveCall(LiveFormDemo::class, 'onFieldChange', [
-            'title' => '',
-            'slug' => '',
-            'changeCount' => 0,
-            'lastChangedField' => '',
-            'lastChangedValue' => '',
-        ], [
-            'field' => 'title',
-            'value' => 'Test Title',
+        $demo = new LiveFormDemo();
+        $demo->_invoke();
+        $serializedState = $demo->serializeState();
+
+        $request = \Framework\Http\Request\Request::create('/live/event', 'POST', [
+            '_component' => LiveFormDemo::class,
+            '_state' => $serializedState,
+            '_data' => [
+                'title' => '',
+                'slug' => '',
+                'changeCount' => 0,
+                'lastChangedField' => '',
+                'lastChangedValue' => '',
+            ],
+            '_event' => 'fieldChanged',
+            '_params' => [
+                'field' => 'title',
+                'value' => 'Test Title',
+            ],
+            '_token' => 'test-token',
         ]);
 
-        $this->assertTrue($response['success']);
-        $this->assertEquals('Test Title', $response['patches']['title'] ?? null);
-        $this->assertEquals('test-title', $response['patches']['slug'] ?? null);
-        $this->assertEquals(1, $response['patches']['changeCount'] ?? null);
-        $this->assertEquals('title', $response['patches']['lastChangedField'] ?? null);
+        $session = $this->app->make(\Framework\Http\Session\Session::class);
+        $session->set('_token', 'test-token');
+
+        $resolver = $this->app->make(\Framework\Component\Live\LiveComponentResolver::class);
+        $response = $resolver->handle($request);
+
+        $decoded = json_decode($response->getContent(), true);
+
+        echo "\nResponse: " . json_encode($decoded, JSON_PRETTY_PRINT) . "\n";
+
+        $this->assertTrue($decoded['success']);
+        $this->assertEquals('Test Title', $decoded['patches']['title'] ?? null);
+        $this->assertEquals('test-title', $decoded['patches']['slug'] ?? null);
+        $this->assertEquals(1, $decoded['patches']['changeCount'] ?? null);
+        $this->assertEquals('title', $decoded['patches']['lastChangedField'] ?? null);
     }
 
     public function test_parent_reset_action(): void
@@ -198,5 +235,64 @@ class EmbeddedLiveComponentTest extends TestCase
         $this->assertCount(1, $decoded['events']);
         $this->assertEquals('fieldChanged', $decoded['events'][0]['event']);
         $this->assertEquals('title', $decoded['events'][0]['params']['field']);
+    }
+
+    public function test_live_text_input_renders_action_button(): void
+    {
+        $input = LiveTextInput::make('slug')
+            ->action('generateSlug', [SlugGenerator::class, 'generate'], '生成');
+
+        $html = $input->toHtml();
+
+        $this->assertStringContainsString('data-action:click="generateSlug"', $html);
+        $this->assertStringContainsString('生成', $html);
+        $this->assertStringContainsString('ux-form-action-btn', $html);
+    }
+
+    public function test_external_class_action_is_registered(): void
+    {
+        $input = LiveTextInput::make('slug')
+            ->action('generateSlug', [SlugGenerator::class, 'generate'], '生成');
+        $input->_invoke();
+
+        $actions = $input->getLiveActions();
+
+        $this->assertArrayHasKey('generateSlug', $actions);
+        $this->assertIsArray($actions['generateSlug']);
+        $this->assertEquals(SlugGenerator::class, $actions['generateSlug'][0]);
+        $this->assertEquals('generate', $actions['generateSlug'][1]);
+    }
+
+    public function test_external_class_action_executes_correctly(): void
+    {
+        $parent = new LiveFormDemo();
+        $parent->title = 'Hello World Test';
+        $parent->_invoke();
+
+        $input = LiveTextInput::make('slug')
+            ->action('generateSlug', [SlugGenerator::class, 'generate'], '生成');
+        $input->_invoke();
+        $input->setParent($parent);
+
+        $input->callAction('generateSlug', []);
+
+        $this->assertEquals('hello-world-test', $input->inputValue);
+
+        $events = $input->getEmittedEvents();
+        $this->assertCount(1, $events);
+        $this->assertEquals('slugGenerated', $events[0]['event']);
+        $this->assertEquals('hello-world-test', $events[0]['params']['slug']);
+    }
+
+    public function test_external_class_action_without_live_action_attribute_fails(): void
+    {
+        $input = LiveTextInput::make('slug')
+            ->action('unsafe', [UnsafeAction::class, 'doSomething'], 'Unsafe');
+        $input->_invoke();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not marked with #[LiveAction]');
+
+        $input->callAction('unsafe', []);
     }
 }

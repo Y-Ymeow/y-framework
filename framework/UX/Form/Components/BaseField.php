@@ -25,6 +25,7 @@ abstract class BaseField extends UXLiveComponent implements FormField
     protected array $rules = [];
     protected array $extraClasses = [];
     protected bool $submitMode = false;
+    protected array $fieldActions = [];
 
     public static function make(...$args): static
     {
@@ -159,6 +160,25 @@ abstract class BaseField extends UXLiveComponent implements FormField
     public function class(string ...$classes): static
     {
         $this->extraClasses = array_merge($this->extraClasses, $classes);
+        return $this;
+    }
+
+    /**
+     * 为字段注册一个内联 Action。
+     * 支持：
+     * - 字符串方法名（本组件上的方法）
+     * - ['ClassName', 'methodName'] 外部类静态方法引用
+     */
+    public function action(string $name, string|array $handler, string $label = '', string $event = 'click'): static
+    {
+        $this->fieldActions[$name] = [
+            'handler' => $handler,
+            'label' => $label,
+            'event' => $event,
+        ];
+
+        $this->registerAction($name, $handler, $event);
+
         return $this;
     }
 
