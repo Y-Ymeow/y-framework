@@ -367,8 +367,8 @@ class LiveRequestHandler
             return Response::json(['success' => false, 'error' => "Component [{$class}] not found"], 404);
         }
 
-        // Ensure the class is a LiveComponent
-        if (!is_subclass_of($class, LiveComponent::class)) {
+        // Ensure the class is a LiveComponent or EmbeddedLiveComponent (both extend AbstractLiveComponent)
+        if (!is_subclass_of($class, AbstractLiveComponent::class)) {
             return Response::json(['success' => false, 'error' => "Class [{$class}] is not a valid Live component"], 403);
         }
 
@@ -387,11 +387,11 @@ class LiveRequestHandler
     /**
      * Inject a parent LiveComponent into an EmbeddedLiveComponent child.
      *
-     * When the request payload contains a _parent_id, the handler looks up
-     * the parent component via LiveEventBus, hydrates it, and calls
-     * setParent() on the child.
+     * Walks up the component tree based on the _parent_id provided in the payload.
+     * If the parent itself is an Embedded component, its parent will also be
+     * hydrated if metadata is available, enabling multi-level context access.
      */
-    private function injectParentComponent(LiveComponent $component, Request $request): void
+    private function injectParentComponent(AbstractLiveComponent $component, Request $request): void
     {
         if (!($component instanceof EmbeddedLiveComponent)) {
             return;
@@ -402,35 +402,34 @@ class LiveRequestHandler
             return;
         }
 
-        $parentState = LiveEventBus::getComponentState($parentId);
-        if ($parentState === null) {
-            // Try to find parent from peer components snapshot
-            $components = $request->input('_components');
-            if (is_array($components)) {
-                foreach ($components as $compData) {
-                    if (($compData['id'] ?? '') === $parentId && !empty($compData['class']) && !empty($compData['state'])) {
-                        $parentState = [
-                            'class' => $compData['class'],
-                            'state' => $compData['state'],
-                        ];
-                        LiveEventBus::storeComponentState(
-                            $compData['id'],
-                            $compData['class'],
-                            $compData['state']
-                        );
-                        break;
+        $parent = $this->resolveComponentFromPayload($parentId, $request);
+        if ($parent && $parent instanceof LiveComponent) {
+            $component->setParent($parent);
+        }
+    }
+
+    /**
+     * Resolve a specific component from payload, checking both peer components and main target.
+     */
+    private function resolveComponentFromPayload(string $id, Request $request): ?AbstractLiveComponent
+    {
+        $components = $request->input('_components', []);
+        foreach ($components as $compData) {
+            if (($compData['id'] ?? '') === $id && !empty($compData['class']) && !empty($compData['state'])) {
+                try {
+                    /** @var AbstractLiveComponent $instance */
+                    $instance = app()->make($compData['class']);
+                    $instance->named($id);
+                    $instance->deserializeState($compData['state']);
+                    return $instance;
+                } catch (\Throwable $e) {
+                    if (Application::isDebug()) {
+                        error_log("Failed to resolve component [{$id}] from payload: " . $e->getMessage());
                     }
                 }
             }
         }
-
-        if ($parentState !== null) {
-            /** @var LiveComponent $parent */
-            $parent = app()->make($parentState['class']);
-            $parent->named($parentId);
-            $parent->deserializeState($parentState['state']);
-            $component->setParent($parent);
-        }
+        return null;
     }
 
     /**
@@ -503,11 +502,11 @@ class LiveRequestHandler
         }
     }
 
-    private function resolveComponent(string $class, string $componentId): LiveComponent
+    private function resolveComponent(string $class, string $componentId): AbstractLiveComponent
     {
         $component = app()->make($class);
 
-        if (!($component instanceof LiveComponent)) {
+        if (!($component instanceof AbstractLiveComponent)) {
             throw new \Framework\Exception\ComponentNotFoundException($class);
         }
 
@@ -518,7 +517,7 @@ class LiveRequestHandler
         return $component;
     }
 
-    private function collectEmittedEvents(array &$response, LiveComponent $component): void
+    private function collectEmittedEvents(array &$response, AbstractLiveComponent $component): void
     {
         $emittedEvents = LiveEventBus::getEmittedEvents();
         foreach ($emittedEvents as $emittedEvent) {
@@ -538,7 +537,7 @@ class LiveRequestHandler
         }
     }
 
-    private function collectManualUpdates(array &$response, LiveComponent $component): void
+    private function collectManualUpdates(array &$response, AbstractLiveComponent $component): void
     {
         $manualUpdates = $component->getManualUpdates();
         foreach ($manualUpdates as $targetId => $patchData) {
@@ -554,7 +553,7 @@ class LiveRequestHandler
         }
     }
 
-    private function collectFragments(array &$response, LiveComponent $component): void
+    private function collectFragments(array &$response, AbstractLiveComponent $component): void
     {
         $refreshTargets = $component->getRefreshFragments();
         if (empty($refreshTargets)) {
@@ -586,7 +585,7 @@ class LiveRequestHandler
         }
     }
 
-    private function collectComponentOperations(array &$response, LiveComponent $component): void
+    private function collectComponentOperations(array &$response, AbstractLiveComponent $component): void
     {
         $componentOps = $component->getOperations();
         if (!empty($componentOps)) {

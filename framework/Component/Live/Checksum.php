@@ -31,15 +31,13 @@ class Checksum
     }
 
     /**
-     * Sign a data array, producing a deterministic checksum string.
-     *
-     * Used for per-property checksums (locked_checksums) and overall
-     * state integrity verification.
+     * Generate a deterministic checksum for an array of data using HMAC-SHA256.
+     * Replaces MD5 for better security and collision resistance.
      */
     public static function checksum(array $data): string
     {
-        self::recursiveNormalize($data);
-        return md5(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+        $normalized = self::normalizeForChecksum($data);
+        return hash_hmac('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION), self::signingKey());
     }
 
     /**
@@ -86,17 +84,19 @@ class Checksum
     }
 
     /**
-     * Normalize an array for deterministic checksum generation.
+     * Normalize data for deterministic hashing.
+     * Maintains types for scalar values while ensuring key order.
      */
-    private static function recursiveNormalize(array &$array): void
+    private static function normalizeForChecksum(array $data): array
     {
-        ksort($array);
-        foreach ($array as &$value) {
+        ksort($data);
+        foreach ($data as $key => &$value) {
             if (is_array($value)) {
-                self::recursiveNormalize($value);
-            } elseif ($value !== null) {
-                $value = (string) $value;
+                $value = self::normalizeForChecksum($value);
+            } elseif (is_object($value)) {
+                $value = method_exists($value, 'toArray') ? self::normalizeForChecksum($value->toArray()) : get_class($value);
             }
         }
+        return $data;
     }
 }

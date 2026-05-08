@@ -10,8 +10,8 @@ class Register
 
     public static function register(string $widgetClass): void
     {
-        if (!is_subclass_of($widgetClass, \Framework\Component\Live\LiveComponent::class)) {
-            throw new \InvalidArgumentException("{$widgetClass} must extend LiveComponent");
+        if (!is_subclass_of($widgetClass, \Framework\Component\Live\AbstractLiveComponent::class)) {
+            throw new \InvalidArgumentException("{$widgetClass} must extend AbstractLiveComponent");
         }
         static::$widgets[] = $widgetClass;
     }

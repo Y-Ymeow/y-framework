@@ -593,7 +593,7 @@ class Element
             foreach ($this->children as $child) {
                 if ($child instanceof self) {
                     $inner .= $child->render();
-                } elseif ($child instanceof \Framework\Component\Live\LiveComponent) {
+                } elseif ($child instanceof \Framework\Component\Live\AbstractLiveComponent) {
                     $inner .= $child->toHtml();
                 } elseif ($child instanceof \Framework\UX\UXComponent) {
                     $inner .= $child->render();

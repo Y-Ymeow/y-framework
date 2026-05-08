@@ -4,37 +4,23 @@ declare(strict_types=1);
 
 namespace Framework\UX;
 
-use Framework\Component\Live\Concerns\HasParentInjection;
+use Framework\Component\Live\EmbeddedLiveComponent;
 use Framework\View\Base\Element;
 use Framework\View\Document\AssetRegistry;
 
 /**
  * Base class for UX components that participate in the Live parent-child
- * hierarchy without carrying full LiveComponent state management.
- *
- * UXLiveComponent provides:
- *  - Parent injection via HasParentInjection trait (setParent, dispatchToParent)
- *  - UX lifecycle (boot-then-render with AssetRegistry registration)
- *  - render() → toElement() bridge for HTML fragment output
- *
- * Unlike EmbeddedLiveComponent (which extends LiveComponent), this class
- * does NOT carry checksum, #[Locked], serializeState, mount/hydrate/dehydrate,
- * or the full Live action lifecycle. It is intentionally lightweight —
- * suitable for form fields, UI widgets, and other components that need
- * parent awareness but not independent state management.
- *
- * Subclasses implement toElement() to define their DOM structure, or
- * override render() directly for full control.
+ * hierarchy. Inherits full state management from EmbeddedLiveComponent.
  */
-abstract class UXLiveComponent
+abstract class UXLiveComponent extends EmbeddedLiveComponent
 {
-    use HasParentInjection;
-
     protected bool $isUxComponent = true;
     protected bool $autoRefreshOnParentUpdate = false;
 
     public function __construct()
     {
+        parent::__construct();
+
         AssetRegistry::getInstance()->ui();
         AssetRegistry::getInstance()->ux();
 
@@ -73,13 +59,5 @@ abstract class UXLiveComponent
     protected function toElement(): Element
     {
         return Element::make('div');
-    }
-
-    /**
-     * Render as an HTML string (fragment, no Live wrapper).
-     */
-    public function __toString(): string
-    {
-        return $this->render()->render();
     }
 }

@@ -189,34 +189,17 @@ export function createLiveProxy(el, state, actions) {
                 }
             }
 
-            // $live.$parent — returns a proxy targeting the parent component
+            // $live.$parent — returns a recursive proxy targeting the parent component
             if (prop === '$parent') {
-                const parentLiveEl = el.parentElement?.closest('[data-live]')
-                if (!parentLiveEl || parentLiveEl === el) return undefined
+                const parentLiveEl = el.parentElement?.closest('[data-live]');
+                if (!parentLiveEl || parentLiveEl === el) return undefined;
 
-                const parentInfo = getComponentInfo(parentLiveEl)
-                const parentActions = new Set(parentInfo.__actions || [])
-                const parentState = parentLiveEl._y_state
+                const parentInfo = getComponentInfo(parentLiveEl);
+                const parentActions = new Set(parentInfo.__actions || []);
+                const parentState = parentLiveEl._y_state;
 
-                return new Proxy({}, {
-                    get(_, parentProp) {
-                        if (parentProp === 'get') {
-                            return () => parentState ? parentState.all() : {}
-                        }
-                        if (parentProp === 'refresh') {
-                            return (name) => dispatchRefresh(parentLiveEl, parentState, name)
-                        }
-                        if (parentActions.has(parentProp)) {
-                            return (...args) => {
-                                const params = parseActionArgs(args)
-                                return callActionViaProxy(parentLiveEl, parentState, parentProp, params)
-                            }
-                        }
-                        if (parentState && typeof parentState.get === 'function') return parentState.get(parentProp)
-                        if (parentState && parentProp in parentState) return parentState[parentProp]
-                        return undefined
-                    }
-                })
+                // Return a LiveProxy-like object for the parent
+                return createLiveProxy(parentLiveEl, parentState, parentActions);
             }
 
             if (actions && actions.has(prop)) {

@@ -7,7 +7,7 @@ use Admin\Contracts\Page\PageInterface;
 use Admin\Pages\DashboardPage;
 use Admin\Pages\LoginPage;
 use Admin\Auth\AuthManager;
-use Framework\Component\Live\LiveComponent;
+use Framework\Component\Live\AbstractLiveComponent;
 use Framework\Http\Middleware\AdminAuthenticate;
 
 class AdminManager
@@ -28,8 +28,8 @@ class AdminManager
 
     public static function registerPage(string $page): void
     {
-        if (!is_subclass_of($page, PageInterface::class) && !is_subclass_of($page, LiveComponent::class)) {
-            throw new \InvalidArgumentException("{$page} must implement " . PageInterface::class . " or extend " . LiveComponent::class);
+        if (!is_subclass_of($page, PageInterface::class) && !is_subclass_of($page, AbstractLiveComponent::class)) {
+            throw new \InvalidArgumentException("{$page} must implement " . PageInterface::class . " or extend " . AbstractLiveComponent::class);
         }
         static::$pages[$page::getName()] = $page;
     }

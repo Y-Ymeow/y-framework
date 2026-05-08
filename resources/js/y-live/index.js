@@ -57,27 +57,55 @@ directive('action', (el, state, method, { content, modifiers, $execute }) => {
 });
 
 // 3. 注册 data-live-model 指令 — 绑定输入到 $live.update(property, value)
-directive('live-model', (el, state, method, { content, modifiers }) => {
+directive('live-model', (el, state, method, { content, modifiers, effect, execute }) => {
     const property = content;
-    const isText = (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email')) || el.tagName === 'TEXTAREA';
-    const eventType = isText ? 'input' : 'change';
+    const isBlur = modifiers.includes('blur');
+    const isLive = modifiers.includes('live');
+    
+    // 确定监听事件
+    const eventType = isBlur ? 'blur' : (
+        (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email' || el.type === 'password')) || el.tagName === 'TEXTAREA'
+            ? 'input' : 'change'
+    );
 
     let timer = null;
-    const handler = (e) => {
-        clearTimeout(timer);
-        const delay = modifiers.includes('debounce') ? (parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300) : 300;
+    const handleInput = (e) => {
+        const value = el.type === 'checkbox' ? el.checked : el.value;
+        
+        // 1. 同步到本地 ReactiveState (y-directive 核心)
+        if (state && typeof state.set === 'function') {
+            state.set(property, value);
+        }
 
-        timer = setTimeout(() => {
-            const liveEl = el.closest('[data-live]');
-            if (!liveEl || !liveEl.$live) return;
+        // 2. 如果标记了 .live，则同步到后端 /live/state
+        if (isLive) {
+            clearTimeout(timer);
+            const delay = modifiers.includes('debounce') 
+                ? (parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300) 
+                : (isBlur ? 0 : 300);
 
-            const value = el.type === 'checkbox' ? el.checked : el.value;
-            liveEl.$live.update(property, value);
-        }, delay);
+            timer = setTimeout(() => {
+                const liveEl = el.closest('[data-live]');
+                if (liveEl && liveEl.$live) {
+                    liveEl.$live.update(property, value);
+                }
+            }, delay);
+        }
     };
 
-    el.addEventListener(eventType, handler);
-    return () => el.removeEventListener(eventType, handler);
+    el.addEventListener(eventType, handleInput);
+
+    // 自动回填逻辑 (双向绑定)
+    effect(() => {
+        const val = state.get ? state.get(property) : state[property];
+        if (el.type === 'checkbox') {
+            if (el.checked !== !!val) el.checked = !!val;
+        } else {
+            if (el.value !== String(val ?? '')) el.value = val ?? '';
+        }
+    });
+
+    return () => el.removeEventListener(eventType, handleInput);
 });
 
 // 4. 注册 data-submit 指令 — 收集表单数据一次性提交到 LiveAction

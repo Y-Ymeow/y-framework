@@ -28,7 +28,6 @@ class Asset
 
     public static function distPath(): string
     {
-        var_dump(base_path('public/build/.vite/manifest.json'), self::$distPath);
         if (self::$distPath === null) {
             $composerPath = base_path('public/build/.vite/manifest.json');
             $srcDir = dirname((new \ReflectionClass(self::class))->getFileName(), 2);
@@ -63,7 +62,6 @@ class Asset
         }
 
         $manifestPath = base_path('public/build/.vite/manifest.json');
-        var_dump($manifestPath);
 
         if (!is_file($manifestPath)) {
             return '/build/' . $entry;
