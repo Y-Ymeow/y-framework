@@ -1,6 +1,6 @@
 import { directive, initDirectives } from '../y-directive/index.js';
 import { setupLiveComponent, applyLiveResponse } from './core/state.js';
-import { dispatchAction, dispatchStream, setLoading } from './core/connection.js';
+import { dispatchAction as dispatchLiveAction, dispatchStream, setLoading } from './core/connection.js';
 import { replaceLiveHtml, applyLiveFragment } from './core/dom.js';
 import { executeOperation } from './operations.js';
 import { initIntl } from './intl.js';
@@ -156,7 +156,7 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
     }
 
     try {
-        const result = await dispatchAction(el, componentClass, action, stateRef, state, event, params);
+        const result = await dispatchLiveAction(el, componentClass, action, stateRef, state, event, params);
         if (!result.success) return;
 
         const data = result.data;

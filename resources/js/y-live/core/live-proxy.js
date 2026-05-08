@@ -1,4 +1,4 @@
-import { dispatchLive, dispatchAction, dispatchState, getComponentInfo, updateLiveStateAttr } from './connection.js'
+import { dispatchAction, dispatchState, getComponentInfo, updateLiveStateAttr } from './connection.js'
 import { replaceLiveHtml, applyLiveFragment } from './dom.js'
 import { initDirectives } from '../../y-directive/index.js'
 import { executeOperation } from '../operations.js'
