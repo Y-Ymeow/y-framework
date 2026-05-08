@@ -20,7 +20,7 @@ return [
         \Framework\Scheduler\SchedulerServiceProvider::class,
 
         \Admin\Services\AdminServiceProvider::class,
-        \Admin\PageBuilder\PageBuilderServiceProvider::class,
+        \App\Providers\PageBuilderServiceProvider::class,
     ],
 
     'debug_providers' => [
