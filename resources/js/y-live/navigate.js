@@ -93,33 +93,53 @@ function loadSources(sources) {
     const promises = [];
 
     cssList.forEach(item => {
-        const key = item.id || item.href;
-        if (!key) return;
-        if (document.querySelector(`link[id="${item.id}"]`) || document.querySelector(`link[href="${item.href}"]`)) return;
+        if (!item.href) return;
+        const existingByHref = document.querySelector(`link[href="${item.href}"]`);
+        if (existingByHref) return;
+        const existingById = item.id ? document.querySelector(`link[id="${item.id}"]`) : null;
         promises.push(new Promise((resolve) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = item.href;
-            if (item.id) link.id = item.id;
-            link.onload = resolve;
-            link.onerror = resolve;
+            link.onload = () => {
+                if (existingById && existingById !== link) existingById.remove();
+                resolve();
+            };
+            link.onerror = () => {
+                if (existingById && existingById !== link) existingById.remove();
+                resolve();
+            };
             document.head.appendChild(link);
+            if (item.id) {
+                if (existingById) existingById.removeAttribute('id');
+                link.id = item.id;
+            }
         }));
     });
 
     jsList.forEach(item => {
-        const key = item.id || item.src;
-        if (!key) return;
-        if (document.querySelector(`script[id="${item.id}"]`) || document.querySelector(`script[src="${item.src}"]`)) return;
+        if (!item.src) return;
+        const existingByHref = document.querySelector(`script[src="${item.src}"]`);
+        if (existingByHref) return;
+        const existingById = item.id ? document.querySelector(`script[id="${item.id}"]`) : null;
         promises.push(new Promise((resolve) => {
             const script = document.createElement('script');
             script.src = item.src;
-            if (item.id) script.id = item.id;
             if (item.module) script.type = 'module';
             script.defer = true;
-            script.onload = resolve;
-            script.onerror = resolve;
+            script.onload = () => {
+                if (existingById && existingById !== script) existingById.remove();
+                resolve();
+            };
+            script.onerror = () => {
+                if (existingById && existingById !== script) existingById.remove();
+                resolve();
+            };
             document.head.appendChild(script);
+            if (item.id) {
+                if (existingById) existingById.removeAttribute('id');
+                script.id = item.id;
+            }
         }));
     });
 
@@ -226,7 +246,16 @@ function replaceNavigateHtml(target, html) {
         });
     }
 
-    // 4. 重新绑定导航链接
+    // 4. 重新初始化 UX 组件
+    if (window.UX && typeof window.UX._registry === 'object') {
+        window.UX._registry.forEach((component, name) => {
+            if (typeof component.init === 'function') {
+                try { component.init(); } catch (e) { console.error(`UX [${name}] re-init failed:`, e); }
+            }
+        });
+    }
+
+    // 5. 重新绑定导航链接
     bindNavigateLinks(target);
 }
 

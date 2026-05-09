@@ -76,17 +76,20 @@ class CssRoute
 
         if ($snippetsParam === null) {
             $snippetsParam = $request->query('snippets');
-        } elseif (str_ends_with($snippetsParam, '.css')) {
-            $snippetsParam = substr($snippetsParam, 0, -4);
+        } else {
+            $snippetsParam = urldecode($snippetsParam);
+            if (str_ends_with($snippetsParam, '.css')) {
+                $snippetsParam = substr($snippetsParam, 0, -4);
+            }
         }
 
         if ($snippetsParam) {
-            $ids = explode(',', $snippetsParam);
+            $ids = array_values(array_filter(
+                array_unique(explode(',', $snippetsParam)),
+                static fn($id) => is_string($id) && $id !== ''
+            ));
             foreach ($ids as $id) {
-                $id = trim($id);
-                if ($id) {
-                    $collector->getSnippet($id);
-                }
+                $collector->getSnippet($id);
             }
         }
 

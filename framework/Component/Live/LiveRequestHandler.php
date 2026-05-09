@@ -904,7 +904,7 @@ class LiveRequestHandler
             }
         }
 
-        $scripts = $dom->query('//head/script[@src]');
+        $scripts = $dom->query('//script[@src]');
         foreach ($scripts as $script) {
             if ($script instanceof \DOMElement) {
                 $src = $script->getAttribute('src');
