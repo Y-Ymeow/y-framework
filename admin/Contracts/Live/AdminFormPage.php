@@ -149,7 +149,7 @@ class AdminFormPage extends LiveComponent
             return Element::make('div')->class('admin-form-wrapper')->text('Resource not found');
         }
 
-        $wrapper = Element::make('div')->class('admin-form-wrapper');
+        $wrapper = Element::make('div')->class('admin-form-wrapper', 'admin-form-width--' . $resource::getFormWidth(), 'mx-auto');
         $wrapper->liveFragment('admin-form');
 
         $isEdit = $this->recordId !== null;

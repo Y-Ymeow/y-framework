@@ -133,6 +133,21 @@ abstract class BaseResource implements ResourceInterface
         return [];
     }
 
+    public static function getFormWidth(): string
+    {
+        $reflection = new \ReflectionClass(static::class);
+        $attrs = $reflection->getAttributes(AdminResource::class);
+
+        if (!empty($attrs)) {
+            $attr = $attrs[0]->newInstance();
+            if (!empty($attr->formWidth)) {
+                return $attr->formWidth;
+            }
+        }
+
+        return 'md';
+    }
+
     public function getListHeader(): mixed
     {
         return null;

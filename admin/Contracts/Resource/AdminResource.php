@@ -16,5 +16,6 @@ class AdminResource
         public array $middleware = [],
         public string $group = '',
         public int $sort = 50,
+        public string $formWidth = '',
     ) {}
 }

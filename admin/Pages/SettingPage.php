@@ -75,7 +75,7 @@ class SettingPage implements PageInterface
         $groups = OptionsRegistry::getGroups();
         $values = OptionsRegistry::getAll();
 
-        $wrapper = Element::make('div')->class('admin-form-wrapper', 'max-w-4xl', 'mx-auto');
+        $wrapper = Element::make('div')->class('admin-form-wrapper', 'admin-form-width--lg', 'mx-auto');
         $wrapper->child(Element::make('h1')
             ->class('text-2xl', 'font-bold', 'mb-6')
             ->intl('admin.settings.title'));

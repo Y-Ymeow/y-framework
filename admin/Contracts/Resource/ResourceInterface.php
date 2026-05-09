@@ -35,4 +35,6 @@ interface ResourceInterface
      * 格式: ['actionName' => 'methodName'] 或 ['actionName' => ['method' => 'methodName', 'event' => 'click']]
      */
     public function getLiveActions(): array;
+
+    public static function getFormWidth(): string;
 }

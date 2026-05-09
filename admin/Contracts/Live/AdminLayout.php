@@ -485,8 +485,13 @@ class AdminLayout extends LiveComponent
     font-size: 0.875rem;
 }
 .admin-form-wrapper {
-    max-width: 48rem;
+    margin: 0 auto;
 }
+.admin-form-width--sm { max-width: 36rem; }
+.admin-form-width--md { max-width: 48rem; }
+.admin-form-width--lg { max-width: 64rem; }
+.admin-form-width--xl { max-width: 80rem; }
+.admin-form-width--full { max-width: 100%; }
 .admin-form-header {
     display: flex;
     align-items: center;
