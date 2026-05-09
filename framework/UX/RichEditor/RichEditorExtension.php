@@ -126,9 +126,10 @@ abstract class RichEditorExtension
             ->icon($this->icon)
             ->category($this->category)
             ->attribute('content', ['type' => 'rich-text', 'default' => '', 'source' => 'children'])
-            ->render(function (array $attrs, array $innerBlocks): string {
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
                 $content = $attrs['content'] ?? '';
-                return $this->parse($content);
+                $parsed = $this->parse($content);
+                return Element::make('div')->html($parsed);
             });
     }
 

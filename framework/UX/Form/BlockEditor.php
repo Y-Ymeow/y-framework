@@ -28,7 +28,11 @@ use Framework\CSS\RichEditorRules;
  *     ->category('common')
  *     ->attribute('text', ['type' => 'string', 'default' => ''])
  *     ->attribute('type', ['type' => 'string', 'default' => 'info'])
- *     ->render(function($attrs) { return '<div class="callout">'.$attrs['text'].'</div>'; })
+ *     ->withRenderElement(function($attrs) {
+ *         return Element::make('div')
+ *             ->class('callout', 'callout--' . ($attrs['type'] ?? 'info'))
+ *             ->text($attrs['text'] ?? '');
+ *     })
  * )
  */
 class BlockEditor extends FormField

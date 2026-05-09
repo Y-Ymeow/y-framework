@@ -12,17 +12,35 @@ use Framework\View\Base\Element;
  * 定义一个 Block 的结构、属性、渲染方式。
  * 在 PHP 端注册，前端动态获取定义。
  *
+ * ## 两种扩展方式
+ *
+ * ### 1. 链式调用（简单场景）
+ * BlockType::make('callout')
+ *     ->title('标注')
+ *     ->category('common')
+ *     ->attribute('text', ['type' => 'string', 'default' => ''])
+ *     ->attribute('type', ['type' => 'string', 'default' => 'info'])
+ *     ->withRenderElement(function(array $attrs, array $innerBlocks): Element {
+ *         return Element::make('div')
+ *             ->class('callout', 'callout--' . ($attrs['type'] ?? 'info'))
+ *             ->text($attrs['text'] ?? '');
+ *     })
+ *
+ * ### 2. 类继承（复杂场景，推荐）
+ * class CalloutBlock extends BlockType
+ * {
+ *     public function renderElement(array $attributes, array $innerBlocks = []): Element
+ *     {
+ *         return Element::make('div')
+ *             ->class('callout', 'callout--' . ($attributes['type'] ?? 'info'))
+ *             ->child(Element::make('span')->class('callout__icon')->text('💡'))
+ *             ->child(Element::make('span')->class('callout__text')->text($attributes['text'] ?? ''));
+ *     }
+ * }
+ * BlockRegistry::register('callout', new CalloutBlock('callout'));
+ *
  * @ux-category RichEditor
  * @ux-since 2.0.0
- * @ux-example
- * BlockRegistry::register('image', BlockType::make('image')
- *     ->title('图片')
- *     ->icon('<svg>...</svg>')
- *     ->category('media')
- *     ->attribute('src', ['type' => 'string', 'source' => 'attribute'])
- *     ->attribute('alt', ['type' => 'string', 'default' => ''])
- *     ->render(fn($attrs) => '<img src="'.$attrs['src'].'" alt="'.$attrs['alt'].'">')
- * );
  */
 class BlockType
 {
@@ -33,14 +51,19 @@ class BlockType
     public array $attributes = [];
     public bool $supportsInnerBlocks = false;
 
-    private ?\Closure $renderCallback = null;
+    private ?\Closure $renderElementCallback = null;
     private ?\Closure $editFormCallback = null;
+
+    public function __construct(string $name = '')
+    {
+        if ($name !== '') {
+            $this->name = $name;
+        }
+    }
 
     public static function make(string $name): static
     {
-        $instance = new static();
-        $instance->name = $name;
-        return $instance;
+        return new static($name);
     }
 
     public function title(string $title): static
@@ -86,11 +109,13 @@ class BlockType
     }
 
     /**
-     * 设置服务端渲染回调
+     * 设置渲染回调（返回 Element）
+     *
+     * 回调签名: function(array $attributes, array $innerBlocks): Element
      */
-    public function render(\Closure $callback): static
+    public function withRenderElement(\Closure $callback): static
     {
-        $this->renderCallback = $callback;
+        $this->renderElementCallback = $callback;
         return $this;
     }
 
@@ -104,15 +129,32 @@ class BlockType
     }
 
     /**
+     * 渲染 Block 为 Element
+     *
+     * 子类可覆盖此方法实现自定义渲染逻辑。
+     * 优先级：renderElement 回调 > 子类覆盖 > 默认渲染
+     */
+    public function renderElement(array $attributes, array $innerBlocks = []): Element
+    {
+        if ($this->renderElementCallback) {
+            return ($this->renderElementCallback)($attributes, $innerBlocks);
+        }
+
+        return $this->defaultRenderElement($attributes, $innerBlocks);
+    }
+
+    /**
      * 服务端渲染 Block 为 HTML
      */
     public function renderBlock(array $attributes, array $innerBlocks = []): string
     {
-        if ($this->renderCallback) {
-            return ($this->renderCallback)($attributes, $innerBlocks);
+        $element = $this->renderElement($attributes, $innerBlocks);
+
+        if ($element instanceof Element) {
+            return $element->render();
         }
 
-        return $this->defaultRender($attributes, $innerBlocks);
+        return '';
     }
 
     /**
@@ -162,29 +204,37 @@ class BlockType
     }
 
     /**
-     * 默认渲染（子类可覆盖）
+     * 默认渲染 Element（子类可覆盖）
      */
-    protected function defaultRender(array $attributes, array $innerBlocks): string
+    protected function defaultRenderElement(array $attributes, array $innerBlocks = []): Element
     {
         $tag = match ($this->name) {
             'paragraph' => 'p',
             'heading' => 'h' . ($attributes['level'] ?? 2),
             'quote' => 'blockquote',
             'code' => 'pre',
-            'list' => $attributes['ordered'] ?? false ? 'ol' : 'ul',
+            'list' => ($attributes['ordered'] ?? false) ? 'ol' : 'ul',
             default => 'div',
         };
 
-        $content = $attributes['content'] ?? '';
+        $el = Element::make($tag);
 
         if ($this->supportsInnerBlocks && !empty($innerBlocks)) {
-            $innerHtml = '';
             foreach ($innerBlocks as $block) {
-                $innerHtml .= BlockRegistry::renderBlock($block['blockName'], $block['attributes'] ?? [], $block['innerBlocks'] ?? []);
+                $childHtml = BlockRegistry::renderBlock(
+                    $block['blockName'],
+                    $block['attributes'] ?? [],
+                    $block['innerBlocks'] ?? []
+                );
+                $el->child($childHtml);
             }
-            $content = $innerHtml;
+        } else {
+            $content = $attributes['content'] ?? '';
+            if (is_string($content) && $content !== '') {
+                $el->html($content);
+            }
         }
 
-        return "<{$tag}>" . htmlspecialchars((string)$content) . "</{$tag}>";
+        return $el;
     }
 }

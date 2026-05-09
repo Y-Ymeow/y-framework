@@ -22,7 +22,9 @@ namespace Framework\UX\RichEditor;
  *             ->title('自定义')
  *             ->category('common')
  *             ->attribute('text', ['type' => 'string', 'default' => ''])
- *             ->render(fn($attrs) => '<div>'.$attrs['text'].'</div>')
+ *             ->withRenderElement(function($attrs) {
+ *                 return Element::make('div')->text($attrs['text'] ?? '');
+ *             })
  *         );
  *     }
  * }

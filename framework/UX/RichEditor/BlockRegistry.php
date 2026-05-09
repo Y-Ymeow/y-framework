@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\UX\RichEditor;
 
+use Framework\View\Base\Element;
+
 /**
  * Block 注册表
  *
@@ -99,10 +101,10 @@ class BlockRegistry
             ->category('text')
             ->attribute('level', ['type' => 'number', 'default' => 2, 'min' => 1, 'max' => 6])
             ->attribute('content', ['type' => 'string', 'default' => '', 'source' => 'children'])
-            ->render(function (array $attrs, array $innerBlocks): string {
-                $level = min(max((int)($attrs['level'] ?? 2), 1), 6);
-                $content = htmlspecialchars((string)($attrs['content'] ?? ''));
-                return "<h{$level}>{$content}</h{$level}>";
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
+                $level = 'h' . min(max((int)($attrs['level'] ?? 2), 1), 6);
+                return Element::make($level)
+                    ->html($attrs['content'] ?? '');
             })
         );
 
@@ -114,24 +116,25 @@ class BlockRegistry
             ->attribute('alt', ['type' => 'string', 'default' => ''])
             ->attribute('caption', ['type' => 'string', 'default' => ''])
             ->attribute('align', ['type' => 'string', 'default' => 'center'])
-            ->render(function (array $attrs, array $innerBlocks): string {
-                $src = htmlspecialchars((string)($attrs['src'] ?? ''));
-                $alt = htmlspecialchars((string)($attrs['alt'] ?? ''));
-                $align = htmlspecialchars((string)($attrs['align'] ?? 'center'));
-                $caption = htmlspecialchars((string)($attrs['caption'] ?? ''));
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
+                $figure = Element::make('figure');
 
-                $figureStyle = match ($align) {
-                    'left' => ' style="text-align:left"',
-                    'right' => ' style="text-align:right"',
-                    default => ' style="text-align:center"',
-                };
+                $align = $attrs['align'] ?? 'center';
+                $figure->style('text-align:' . $align);
 
-                $html = "<figure{$figureStyle}><img src=\"{$src}\" alt=\"{$alt}\" />";
+                $img = Element::make('img')
+                    ->attr('src', $attrs['src'] ?? '')
+                    ->attr('alt', $attrs['alt'] ?? '');
+                $figure->child($img);
+
+                $caption = $attrs['caption'] ?? '';
                 if ($caption) {
-                    $html .= "<figcaption>{$caption}</figcaption>";
+                    $figure->child(
+                        Element::make('figcaption')->text($caption)
+                    );
                 }
-                $html .= '</figure>';
-                return $html;
+
+                return $figure;
             })
         );
 
@@ -141,15 +144,18 @@ class BlockRegistry
             ->category('text')
             ->attribute('content', ['type' => 'rich-text', 'default' => '', 'source' => 'children'])
             ->attribute('citation', ['type' => 'string', 'default' => ''])
-            ->render(function (array $attrs, array $innerBlocks): string {
-                $content = $attrs['content'] ?? '';
-                $citation = htmlspecialchars((string)($attrs['citation'] ?? ''));
-                $html = '<blockquote>' . $content;
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
+                $blockquote = Element::make('blockquote')
+                    ->html($attrs['content'] ?? '');
+
+                $citation = $attrs['citation'] ?? '';
                 if ($citation) {
-                    $html .= '<cite>' . $citation . '</cite>';
+                    $blockquote->child(
+                        Element::make('cite')->text($citation)
+                    );
                 }
-                $html .= '</blockquote>';
-                return $html;
+
+                return $blockquote;
             })
         );
 
@@ -159,11 +165,16 @@ class BlockRegistry
             ->category('text')
             ->attribute('content', ['type' => 'string', 'default' => ''])
             ->attribute('language', ['type' => 'string', 'default' => ''])
-            ->render(function (array $attrs, array $innerBlocks): string {
-                $content = htmlspecialchars((string)($attrs['content'] ?? ''));
-                $lang = htmlspecialchars((string)($attrs['language'] ?? ''));
-                $langAttr = $lang ? " class=\"language-{$lang}\"" : '';
-                return "<pre><code{$langAttr}>{$content}</code></pre>";
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
+                $code = Element::make('code')
+                    ->text($attrs['content'] ?? '');
+
+                $lang = $attrs['language'] ?? '';
+                if ($lang) {
+                    $code->class('language-' . $lang);
+                }
+
+                return Element::make('pre')->child($code);
             })
         );
 
@@ -173,16 +184,20 @@ class BlockRegistry
             ->category('text')
             ->attribute('ordered', ['type' => 'boolean', 'default' => false])
             ->attribute('items', ['type' => 'array', 'default' => []])
-            ->render(function (array $attrs, array $innerBlocks): string {
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
                 $ordered = (bool)($attrs['ordered'] ?? false);
                 $items = (array)($attrs['items'] ?? []);
                 $tag = $ordered ? 'ol' : 'ul';
-                $html = "<{$tag}>";
+
+                $list = Element::make($tag);
+
                 foreach ($items as $item) {
-                    $html .= '<li>' . htmlspecialchars((string)$item) . '</li>';
+                    $list->child(
+                        Element::make('li')->text((string)$item)
+                    );
                 }
-                $html .= "</{$tag}>";
-                return $html;
+
+                return $list;
             })
         );
 
@@ -190,7 +205,9 @@ class BlockRegistry
             ->title(t('editor.blocks.divider'))
             ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>')
             ->category('common')
-            ->render(fn(): string => '<hr />')
+            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
+                return Element::make('hr');
+            })
         );
     }
 
