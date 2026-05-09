@@ -192,14 +192,14 @@ class ScheduledCommand
                 file_put_contents($this->outputFile, $output, FILE_APPEND);
             }
         } catch (\Throwable $e) {
-            error_log("Scheduled task failed: " . $e->getMessage());
+            logger()->error('Scheduler error: ' . $e->getMessage());
         }
     }
 
     private function isAlreadyRunning(): bool
     {
-        $lockFile = sys_get_temp_dir() . '/scheduler_' . md5(spl_object_id($this->callback)) . '.lock';
-        
+        $lockFile = sys_get_temp_dir() . '/scheduler_' . md5(strval(spl_object_id($this->callback))) . '.lock';
+
         if (file_exists($lockFile)) {
             $lockTime = filemtime($lockFile);
             if (time() - $lockTime < $this->overlapExpires) {

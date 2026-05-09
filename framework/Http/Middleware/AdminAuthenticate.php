@@ -12,7 +12,7 @@ class AdminAuthenticate implements MiddlewareInterface
 {
     public function handle(Request $request, callable $next, mixed ...$params): Response
     {
-        error_log(!auth()->check() ? 'not authenticated' : 'authenticated');
+        logger()->debug(!auth()->check() ? 'not authenticated' : 'authenticated');
         if (!auth()->check()) {
             if ($request->expectsJson()) {
                 return Response::json(['message' => 'Unauthenticated.'], 401);

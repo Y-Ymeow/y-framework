@@ -29,7 +29,7 @@ class DatabaseDriver implements QueueDriverInterface
             $model->save();
             return true;
         } catch (\Throwable $e) {
-            error_log("Queue push failed: " . $e->getMessage());
+            logger()->error('DatabaseQueue push error: ' . $e->getMessage());
             return false;
         }
     }

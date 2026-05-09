@@ -93,7 +93,7 @@ class PluginManager
 
                 $this->pluginInstances[$name] = $instance;
             } catch (\Throwable $e) {
-                error_log("Plugin [{$name}] boot failed: " . $e->getMessage());
+                logger()->error("Plugin [{$name}] boot error: " . $e->getMessage());
             }
         }
     }
@@ -176,3 +176,4 @@ class PluginManager
         return $class ?: '';
     }
 }
+

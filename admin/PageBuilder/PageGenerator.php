@@ -378,7 +378,7 @@ class PageGenerator
             $middleware = preg_split('/[,\n]+/', $middleware) ?: [];
         }
         return array_values(array_filter(array_map(
-            static fn ($item) => trim((string) $item),
+            static fn($item) => trim((string) $item),
             $middleware
         )));
     }
@@ -388,7 +388,7 @@ class PageGenerator
         try {
             logger()->error('[PageGenerator] ' . $message, $context);
         } catch (\Throwable) {
-            error_log('[PageGenerator] ' . $message . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE));
+            logger()->error('[PageGenerator] ' . $message);
         }
     }
 

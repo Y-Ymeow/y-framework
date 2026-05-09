@@ -13,13 +13,13 @@ class RedisDriver implements QueueDriverInterface
     {
         $this->prefix = $prefix;
         $this->redis = new \Redis();
-        
+
         $parsed = parse_url($dsn);
         $host = $parsed['host'] ?? 'localhost';
         $port = $parsed['port'] ?? 6379;
-        
+
         $this->redis->connect($host, $port);
-        
+
         if (isset($parsed['pass'])) {
             $this->redis->auth($parsed['pass']);
         }
@@ -32,7 +32,7 @@ class RedisDriver implements QueueDriverInterface
             $this->redis->rPush($key, serialize($job));
             return true;
         } catch (\Throwable $e) {
-            error_log("Queue push failed: " . $e->getMessage());
+            logger()->error('RedisQueue push error: ' . $e->getMessage());
             return false;
         }
     }
@@ -41,7 +41,7 @@ class RedisDriver implements QueueDriverInterface
     {
         $queue = $queue ?? 'default';
         $key = $this->prefix . 'queue:' . $queue;
-        
+
         $data = $this->redis->lPop($key);
         if ($data === false) {
             return null;

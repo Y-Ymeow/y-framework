@@ -574,7 +574,7 @@ class LiveRequestHandler
                     return $instance;
                 } catch (\Throwable $e) {
                     if (Application::isDebug()) {
-                        error_log("Failed to resolve component [{$id}] from payload: " . $e->getMessage());
+                        logger()->error("Failed to resolve component [{$id}] from payload: " . $e->getMessage());
                     }
                 }
             }

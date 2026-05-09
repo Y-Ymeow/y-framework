@@ -203,7 +203,7 @@ trait HasProperties
                 // Reject if property is #[Locked] — immutable from frontend
                 if (in_array($propName, $lockedProps, true)) {
                     if (\Framework\Foundation\Application::isDebug()) {
-                        error_log("Rejected attempt to modify locked property [{$propName}] on " . static::class);
+                        logger()->error("Rejected attempt to modify locked property [{$propName}] on " . static::class);
                     }
                     continue;
                 }
@@ -219,7 +219,7 @@ trait HasProperties
                         $currentChecksum = $this->generateDataChecksum([$propName => $value]);
                         if (!hash_equals($this->lockedChecksums[$propName], $currentChecksum)) {
                             if (\Framework\Foundation\Application::isDebug()) {
-                                error_log("Checksum mismatch for property [{$propName}].");
+                                logger()->error("Checksum mismatch for property [{$propName}].");
                             }
                             throw new \RuntimeException('Live public state integrity check failed. Data tampering detected.');
                         }
@@ -275,7 +275,7 @@ trait HasProperties
         // #[Locked] properties are immutable from the frontend
         if (in_array($property, $lockedProps, true)) {
             if (\Framework\Foundation\Application::isDebug()) {
-                error_log("Rejected attempt to modify locked property [{$property}] on " . static::class);
+                logger()->error("Property [{$property}] is locked");
             }
             return;
         }
@@ -316,3 +316,4 @@ trait HasProperties
         }
     }
 }
+
