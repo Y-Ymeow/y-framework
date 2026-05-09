@@ -12,9 +12,9 @@ interface FormField extends FormComponent
 
     public function placeholder(string $placeholder): static;
 
-    public function getHelp(): ?string;
+    public function getHelp(): string|array|null;
 
-    public function help(string $help): static;
+    public function help(string|array $help): static;
 
     public function getValidationRules(): array;
 

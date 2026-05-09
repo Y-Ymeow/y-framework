@@ -21,7 +21,7 @@ abstract class BaseField extends UXLiveComponent implements FormField
     protected bool $disabled = false;
     protected bool $readonly = false;
     protected ?string $placeholder = null;
-    protected ?string $help = null;
+    protected string|array|null $help = null;
     protected array $rules = [];
     protected array $extraClasses = [];
     protected bool $submitMode = false;
@@ -135,12 +135,12 @@ abstract class BaseField extends UXLiveComponent implements FormField
         return $this;
     }
 
-    public function getHelp(): ?string
+    public function getHelp(): string|array|null
     {
         return $this->help;
     }
 
-    public function help(string $help): static
+    public function help(string|array $help): static
     {
         $this->help = $help;
         return $this;
@@ -221,6 +221,13 @@ abstract class BaseField extends UXLiveComponent implements FormField
     {
         if (!$this->help) {
             return null;
+        }
+
+        if (is_array($this->help)) {
+            $key = $this->help[0] ?? '';
+            $params = $this->help[1] ?? [];
+            $default = $this->help[2] ?? '';
+            return Element::make('span')->class('ux-form-help')->intl($key, $params, $default);
         }
 
         return Element::make('span')->class('ux-form-help')->text($this->help);
