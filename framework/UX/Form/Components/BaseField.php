@@ -13,7 +13,7 @@ abstract class BaseField extends UXLiveComponent implements FormField
 {
     use HasMeta;
 
-    protected string $name;
+    protected string $name = '';
     protected string|array|null $label = null;
     protected mixed $value = null;
     protected mixed $default = null;
