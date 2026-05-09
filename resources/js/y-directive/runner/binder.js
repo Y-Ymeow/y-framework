@@ -66,6 +66,7 @@ export function initDirectives(root = document) {
 
     const event = new CustomEvent('y:initialized', { detail: { root: rootEl } });
     document.dispatchEvent(event);
+    document.dispatchEvent(new CustomEvent('y:ready', { detail: { root: rootEl } }));
 }
 
 function initStates(root) {

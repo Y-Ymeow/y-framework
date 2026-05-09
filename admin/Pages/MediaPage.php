@@ -80,6 +80,11 @@ class MediaPage extends LiveComponent implements PageInterface
                 'path' => '/media/upload',
                 'handler' => [static::class, 'handleUpload'],
             ],
+            'admin.media.api' => [
+                'method' => 'GET',
+                'path' => '/api/media',
+                'handler' => [static::class, 'handleApiList'],
+            ],
         ];
     }
 
@@ -491,5 +496,42 @@ class MediaPage extends LiveComponent implements PageInterface
         if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
         if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
         return $bytes . ' B';
+    }
+
+    public static function handleApiList()
+    {
+        $request = \Framework\Http\Request\Request::createFromGlobals();
+
+        $filter = $request->query('filter', 'all');
+        $limit = min((int)$request->query('limit', '40'), 100);
+        $search = $request->query('search', '');
+
+        $query = Media::query()->orderBy('created_at', 'desc')->limit($limit);
+
+        if ($filter !== 'all') {
+            $query->where('mime_type', 'like', $filter . '/%');
+        }
+
+        if ($search) {
+            $query->where('filename', 'like', '%' . $search . '%');
+        }
+
+        $items = $query->get();
+
+        $data = [];
+        foreach ($items as $item) {
+            $m = is_array($item) ? $item : $item->toArray();
+            $data[] = [
+                'id' => $m['id'] ?? 0,
+                'url' => '/media/' . ($m['path'] ?? ''),
+                'thumbnail' => '/media/' . ($m['path'] ?? '') . '?w=150&h=150&fit=true',
+                'filename' => $m['filename'] ?? '',
+                'alt' => $m['alt'] ?? '',
+                'mime_type' => $m['mime_type'] ?? '',
+                'size' => $m['size'] ?? 0,
+            ];
+        }
+
+        return Response::json(['items' => $data]);
     }
 }
