@@ -62,3 +62,4 @@ storage/sse/
 .opencode/
 .trellis/
 .windsurf/
+framework/storage/logs/navigate-error.log

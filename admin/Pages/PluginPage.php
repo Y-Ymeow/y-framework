@@ -75,10 +75,17 @@ class PluginPage implements PageInterface
             return;
         }
 
-        PluginSetting::updateOrCreate(
-            ['name' => $name],
-            ['enabled' => $enabled]
-        );
+        $existing = PluginSetting::find($name);
+
+        if ($existing) {
+            $existing->enabled = $enabled;
+            $existing->save();
+        } else {
+            $setting = new PluginSetting();
+            $setting->name = $name;
+            $setting->enabled = $enabled;
+            $setting->save();
+        }
 
         \Framework\Events\Hook::fire($enabled ? 'plugin.activated' : 'plugin.deactivated', [$name]);
     }
@@ -88,7 +95,10 @@ class PluginPage implements PageInterface
         $manager = app(PluginManager::class);
         $allPlugins = $manager->scan();
 
-        $settings = PluginSetting::all()->keyBy('name');
+        $settings = [];
+        foreach (PluginSetting::all() as $s) {
+            $settings[$s->name] = $s;
+        }
 
         $wrapper = Element::make('div')->class('admin-form-wrapper', 'max-w-4xl', 'mx-auto');
         $wrapper->child(Element::make('h1')
@@ -106,7 +116,7 @@ class PluginPage implements PageInterface
         $list = Element::make('div')->class('space-y-4');
 
         foreach ($allPlugins as $name => $meta) {
-            $setting = $settings->get($name);
+            $setting = $settings[$name] ?? null;
             $enabled = $setting ? (bool) $setting->enabled : false;
 
             $card = $this->renderPluginCard($name, $meta, $enabled);
