@@ -174,14 +174,14 @@ class MediaPicker extends BaseField
         $actions->child(
             Button::make()
                 ->label('选择图片')
-                ->variant('secondary')
+                ->class('flex-1')
                 ->attr('data-ux-modal-open', $modalId)
         );
         if ($hasValue) {
             $actions->child(
                 Button::make()
                     ->label('移除')
-                    ->variant('secondary')
+                    ->danger()
                     ->liveAction('removeMedia', 'click')
             );
         }
