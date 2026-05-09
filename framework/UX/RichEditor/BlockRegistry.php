@@ -18,9 +18,6 @@ class BlockRegistry
     private static array $blockTypes = [];
     private static array $categories = [];
 
-    /**
-     * 注册 Block 类型
-     */
     public static function register(string $name, BlockType $blockType): void
     {
         self::$blockTypes[$name] = $blockType;
@@ -32,34 +29,21 @@ class BlockRegistry
         self::$categories[$category][] = $name;
     }
 
-    /**
-     * 获取 Block 类型
-     */
     public static function get(string $name): ?BlockType
     {
         return self::$blockTypes[$name] ?? null;
     }
 
-    /**
-     * 检查 Block 是否存在
-     */
     public static function has(string $name): bool
     {
         return isset(self::$blockTypes[$name]);
     }
 
-    /**
-     * 获取所有注册的 Block 类型
-     * @return array<string, BlockType>
-     */
     public static function all(): array
     {
         return self::$blockTypes;
     }
 
-    /**
-     * 获取所有 Block 定义（用于传给前端）
-     */
     public static function allDefinitions(): array
     {
         $definitions = [];
@@ -69,9 +53,6 @@ class BlockRegistry
         return $definitions;
     }
 
-    /**
-     * 按分类获取 Block 列表
-     */
     public static function getByCategory(string $category): array
     {
         $names = self::$categories[$category] ?? [];
@@ -84,17 +65,11 @@ class BlockRegistry
         return $result;
     }
 
-    /**
-     * 获取所有分类
-     */
     public static function getCategories(): array
     {
         return array_keys(self::$categories);
     }
 
-    /**
-     * 移除 Block 类型
-     */
     public static function remove(string $name): void
     {
         unset(self::$blockTypes[$name]);
@@ -103,18 +78,12 @@ class BlockRegistry
         }
     }
 
-    /**
-     * 清空所有注册
-     */
     public static function clear(): void
     {
         self::$blockTypes = [];
         self::$categories = [];
     }
 
-    /**
-     * 注册核心 Block 类型
-     */
     public static function registerCoreBlocks(): void
     {
         self::register('paragraph', BlockType::make('paragraph')
@@ -130,7 +99,7 @@ class BlockRegistry
             ->category('text')
             ->attribute('level', ['type' => 'number', 'default' => 2, 'min' => 1, 'max' => 6])
             ->attribute('content', ['type' => 'string', 'default' => '', 'source' => 'children'])
-            ->render(fn($attrs) => {
+            ->render(function (array $attrs, array $innerBlocks): string {
                 $level = min(max((int)($attrs['level'] ?? 2), 1), 6);
                 $content = htmlspecialchars((string)($attrs['content'] ?? ''));
                 return "<h{$level}>{$content}</h{$level}>";
@@ -145,7 +114,7 @@ class BlockRegistry
             ->attribute('alt', ['type' => 'string', 'default' => ''])
             ->attribute('caption', ['type' => 'string', 'default' => ''])
             ->attribute('align', ['type' => 'string', 'default' => 'center'])
-            ->render(fn($attrs) => {
+            ->render(function (array $attrs, array $innerBlocks): string {
                 $src = htmlspecialchars((string)($attrs['src'] ?? ''));
                 $alt = htmlspecialchars((string)($attrs['alt'] ?? ''));
                 $align = htmlspecialchars((string)($attrs['align'] ?? 'center'));
@@ -172,7 +141,7 @@ class BlockRegistry
             ->category('text')
             ->attribute('content', ['type' => 'rich-text', 'default' => '', 'source' => 'children'])
             ->attribute('citation', ['type' => 'string', 'default' => ''])
-            ->render(fn($attrs) => {
+            ->render(function (array $attrs, array $innerBlocks): string {
                 $content = $attrs['content'] ?? '';
                 $citation = htmlspecialchars((string)($attrs['citation'] ?? ''));
                 $html = '<blockquote>' . $content;
@@ -190,7 +159,7 @@ class BlockRegistry
             ->category('text')
             ->attribute('content', ['type' => 'string', 'default' => ''])
             ->attribute('language', ['type' => 'string', 'default' => ''])
-            ->render(fn($attrs) => {
+            ->render(function (array $attrs, array $innerBlocks): string {
                 $content = htmlspecialchars((string)($attrs['content'] ?? ''));
                 $lang = htmlspecialchars((string)($attrs['language'] ?? ''));
                 $langAttr = $lang ? " class=\"language-{$lang}\"" : '';
@@ -204,7 +173,7 @@ class BlockRegistry
             ->category('text')
             ->attribute('ordered', ['type' => 'boolean', 'default' => false])
             ->attribute('items', ['type' => 'array', 'default' => []])
-            ->render(fn($attrs) => {
+            ->render(function (array $attrs, array $innerBlocks): string {
                 $ordered = (bool)($attrs['ordered'] ?? false);
                 $items = (array)($attrs['items'] ?? []);
                 $tag = $ordered ? 'ol' : 'ul';
@@ -221,21 +190,15 @@ class BlockRegistry
             ->title(t('editor.blocks.divider'))
             ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>')
             ->category('common')
-            ->render(fn() => '<hr />')
+            ->render(fn(): string => '<hr />')
         );
     }
 
-    /**
-     * 序列化 Block 数组为 JSON
-     */
     public static function serialize(array $blocks): string
     {
         return json_encode($blocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    /**
-     * 解析 JSON 为 Block 数组
-     */
     public static function parse(string $json): array
     {
         if (empty($json)) {
@@ -244,30 +207,22 @@ class BlockRegistry
 
         $blocks = json_decode($json, true);
         if (!is_array($blocks)) {
-            // 兼容旧版 HTML 内容：尝试转换为 paragraph block
             return self::legacyHtmlToBlocks($json);
         }
 
         return $blocks;
     }
 
-    /**
-     * 渲染单个 Block
-     */
     public static function renderBlock(string $name, array $attributes = [], array $innerBlocks = []): string
     {
         $blockType = self::get($name);
         if (!$blockType) {
-            // 未知 block，渲染为注释
             return '<!-- unknown block: ' . htmlspecialchars($name) . ' -->';
         }
 
         return $blockType->renderBlock($attributes, $innerBlocks);
     }
 
-    /**
-     * 渲染 Block 数组
-     */
     public static function render(array $blocks): string
     {
         $html = '';
@@ -280,19 +235,15 @@ class BlockRegistry
         return $html;
     }
 
-    /**
-     * 将旧版 HTML 转换为 Block 数组（兼容层）
-     */
     public static function legacyHtmlToBlocks(string $html): array
     {
         $blocks = [];
 
-        // 简单的 HTML 到 block 转换
         $dom = new \DOMDocument();
         @$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
         foreach ($dom->childNodes as $node) {
-            if ($node->nodeType !== XML_ELEMENT_NODE) {
+            if (!($node instanceof \DOMElement)) {
                 continue;
             }
 
@@ -303,7 +254,6 @@ class BlockRegistry
         }
 
         if (empty($blocks) && trim(strip_tags($html))) {
-            // 无法解析，作为纯文本段落
             $blocks[] = [
                 'blockName' => 'paragraph',
                 'attributes' => ['content' => $html],
@@ -313,7 +263,7 @@ class BlockRegistry
         return $blocks;
     }
 
-    private static function domNodeToBlock(\DOMNode $node): ?array
+    private static function domNodeToBlock(\DOMElement $node): ?array
     {
         $tag = strtolower($node->nodeName);
 
@@ -348,7 +298,6 @@ class BlockRegistry
             ];
         }
 
-        // 未知标签作为 paragraph
         return [
             'blockName' => 'paragraph',
             'attributes' => ['content' => self::getInnerHtml($node)],
@@ -375,17 +324,17 @@ class BlockRegistry
         return $items;
     }
 
-    private static function getFigureImageSrc(\DOMNode $node): string
+    private static function getFigureImageSrc(\DOMElement $node): string
     {
         foreach ($node->childNodes as $child) {
-            if ($child->nodeName === 'img') {
+            if ($child instanceof \DOMElement && $child->nodeName === 'img') {
                 return $child->getAttribute('src');
             }
         }
         return '';
     }
 
-    private static function getFigureCaption(\DOMNode $node): string
+    private static function getFigureCaption(\DOMElement $node): string
     {
         foreach ($node->childNodes as $child) {
             if ($child->nodeName === 'figcaption') {

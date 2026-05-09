@@ -7,7 +7,9 @@ namespace Framework\UX\RichEditor;
 /**
  * 富文本编辑器 Trait
  *
- * Trait，为组件提供富文本编辑器的注册、扩展管理、内容解析和格式转换能力。
+ * v2.0: 支持 Block 编辑器模式。
+ * 新增 registerBlockEditor() 和 Block 相关操作方法。
+ * 旧版 registerRichEditor() 保持兼容。
  *
  * @ux-category RichEditor
  * @ux-since 1.0.0
@@ -15,28 +17,22 @@ namespace Framework\UX\RichEditor;
  * class MyComponent {
  *     use HasRichEditor;
  *     protected function boot() {
- *         $this->registerRichEditor('content');
- *         $this->addExtension('content', 'emoji', new EmojiExtension());
+ *         $this->registerBlockEditor('content');
+ *         $this->addBlockType('content', 'custom', BlockType::make('custom')
+ *             ->title('自定义')
+ *             ->category('common')
+ *             ->attribute('text', ['type' => 'string', 'default' => ''])
+ *             ->render(fn($attrs) => '<div>'.$attrs['text'].'</div>')
+ *         );
  *     }
  * }
- * @ux-example-end
  */
 trait HasRichEditor
 {
     protected array $richEditors = [];
     protected array $editorExtensions = [];
+    protected array $blockEditors = [];
 
-    /**
-     * 注册富文本编辑器
-     * @param string $name 编辑器名称
-     * @param array $config 配置项
-     * @return static
-     * @ux-example $this->registerRichEditor('content', ['placeholder' => '请输入内容...'])
-     * @ux-default toolbar=['bold','italic','underline','strike','|','heading','quote','code','|','list','link']
-     * @ux-default minimal=false
-     * @ux-default outputFormat='html'
-     * @ux-default rows=10
-     */
     protected function registerRichEditor(string $name, array $config = []): static
     {
         $this->richEditors[$name] = array_merge([
@@ -51,13 +47,26 @@ trait HasRichEditor
     }
 
     /**
-     * 添加编辑器扩展
-     * @param string $editorName 编辑器名称
-     * @param string $extensionName 扩展名称
-     * @param RichEditorExtension $extension 扩展实例
-     * @return static
-     * @ux-example $this->addExtension('content', 'emoji', new EmojiExtension())
+     * 注册 Block 编辑器
+     * @param string $name 编辑器名称
+     * @param array $config 配置项
+     *   - allowedBlocks: 允许的 block 类型（空数组=全部允许）
+     *   - placeholder: 占位文本
+     *   - maxBlocks: 最大 block 数量（0=不限）
      */
+    protected function registerBlockEditor(string $name, array $config = []): static
+    {
+        $this->blockEditors[$name] = array_merge([
+            'allowedBlocks' => [],
+            'placeholder' => '',
+            'maxBlocks' => 0,
+        ], $config);
+
+        BlockRegistry::registerCoreBlocks();
+
+        return $this;
+    }
+
     protected function addExtension(string $editorName, string $extensionName, RichEditorExtension $extension): static
     {
         if (!isset($this->editorExtensions[$editorName])) {
@@ -71,68 +80,95 @@ trait HasRichEditor
     }
 
     /**
-     * 获取编辑器配置
-     * @param string $name 编辑器名称
-     * @return array
+     * 为 Block 编辑器添加自定义 Block 类型
+     * @param string $editorName 编辑器名称
+     * @param string $blockName Block 类型名
+     * @param BlockType $blockType Block 类型定义
      */
+    protected function addBlockType(string $editorName, string $blockName, BlockType $blockType): static
+    {
+        BlockRegistry::register($blockName, $blockType);
+
+        if (!isset($this->blockEditors[$editorName])) {
+            $this->blockEditors[$editorName] = [];
+        }
+
+        if (!isset($this->blockEditors[$editorName]['customBlocks'])) {
+            $this->blockEditors[$editorName]['customBlocks'] = [];
+        }
+
+        $this->blockEditors[$editorName]['customBlocks'][] = $blockName;
+
+        return $this;
+    }
+
+    /**
+     * 为 Block 编辑器添加扩展（作为 Block 注册）
+     */
+    protected function addBlockExtension(string $editorName, string $extensionName, RichEditorExtension $extension): static
+    {
+        $extension->asBlock();
+        $this->addExtension($editorName, $extensionName, $extension);
+
+        return $this;
+    }
+
     protected function getEditorConfig(string $name): array
     {
         return $this->richEditors[$name] ?? [];
     }
 
-    /**
-     * 获取编辑器扩展列表
-     * @param string $name 编辑器名称
-     * @return array
-     */
     protected function getEditorExtensions(string $name): array
     {
         return $this->editorExtensions[$name] ?? [];
     }
 
     /**
-     * 解析编辑器内容（应用扩展和解析器）
-     * @param string $content 内容
-     * @param string $parser 解析器名称
-     * @return string
-     * @ux-example $this->parseEditorContent($content, 'markdown')
+     * 获取 Block 编辑器配置
      */
+    protected function getBlockEditorConfig(string $name): array
+    {
+        return $this->blockEditors[$name] ?? [];
+    }
+
+    /**
+     * 获取 Block 编辑器可用的 Block 定义
+     */
+    protected function getBlockEditorDefinitions(string $name): array
+    {
+        $config = $this->getBlockEditorConfig($name);
+        $allowedBlocks = $config['allowedBlocks'] ?? [];
+
+        if (empty($allowedBlocks)) {
+            return BlockRegistry::allDefinitions();
+        }
+
+        $definitions = [];
+        foreach ($allowedBlocks as $blockName) {
+            $blockType = BlockRegistry::get($blockName);
+            if ($blockType) {
+                $definitions[$blockName] = $blockType->toArray();
+            }
+        }
+
+        return $definitions;
+    }
+
     protected function parseEditorContent(string $content, string $parser = 'default'): string
     {
         return ExtensionRegistry::parseWith($content, $parser);
     }
 
-    /**
-     * 格式化编辑器内容
-     * @param string $content 内容
-     * @param string $format 格式（text/markdown/html）
-     * @return string
-     * @ux-example $this->formatEditorContent($content, 'markdown')
-     */
     protected function formatEditorContent(string $content, string $format): string
     {
         return ExtensionRegistry::formatAs($content, $format);
     }
 
-    /**
-     * 清洗编辑器内容（移除危险标签和脚本）
-     * @param string $content 内容
-     * @return string
-     * @ux-example $this->sanitizeEditorContent($html)
-     */
     protected function sanitizeEditorContent(string $content): string
     {
         return DocumentParser::sanitize($content);
     }
 
-    /**
-     * 转换编辑器内容格式
-     * @param string $content 内容
-     * @param string $from 源格式（markdown/text/html）
-     * @param string $to 目标格式（markdown/text/html）
-     * @return string
-     * @ux-example $this->convertEditorContent($content, 'markdown', 'html')
-     */
     protected function convertEditorContent(string $content, string $from, string $to): string
     {
         $html = $content;
@@ -146,5 +182,38 @@ trait HasRichEditor
             'markdown' => DocumentParser::htmlToMarkdown($html),
             default => $html,
         };
+    }
+
+    /**
+     * 解析 Block JSON 为 Block 数组
+     */
+    protected function parseBlockContent(string $json): array
+    {
+        return BlockRegistry::parse($json);
+    }
+
+    /**
+     * 渲染 Block 数组为 HTML
+     */
+    protected function renderBlocks(array $blocks): string
+    {
+        return BlockRegistry::render($blocks);
+    }
+
+    /**
+     * 序列化 Block 数组为 JSON
+     */
+    protected function serializeBlocks(array $blocks): string
+    {
+        return BlockRegistry::serialize($blocks);
+    }
+
+    /**
+     * 将旧版 HTML 内容转换为 Block JSON
+     */
+    protected function htmlToBlockJson(string $html): string
+    {
+        $blocks = BlockRegistry::legacyHtmlToBlocks($html);
+        return BlockRegistry::serialize($blocks);
     }
 }
