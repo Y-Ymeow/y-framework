@@ -110,7 +110,7 @@ class Modal extends UXComponent
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 5vh;
+    padding: 1.5rem;
     overflow-y: auto;
     pointer-events: none;
     opacity: 0;
@@ -126,23 +126,25 @@ class Modal extends UXComponent
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.5);
+    z-index: -1;
 }
 .ux-modal-dialog {
     position: relative;
-    width: auto;
+    width: 100%;
     margin: 0 auto;
     pointer-events: auto;
     transform: translateY(-20px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
 }
 .ux-modal-open .ux-modal-dialog {
     transform: translateY(0) scale(1);
 }
 .ux-modal-centered {
-    display: flex;
     align-items: center;
-    min-height: calc(100% - 2rem);
-    padding-top: 0;
+}
+.ux-modal-centered .ux-modal-dialog {
+    margin: 0 auto;
 }
 .ux-modal-content {
     background: #fff;
@@ -431,6 +433,9 @@ CSS
         if ($this->open) {
             $el->class('ux-modal-open');
         }
+        if ($this->centered) {
+            $el->class('ux-modal-centered');
+        }
 
         if ($this->backdrop) {
             $el->child(
@@ -443,9 +448,6 @@ CSS
         $dialogEl = Element::make('div');
         $dialogEl->class('ux-modal-dialog');
         $dialogEl->class("ux-modal-{$this->size}");
-        if ($this->centered) {
-            $dialogEl->class('ux-modal-centered');
-        }
 
         $contentEl = Element::make('div')->class('ux-modal-content');
 
@@ -474,7 +476,8 @@ CSS
 
         if ($this->footer) {
             $footerEl = Element::make('div')->class('ux-modal-footer');
-            foreach ((array) $this->footer as $footerItem) {
+            $footerItems = is_array($this->footer) ? $this->footer : [$this->footer];
+            foreach ($footerItems as $footerItem) {
                 $footerEl->child($this->resolveChild($footerItem));
             }
             $contentEl->child($footerEl);

@@ -72,7 +72,7 @@ class AssetRegistry
         $idsParam = implode(',', $ids);
         $v = substr(md5($idsParam), 0, 8);
 
-        return '/_js?ids=' . urlencode($idsParam) . '&v=' . $v;
+        return "/_js/v/{$v}/" . urlencode($idsParam) . ".js";
     }
 
     public function css(string $href, ?string $id = null): self

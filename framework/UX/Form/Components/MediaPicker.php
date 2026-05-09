@@ -8,6 +8,7 @@ use Admin\Content\Media;
 use Framework\UX\Dialog\Modal;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
+use Framework\View\Document\AssetRegistry;
 
 class MediaPicker extends BaseField
 {
@@ -42,6 +43,38 @@ class MediaPicker extends BaseField
 
     public function render(): Element
     {
+        AssetRegistry::getInstance()->inlineStyle('ux:media-picker', '
+            .media-picker-modal { display: flex; flex-direction: column; gap: 1rem; }
+            .media-picker-upload {
+                border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 1.5rem;
+                text-align: center; background: #f9fafb; cursor: pointer; transition: all 0.2s;
+            }
+            .media-picker-upload:hover { border-color: #3b82f6; background: #f3f4f6; }
+            .media-picker-upload.y-uploading { opacity: 0.6; cursor: wait; }
+            .media-picker-upload-btn {
+                background: none; border: none; color: #3b82f6; font-weight: 500;
+                display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0 auto;
+            }
+            .media-picker-filters { display: flex; gap: 0.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+            .media-picker-filter {
+                background: none; border: none; padding: 0.25rem 0.75rem; border-radius: 0.375rem;
+                font-size: 0.875rem; cursor: pointer; color: #6b7280;
+            }
+            .media-picker-filter.active { background: #3b82f6; color: #fff; }
+            .media-picker-grid {
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 0.75rem; max-height: 400px; overflow-y: auto; padding: 0.5rem;
+            }
+            .media-picker-item {
+                aspect-ratio: 1; border: 1px solid #e5e7eb; border-radius: 0.375rem;
+                overflow: hidden; cursor: pointer; transition: transform 0.1s;
+                display: flex; align-items: center; justify-content: center; background: #fff;
+            }
+            .media-picker-item:hover { transform: scale(1.05); border-color: #3b82f6; }
+            .media-picker-item img { width: 100%; height: 100%; object-fit: cover; }
+            .media-picker-item-icon { font-size: 1.5rem; color: #9ca3af; font-weight: bold; }
+        ');
+
         $wrapper = $this->buildWrapper();
         $wrapper->child($this->buildLabel());
 
@@ -132,7 +165,7 @@ class MediaPicker extends BaseField
 
         $body->child($this->renderUploadZone());
         $body->child($this->renderFilterTabs($modalId));
-        $body->child($this->renderMediaGrid());
+        $body->child($this->renderMediaGrid($modalId));
 
         return $body;
     }
@@ -154,11 +187,10 @@ class MediaPicker extends BaseField
             ->attr('data-media-value', '')
             ->attr('value', '');
 
-        $trigger = Element::make('button')
+        $trigger = Element::make('div')
             ->class('media-picker-upload-btn')
-            ->attr('type', 'button')
             ->attr('data-media-trigger', '')
-            ->html('<i class="bi bi-cloud-upload"></i> 上传新图片');
+            ->html('<i class="bi bi-cloud-arrow-up"></i> <span>点击或拖拽上传新图片</span>');
 
         $zone->child($fileInput);
         $zone->child($hiddenInput);
@@ -198,9 +230,10 @@ class MediaPicker extends BaseField
         return $tabs;
     }
 
-    protected function renderMediaGrid(): Element
+    protected function renderMediaGrid(string $modalId): Element
     {
-        $grid = Element::make('div')->class('media-picker-grid');
+        $grid = Element::make('div')->class('media-picker-grid')
+            ->liveFragment('media-grid-' . $this->name);
 
         $items = Media::query()
             ->orderBy('created_at', 'desc')
@@ -243,3 +276,4 @@ class MediaPicker extends BaseField
         return $grid;
     }
 }
+

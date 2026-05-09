@@ -384,8 +384,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
             $isActive = $id === $this->selectedMenuId;
 
             $item = Element::make('div')->class('menu-sidebar-item', $isActive ? 'active' : '');
-            $item->attr('data-action:click', 'selectMenu()')
-                ->attr('data-action-params', json_encode(['menuId' => $id], JSON_UNESCAPED_UNICODE));
+            $item->liveAction('deleteMenu', 'click', ['menuId' => $id]);
 
             $itemInfo = Element::make('div')->class('menu-sidebar-item-info');
             $itemInfo->child(Element::make('div')->class('menu-sidebar-item-name')->text($name));
@@ -394,8 +393,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
 
             $delBtn = Element::make('button')
                 ->class('menu-sidebar-item-delete')
-                ->attr('data-action:click', 'deleteMenu()')
-                ->attr('data-action-params', json_encode(['menuId' => $id], JSON_UNESCAPED_UNICODE))
+                ->liveAction('deleteMenu', 'click', ['menuId' => $id])
                 ->html('<i class="bi bi-trash3"></i>');
             $item->child($delBtn);
 
@@ -575,22 +573,18 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                 $actions->child(
                     Element::make('button')
                         ->class('menu-tree-item-action')
-                        ->attr('data-action:click', 'editItem()')
-                        ->attr('data-action-params', json_encode(['itemId' => $id], JSON_UNESCAPED_UNICODE))
+                        ->liveAction('editItem', 'click', ['itemId' => $id])
                         ->html('<i class="bi bi-pencil"></i>')
                 );
                 $actions->child(
                     Element::make('button')
-                        ->class('menu-tree-item-action')
-                        ->attr('data-action:click', 'toggleActive()')
-                        ->attr('data-action-params', json_encode(['itemId' => $id], JSON_UNESCAPED_UNICODE))
+                        ->class('menu-tree-item-action')->liveAction('toggleActive', 'click', ['itemId' => $id])
                         ->html($isActive ? '<i class="bi bi-toggle-on"></i>' : '<i class="bi bi-toggle-off"></i>')
                 );
                 $actions->child(
                     Element::make('button')
                         ->class('menu-tree-item-action', 'menu-tree-item-action-danger')
-                        ->attr('data-action:click', 'removeItem()')
-                        ->attr('data-action-params', json_encode(['itemId' => $id], JSON_UNESCAPED_UNICODE))
+                        ->liveAction('removeItem', 'click', ['itemId' => $id])
                         ->html('<i class="bi bi-trash3"></i>')
                 );
                 $content->child($actions);
@@ -658,7 +652,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                     ->attr('data-live-model', 'editTarget')
                     ->html(
                         '<option value="_self"' . ($this->editTarget === '_self' ? ' selected' : '') . '>当前窗口</option>' .
-                        '<option value="_blank"' . ($this->editTarget === '_blank' ? ' selected' : '') . '>新窗口</option>'
+                            '<option value="_blank"' . ($this->editTarget === '_blank' ? ' selected' : '') . '>新窗口</option>'
                     )
             )
         );
@@ -678,17 +672,15 @@ class MenuManagerPage extends LiveComponent implements PageInterface
             Element::make('div')->class('menu-tree-item-edit-actions')->children(
                 Element::make('button')
                     ->class('menu-btn', 'menu-btn-primary', 'menu-btn-sm')
-                    ->attr('data-action:click', 'saveItem()')
-                    ->attr('data-action-params', json_encode(['itemId' => $id], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('saveItem', 'click', ['itemId' => $id])
                     ->text('保存'),
                 Element::make('button')
                     ->class('menu-btn', 'menu-btn-ghost', 'menu-btn-sm')
-                    ->attr('data-action:click', 'cancelEdit()')
+                    ->liveAction('cancelEdit', 'click')
                     ->text('取消')
             )
         );
 
         return $form;
     }
-
 }

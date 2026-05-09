@@ -62,18 +62,37 @@ trait HasLiveDirectives
      */
     public function liveAction(string $action, string $event = 'click', mixed $params = []): static
     {
+        $actionExpr = $action;
         if (is_array($params) && !empty($params)) {
+            // Check if it's an associative array
+            ksort($params);
+
+            $paramString = [];
             foreach ($params as $key => $value) {
-                $params[$key] = json_encode($value, JSON_UNESCAPED_UNICODE);
+                if (is_numeric($key)) {
+                    $paramString[] = $value;
+                } else {
+                    if (is_bool($value)) {
+                        $value = $value ? 'true' : 'false';
+                    } elseif (is_null($value)) {
+                        $value = 'null';
+                    } elseif (is_array($value)) {
+                        $value = json_encode($value);
+                    } elseif (is_object($value)) {
+                        $value = json_encode($value);
+                    } elseif (is_string($value)) {
+                        $value = "'{$value}'";
+                    }
+                    $paramString[] = "{$key}: {$value}";
+                }
             }
-            $params = implode(',', $params);
+
+            $actionExpr .= '(' . implode(', ', $paramString) . ')';
+        } elseif (!str_contains($action, '(')) {
+            $actionExpr .= '()';
         }
-        
-        if (!empty($params)) {
-            $this->attrs['data-action:' . $event] = $action . '(' . $params . ')';
-        } else {
-            $this->attrs['data-action:' . $event] = $action;
-        }
+
+        $this->attrs['data-action:' . $event] = $actionExpr;
         return $this;
     }
 

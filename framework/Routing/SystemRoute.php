@@ -62,17 +62,22 @@ class SystemRoute
         return $route->handle($request);
     }
 
-    #[Route('/_js', methods: ['GET'], name: 'js')]
-    public function js(Request $request): Response
+    #[Route('/_js/v/{v}/{ids...}', methods: ['GET'], name: 'js_v')]
+    #[Route('/_js/{ids...}', methods: ['GET'], name: 'js')]
+    public function js(Request $request, ?string $ids = null): Response
     {
-        $idsStr = $request->input('ids', '');
+        $idsStr = $ids ?? $request->input('ids', '');
         if (empty($idsStr)) {
             return new Response('', 200, ['Content-Type' => 'application/javascript']);
         }
 
+        if (str_ends_with($idsStr, '.js')) {
+            $idsStr = substr($idsStr, 0, -3);
+        }
+
         $ids = array_values(array_filter(
-            array_unique(explode(',', $idsStr)),
-            static fn ($id) => is_string($id) && preg_match('/^[A-Za-z0-9:_-]+$/', $id) === 1
+            array_unique(explode(',', urldecode($idsStr))),
+            static fn ($id) => is_string($id) && preg_match('/^[A-Za-z0-9:._-]+$/', $id) === 1
         ));
 
         if (empty($ids)) {

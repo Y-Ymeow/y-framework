@@ -63,23 +63,20 @@ class LinkSelector extends BaseField
             ->attr('type', 'hidden')
             ->attr('name', $this->name . '[url]')
             ->attr('data-link-url', '')
+            ->attr('data-submit-field', $this->name . '[url]')
             ->attr('value', $url);
         $hiddenTarget = Element::make('input')
             ->attr('type', 'hidden')
             ->attr('name', $this->name . '[target]')
             ->attr('data-link-target', '')
+            ->attr('data-submit-field', $this->name . '[target]')
             ->attr('value', $target);
         $hiddenLabel = Element::make('input')
             ->attr('type', 'hidden')
             ->attr('name', $this->name . '[label]')
             ->attr('data-link-label', '')
+            ->attr('data-submit-field', $this->name . '[label]')
             ->attr('value', $label);
-
-        if ($this->submitMode) {
-            $hiddenUrl->attr('data-submit-field', $this->name . '[url]');
-            $hiddenTarget->attr('data-submit-field', $this->name . '[target]');
-            $hiddenLabel->attr('data-submit-field', $this->name . '[label]');
-        }
 
         $container->child($hiddenUrl);
         $container->child($hiddenTarget);
@@ -128,10 +125,10 @@ class LinkSelector extends BaseField
                     ->label('确定')
                     ->primary()
                     ->attr('data-link-apply', $modalId)
-                    ->liveAction('applyLink', 'click', [
+                    ->attr('data-link-params', json_encode([
                         'name' => $this->name,
                         'modalId' => $modalId
-                    ])
+                    ], JSON_UNESCAPED_UNICODE))
             );
 
         $modal->id($modalId);

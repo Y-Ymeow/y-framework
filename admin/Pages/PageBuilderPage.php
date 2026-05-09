@@ -12,8 +12,10 @@ use Admin\PageBuilder\Components\ComponentRegistry;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\State;
+use Framework\UX\Dialog\Modal;
 use Framework\View\Base\Element;
 use Framework\UX\Form\FormBuilder;
+use Framework\UX\UI\Button;
 
 class PageBuilderPage extends LiveComponent implements PageInterface
 {
@@ -144,9 +146,8 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function openBuilder(array $params): void
+    public function openBuilder(string $name): void
     {
-        $name = $params['name'] ?? '';
         if (empty($name)) return;
 
         $this->editingPage = $name;
@@ -194,10 +195,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function toggleComponent(array $params): void
+    public function toggleComponent(mixed $uid = null): void
     {
         $oldUid = $this->selectedUid;
-        $uid = $params['uid'] ?? '';
         $this->selectedUid = ($this->selectedUid === $uid) ? '' : $uid;
 
         if ($oldUid && $oldUid !== $this->selectedUid) {
@@ -206,52 +206,6 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         if ($this->selectedUid) {
             $this->refresh('comp-' . $this->selectedUid);
         }
-        $this->refresh('properties-panel');
-    }
-
-    #[LiveAction]
-    public function saveComponentSettings(array $params): void
-    {
-        $uid = $params['uid'] ?? '';
-        if (empty($uid)) {
-            logger()->error('saveComponentSettings: no uid', ['params' => $params]);
-            return;
-        }
-
-        $tree = json_decode($this->componentTreeJson, true);
-        if (!is_array($tree)) {
-            logger()->error('saveComponentSettings: invalid tree', ['componentTreeJson' => substr($this->componentTreeJson, 0, 200)]);
-            return;
-        }
-
-        $settings = [];
-        $stylesJson = $params['styles_json'] ?? '';
-        foreach ($params as $key => $value) {
-            if ($key === 'uid' || $key === 'className' || $key === 'styles_json') continue;
-            if (str_starts_with($key, 'style_') || $key === '_custom_classes') continue;
-            $settings[$key] = $value;
-        }
-
-        if (!empty($stylesJson)) {
-            $styles = json_decode($stylesJson, true);
-            if (is_array($styles)) {
-                $settings['styles'] = array_filter($styles, fn($v) => !empty($v));
-            }
-        }
-
-        logger()->info('saveComponentSettings', [
-            'uid' => $uid,
-            'settings' => $settings,
-        ]);
-
-        $this->updateAllSettingsInTree($tree, $uid, $settings);
-        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
-
-        $generator = new PageGenerator();
-        $generator->saveComponentTree($this->editingPage, $tree);
-
-        $this->toast('设置已保存');
-        $this->refresh('canvas');
         $this->refresh('properties-panel');
     }
 
@@ -279,22 +233,27 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function selectMedia(array $params): void
+    public function selectMedia(?string $url = null, ?string $fieldName = null, ?string $modalId = null): void
     {
-        $url = $params['url'] ?? '';
-        $name = $params['name'] ?? '';
-        $modalId = $params['modalId'] ?? '';
 
         if (!$this->selectedUid) return;
 
+        // 1. Sync other submitted fields first to avoid losing data ("还原" fix)
+        $this->updateTreeFromParams([
+            'url' => $url,
+            'fieldName' => $fieldName,
+            'modalId' => $modalId,
+        ]);
+
+        // 2. Update the specific media field
         $tree = json_decode($this->componentTreeJson, true);
-        if (!is_array($tree)) return;
+        if (is_array($tree)) {
+            $this->updateAllSettingsInTree($tree, $this->selectedUid, [$fieldName => $url]);
+            $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
-        $this->updateAllSettingsInTree($tree, $this->selectedUid, [$name => $url]);
-        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
-
-        $generator = new PageGenerator();
-        $generator->saveComponentTree($this->editingPage, $tree);
+            $generator = new PageGenerator();
+            $generator->saveComponentTree($this->editingPage, $tree);
+        }
 
         $this->closeModal($modalId);
         $this->refresh('canvas');
@@ -302,32 +261,71 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function applyLink(array $params): void
+    public function applyLink(?string $fieldName = null, ?string $modalId = null, ?string $url = null, ?string $target = null, ?string $label = null): void
     {
-        $name = $params['name'] ?? '';
-        $modalId = $params['modalId'] ?? '';
-        
-        // 这里的 params 可能不包含 modal 里的输入值，除非我们在 JS 中处理或使用 data-live-model
-        // 目前我们让 JS 更新隐藏 input，我们只需要在这里关闭 modal 并刷新页面
-        
-        // 如果 params 里有数据（比如通过 JS 传递过来的）
-        $url = $params['url'] ?? '';
-        $target = $params['target'] ?? '_self';
-        $label = $params['label'] ?? '';
+        if (!$this->selectedUid) return;
 
-        if ($url && $this->selectedUid) {
-            $tree = json_decode($this->componentTreeJson, true);
-            if (is_array($tree)) {
-                $this->updateAllSettingsInTree($tree, $this->selectedUid, [
-                    $name => ['url' => $url, 'target' => $target, 'label' => $label]
-                ]);
-                $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
-                $generator = new PageGenerator();
-                $generator->saveComponentTree($this->editingPage, $tree);
-            }
+        // 1. Sync other submitted fields first
+        $this->updateTreeFromParams([
+            'fieldName' => $fieldName,
+            'modalId' => $modalId,
+            'url' => $url,
+            'target' => $target,
+            'label' => $label,
+        ]);
+
+        // 2. Update the link settings
+        $tree = json_decode($this->componentTreeJson, true);
+        if (is_array($tree)) {
+            $this->updateAllSettingsInTree($tree, $this->selectedUid, [
+                $fieldName => ['url' => $url, 'target' => $target, 'label' => $label]
+            ]);
+            $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+            $generator = new PageGenerator();
+            $generator->saveComponentTree($this->editingPage, $tree);
         }
 
         $this->closeModal($modalId);
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
+    }
+
+    private function updateTreeFromParams(array $params): void
+    {
+        $uid = $params['uid'] ?? $this->selectedUid;
+        if (empty($uid)) return;
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) return;
+
+        $settings = [];
+        $stylesJson = $params['styles_json'] ?? '';
+        foreach ($params as $key => $value) {
+            if (in_array($key, ['uid', 'className', 'styles_json', 'name', 'url', 'modalId', 'target', 'label'])) continue;
+            if (str_starts_with($key, 'style_') || $key === '_custom_classes') continue;
+            $settings[$key] = $value;
+        }
+
+        if (!empty($stylesJson)) {
+            $styles = json_decode($stylesJson, true);
+            if (is_array($styles)) {
+                $settings['styles'] = array_filter($styles, fn($v) => !empty($v));
+            }
+        }
+
+        $this->updateAllSettingsInTree($tree, $uid, $settings);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
+    }
+
+    #[LiveAction]
+    public function saveComponentSettings(array $params): void
+    {
+        $this->updateTreeFromParams($params);
+        $this->toast('设置已保存');
         $this->refresh('canvas');
         $this->refresh('properties-panel');
     }
@@ -491,7 +489,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             ->size('md');
 
         $body = Element::make('div')->class('p-4');
-        
+
         $body->child(
             Element::make('div')->class('mb-3')->children(
                 Element::make('label')->class('form-label')->text('页面名称'),
@@ -559,7 +557,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 ->label('新建页面')
                 ->primary()
                 ->attr('data-ux-modal-open', 'create-page-modal')
-                ->html('<i class="bi bi-plus-lg"></i> 新建页面')
+                ->child('<i class="bi bi-plus-lg"></i> 新建页面')
         );
         $container->child($headerRow);
 
@@ -585,15 +583,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $actions->child(
                 Element::make('button')
                     ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
-                    ->attr('data-action:click', 'openBuilder()')
-                    ->attr('data-action-params', json_encode(['name' => $page['name']], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('openBuilder', 'click', ['name' => $page['name']])
                     ->html('<i class="bi bi-pencil-square"></i> 编辑')
             );
             $actions->child(
                 Element::make('button')
                     ->class('page-btn', 'page-btn-sm', 'page-btn-danger')
-                    ->attr('data-action:click', 'deletePage()')
-                    ->attr('data-action-params', json_encode(['name' => $page['name']], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('deletePage', 'click', ['name' => $page['name']])
                     ->html('<i class="bi bi-trash3"></i>')
             );
 
@@ -795,16 +791,14 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn')
-                ->attr('data-action:click', 'toggleComponent()')
-                ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->liveAction('toggleComponent', 'click', ['uid' => $uid])
                 ->attr('title', '编辑')
                 ->html('<i class="bi bi-pencil"></i>')
         );
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn', 'pb-comp-btn-danger')
-                ->attr('data-action:click', 'removeComponent()')
-                ->attr('data-action-params', json_encode(['uid' => $uid], JSON_UNESCAPED_UNICODE))
+                ->liveAction('removeComponent', 'click', ['uid' => $uid])
                 ->attr('title', '删除')
                 ->html('<i class="bi bi-trash3"></i>')
         );
@@ -880,8 +874,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $panelHeader->child(
             Element::make('button')
                 ->class('page-builder-properties-close')
-                ->attr('data-action:click', 'toggleComponent()')
-                ->attr('data-action-params', json_encode(['uid' => $this->selectedUid], JSON_UNESCAPED_UNICODE))
+                ->liveAction('toggleComponent', 'click', ['uid' => $this->selectedUid])
                 ->html('<i class="bi bi-x"></i>')
         );
         $panel->child($panelHeader);
@@ -1037,8 +1030,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 $isContainer = method_exists($type, 'isContainer') && $type->isContainer();
                 $btn = Element::make('button')
                     ->class('pb-comp-add-child-btn', $isContainer ? 'is-container' : '')
-                    ->attr('data-action:click', 'addChildComponent()')
-                    ->attr('data-action-params', json_encode(['parentUid' => $parentUid, 'componentType' => $type->name()], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('addChildComponent', 'click', ['parentUid' => $parentUid, 'componentType' => $type->name()])
                     ->html('<i class="bi bi-' . $type->icon() . '"></i> ' . $type->label());
                 $group->child($btn);
             }

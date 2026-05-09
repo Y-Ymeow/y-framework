@@ -91,10 +91,19 @@ class AdminFormPage extends LiveComponent
     public function selectMedia(array $params): void
     {
         $url = $params['url'] ?? '';
-        $name = $params['name'] ?? '';
+        $fieldName = $params['name'] ?? '';
         $modalId = $params['modalId'] ?? '';
 
-        $this->formData[$name] = $url;
+        // 1. Merge all submitted data to keep the form state consistent
+        foreach ($params as $key => $value) {
+            if (!is_string($key)) continue;
+            if (in_array($key, ['name', 'url', 'modalId', 'uid', 'styles_json'])) continue;
+            $this->formData[$key] = $value;
+        }
+
+        // 2. Apply chosen media
+        $this->formData[$fieldName] = $url;
+        
         $this->closeModal($modalId);
         $this->refresh('admin-form');
     }
@@ -102,14 +111,23 @@ class AdminFormPage extends LiveComponent
     #[LiveAction]
     public function applyLink(array $params): void
     {
-        $name = $params['name'] ?? '';
+        $fieldName = $params['name'] ?? '';
         $modalId = $params['modalId'] ?? '';
         
-        $url = $params['url'] ?? '';
-        $target = $params['target'] ?? '_self';
-        $label = $params['label'] ?? '';
+        // 1. Merge all submitted data
+        foreach ($params as $key => $value) {
+            if (!is_string($key)) continue;
+            if (in_array($key, ['name', 'url', 'modalId', 'target', 'label', 'uid', 'styles_json'])) continue;
+            $this->formData[$key] = $value;
+        }
 
-        $this->formData[$name] = [
+        // 2. Extract values from nested field data OR root (fallback)
+        $fieldData = $params[$fieldName] ?? [];
+        $url = $fieldData['url'] ?? $params['url'] ?? '';
+        $target = $fieldData['target'] ?? $params['target'] ?? '_self';
+        $label = $fieldData['label'] ?? $params['label'] ?? '';
+
+        $this->formData[$fieldName] = [
             'url' => $url,
             'target' => $target,
             'label' => $label

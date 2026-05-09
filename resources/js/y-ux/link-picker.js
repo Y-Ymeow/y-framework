@@ -48,23 +48,6 @@ document.addEventListener('click', function (e) {
             }
         }
 
-        // Handle LiveAction if present
-        var liveAction = applyBtn.getAttribute('data-action');
-        if (liveAction && window.L) {
-            var componentEl = applyBtn.closest('[data-live]');
-            if (componentEl) {
-                var componentId = componentEl.getAttribute('data-live-id');
-                var actionParams = JSON.parse(applyBtn.getAttribute('data-action-params') || '{}');
-                actionParams.url = url;
-                actionParams.label = label;
-                actionParams.target = target;
-                
-                L.executeAction(componentId, liveAction, actionParams);
-                e.stopImmediatePropagation();
-                return;
-            }
-        }
-
         return;
     }
 

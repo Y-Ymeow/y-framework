@@ -288,9 +288,8 @@ class MediaPage extends LiveComponent implements PageInterface
         foreach ($types as $type => $label) {
             $btn = Element::make('button')
                 ->class('media-filter-btn', $this->filterType === $type ? 'active' : '')
-                ->attr('data-action:click', 'setFilterType()')
-                ->attr('data-action-params', json_encode(['type' => $type], JSON_UNESCAPED_UNICODE))
-                ->text($label);
+                < -liveAction('setFilterType', 'click', ['type' => $type])
+                    ->text($label);
             $filters->child($btn);
         }
         $toolbar->child($filters);
@@ -299,15 +298,13 @@ class MediaPage extends LiveComponent implements PageInterface
         $viewToggle->child(
             Element::make('button')
                 ->class('media-view-btn', $this->viewMode === 'grid' ? 'active' : '')
-                ->attr('data-action:click', 'setViewMode()')
-                ->attr('data-action-params', json_encode(['mode' => 'grid'], JSON_UNESCAPED_UNICODE))
+                ->liveAction('setViewMode', 'click', ['mode' => 'grid'])
                 ->html('<i class="bi bi-grid-3x3-gap"></i>')
         );
         $viewToggle->child(
             Element::make('button')
                 ->class('media-view-btn', $this->viewMode === 'list' ? 'active' : '')
-                ->attr('data-action:click', 'setViewMode()')
-                ->attr('data-action-params', json_encode(['mode' => 'list'], JSON_UNESCAPED_UNICODE))
+                ->liveAction('setViewMode', 'click', ['mode' => 'list'])
                 ->html('<i class="bi bi-list-ul"></i>')
         );
         $toolbar->child($viewToggle);
@@ -391,7 +388,7 @@ class MediaPage extends LiveComponent implements PageInterface
                         Element::make('input')
                             ->class('media-input', 'media-input-sm')
                             ->attr('type', 'text')
-                            ->attr('data-live-model', 'editTitle')
+                            ->liveModel('editTitle')
                             ->attr('value', $this->editTitle)
                     )
                 );
@@ -409,8 +406,7 @@ class MediaPage extends LiveComponent implements PageInterface
                     Element::make('div')->class('media-card-edit-actions')->children(
                         Element::make('button')
                             ->class('media-btn', 'media-btn-primary', 'media-btn-sm')
-                            ->attr('data-action:click', 'saveMedia()')
-                            ->attr('data-action-params', json_encode(['id' => $id], JSON_UNESCAPED_UNICODE))
+                            ->liveAction('saveMedia', 'click', ['id' => $id])
                             ->text('保存'),
                         Element::make('button')
                             ->class('media-btn', 'media-btn-ghost', 'media-btn-sm')
@@ -427,15 +423,13 @@ class MediaPage extends LiveComponent implements PageInterface
                 $actions->child(
                     Element::make('button')
                         ->class('media-card-action')
-                        ->attr('data-action:click', 'editMedia()')
-                        ->attr('data-action-params', json_encode(['id' => $id], JSON_UNESCAPED_UNICODE))
+                        ->liveAction('editMedia', 'click', ['id' => $id])
                         ->html('<i class="bi bi-pencil"></i>')
                 );
                 $actions->child(
                     Element::make('button')
                         ->class('media-card-action', 'media-card-action-danger')
-                        ->attr('data-action:click', 'deleteMedia()')
-                        ->attr('data-action-params', json_encode(['id' => $id], JSON_UNESCAPED_UNICODE))
+                        ->liveAction('deleteMedia', 'click', ['id' => $id])
                         ->html('<i class="bi bi-trash3"></i>')
                 );
                 $info->child($actions);
@@ -462,8 +456,7 @@ class MediaPage extends LiveComponent implements PageInterface
             $pagination->child(
                 Element::make('button')
                     ->class('media-page-btn')
-                    ->attr('data-action:click', 'setPage()')
-                    ->attr('data-action-params', json_encode(['page' => $this->page - 1], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('setPage', 'click', ['page' => $this->page - 1])
                     ->html('<i class="bi bi-chevron-left"></i>')
             );
         }
@@ -475,8 +468,7 @@ class MediaPage extends LiveComponent implements PageInterface
             $pagination->child(
                 Element::make('button')
                     ->class('media-page-btn', $i === $this->page ? 'active' : '')
-                    ->attr('data-action:click', 'setPage()')
-                    ->attr('data-action-params', json_encode(['page' => $i], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('setPage', 'click', ['page' => $i])
                     ->text((string)$i)
             );
         }
@@ -485,8 +477,7 @@ class MediaPage extends LiveComponent implements PageInterface
             $pagination->child(
                 Element::make('button')
                     ->class('media-page-btn')
-                    ->attr('data-action:click', 'setPage()')
-                    ->attr('data-action-params', json_encode(['page' => $this->page + 1], JSON_UNESCAPED_UNICODE))
+                    ->liveAction('setPage', 'click', ['page' => $this->page + 1])
                     ->html('<i class="bi bi-chevron-right"></i>')
             );
         }

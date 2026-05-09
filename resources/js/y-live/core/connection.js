@@ -338,8 +338,48 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
         });
 }
 
+export function collectFormData(scope) {
+    const data = {};
+    const collectFieldValue = (input) => {
+        if (input.type === "checkbox") return input.checked;
+        if (input.type === "radio") return input.checked ? input.value : undefined;
+        return input.value;
+    };
+    const setNestedValue = (obj, path, value) => {
+        if (!path.includes("[")) {
+            obj[path] = value;
+            return;
+        }
+        const parts = path.split(/[\[\]]/).filter((p) => p !== "");
+        let current = obj;
+        for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!current[part]) current[part] = {};
+            current = current[part];
+        }
+        current[parts[parts.length - 1]] = value;
+    };
+
+    scope.querySelectorAll("[data-model], [data-submit-field]").forEach((input) => {
+        const key = input.getAttribute("data-model") || input.getAttribute("data-submit-field");
+        if (!key) return;
+
+        const value = collectFieldValue(input);
+        if (value !== undefined) {
+            setNestedValue(data, key, value);
+        }
+    });
+    return data;
+}
+
 function collectParams(el, event, extraParams = {}) {
-    const params = { ...extraParams };
+    let params = { ...extraParams };
+
+    // 1. 如果是在 scope 内部触发，自动收集表单数据防止还原
+    const scope = el.closest('[data-live-state]') || el.closest('[data-state]') || el.parentElement;
+    if (scope && scope.querySelector('[data-submit-field], [data-model]')) {
+        params = { ...collectFormData(scope), ...params };
+    }
 
     let form = null;
     if (event && event.target) {
