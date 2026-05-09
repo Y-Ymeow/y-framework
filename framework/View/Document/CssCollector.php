@@ -116,6 +116,6 @@ class CssCollector
 
         $idsStr = implode(',', $ids);
         $v = substr(md5($idsStr), 0, 8);
-        return '<link rel="stylesheet" href="/_css?snippets=' . urlencode($idsStr) . '&v=' . $v . '">';
+        return '<link rel="stylesheet" href="/_css/v/' . $v . '/' . urlencode($idsStr) . '.css">';
     }
 }

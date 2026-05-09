@@ -42,9 +42,9 @@ class CssRoute
         $this->debug = $debug;
     }
 
-    public function handle(Request $request): Response
+    public function handle(Request $request, ?string $snippetsParam = null): Response
     {
-        $css = $this->generate($request);
+        $css = $this->generate($request, $snippetsParam);
 
         return new Response($css, 200, [
             'Content-Type' => 'text/css; charset=utf-8',
@@ -55,7 +55,7 @@ class CssRoute
         ]);
     }
 
-    private function generate(Request $request): string
+    private function generate(Request $request, ?string $snippetsParam = null): string
     {
         if (!$this->debug && is_file($this->outputPath)) {
             $css = file_get_contents($this->outputPath);
@@ -74,7 +74,12 @@ class CssRoute
 
         $collector = CssCollector::getInstance();
 
-        $snippetsParam = $request->query('snippets');
+        if ($snippetsParam === null) {
+            $snippetsParam = $request->query('snippets');
+        } elseif (str_ends_with($snippetsParam, '.css')) {
+            $snippetsParam = substr($snippetsParam, 0, -4);
+        }
+
         if ($snippetsParam) {
             $ids = explode(',', $snippetsParam);
             foreach ($ids as $id) {

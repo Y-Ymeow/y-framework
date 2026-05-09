@@ -142,13 +142,13 @@ class AssetRegistry
 
         foreach ($this->cssFiles as $css) {
             $id = $css['id'] ? ' id="' . htmlspecialchars($css['id']) . '"' : '';
-            $href = $css['href'];
 
             if ($css['id'] === 'generated-css' && !empty($snippetIds)) {
                 $ids = implode(',', $snippetIds);
                 $v = substr(md5($ids), 0, 8);
-                $sep = str_contains($href, '?') ? '&' : '?';
-                $href .= $sep . 'snippets=' . urlencode($ids) . '&v=' . $v;
+                $href = '/_css/v/' . $v . '/' . urlencode($ids) . '.css';
+            } else {
+                $href = $css['href'];
             }
 
             $html .= '<link rel="stylesheet" href="' . htmlspecialchars($href) . '"' . $id . '>';

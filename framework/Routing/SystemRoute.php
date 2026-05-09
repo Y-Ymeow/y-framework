@@ -55,12 +55,13 @@ class SystemRoute
         return $route->handle($request, $path, false);
     }
 
+    #[Route('/_css/v/{v}/{snippets...}', methods: ['GET'], name: 'css_v')]
     #[Route('/_css', methods: ['GET'], name: 'css')]
-    public function css(Request $request): Response
+    public function css(Request $request, ?string $snippets = null): Response
     {
         $debug = \Framework\Foundation\Application::isDebug();
         $route = new CssRoute($this->basePath, $debug);
-        return $route->handle($request);
+        return $route->handle($request, $snippets);
     }
 
     #[Route('/_js/v/{v}/{ids...}', methods: ['GET'], name: 'js_v')]
