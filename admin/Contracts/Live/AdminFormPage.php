@@ -87,6 +87,38 @@ class AdminFormPage extends LiveComponent
         $this->refresh('admin-form');
     }
 
+    #[LiveAction]
+    public function selectMedia(array $params): void
+    {
+        $url = $params['url'] ?? '';
+        $name = $params['name'] ?? '';
+        $modalId = $params['modalId'] ?? '';
+
+        $this->formData[$name] = $url;
+        $this->closeModal($modalId);
+        $this->refresh('admin-form');
+    }
+
+    #[LiveAction]
+    public function applyLink(array $params): void
+    {
+        $name = $params['name'] ?? '';
+        $modalId = $params['modalId'] ?? '';
+        
+        $url = $params['url'] ?? '';
+        $target = $params['target'] ?? '_self';
+        $label = $params['label'] ?? '';
+
+        $this->formData[$name] = [
+            'url' => $url,
+            'target' => $target,
+            'label' => $label
+        ];
+        
+        $this->closeModal($modalId);
+        $this->refresh('admin-form');
+    }
+
     public function render(): Element
     {
         // 编辑模式且未加载数据时，从数据库加载

@@ -75,10 +75,6 @@ document.addEventListener('click', function (e) {
                 actions.appendChild(btn);
             }
         }
-
-        if (window.Modal && window.Modal.close) {
-            window.Modal.close(modalId);
-        }
         return;
     }
 });

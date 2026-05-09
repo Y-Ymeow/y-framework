@@ -69,14 +69,21 @@ class LinkSelector extends BaseField
             ->attr('name', $this->name . '[target]')
             ->attr('data-link-target', '')
             ->attr('value', $target);
+        $hiddenLabel = Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('name', $this->name . '[label]')
+            ->attr('data-link-label', '')
+            ->attr('value', $label);
 
         if ($this->submitMode) {
             $hiddenUrl->attr('data-submit-field', $this->name . '[url]');
             $hiddenTarget->attr('data-submit-field', $this->name . '[target]');
+            $hiddenLabel->attr('data-submit-field', $this->name . '[label]');
         }
 
         $container->child($hiddenUrl);
         $container->child($hiddenTarget);
+        $container->child($hiddenLabel);
 
         $actions = Element::make('div')->class('ux-form-link-actions');
         $actions->child(
@@ -121,6 +128,10 @@ class LinkSelector extends BaseField
                     ->label('确定')
                     ->primary()
                     ->attr('data-link-apply', $modalId)
+                    ->liveAction('applyLink', 'click', [
+                        'name' => $this->name,
+                        'modalId' => $modalId
+                    ])
             );
 
         $modal->id($modalId);

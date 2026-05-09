@@ -19,8 +19,10 @@ document.addEventListener('click', function (e) {
         if (picker) {
             var hiddenUrl = picker.querySelector('[data-link-url]');
             var hiddenTarget = picker.querySelector('[data-link-target]');
+            var hiddenLabel = picker.querySelector('[data-link-label]');
             if (hiddenUrl) hiddenUrl.value = url;
             if (hiddenTarget) hiddenTarget.value = target;
+            if (hiddenLabel) hiddenLabel.value = label;
 
             var display = picker.querySelector('.ux-form-link-display');
             if (display) {
@@ -46,9 +48,23 @@ document.addEventListener('click', function (e) {
             }
         }
 
-        if (window.Modal && window.Modal.close) {
-            window.Modal.close(modalId);
+        // Handle LiveAction if present
+        var liveAction = applyBtn.getAttribute('data-action');
+        if (liveAction && window.L) {
+            var componentEl = applyBtn.closest('[data-live]');
+            if (componentEl) {
+                var componentId = componentEl.getAttribute('data-live-id');
+                var actionParams = JSON.parse(applyBtn.getAttribute('data-action-params') || '{}');
+                actionParams.url = url;
+                actionParams.label = label;
+                actionParams.target = target;
+                
+                L.executeAction(componentId, liveAction, actionParams);
+                e.stopImmediatePropagation();
+                return;
+            }
         }
+
         return;
     }
 
@@ -58,8 +74,10 @@ document.addEventListener('click', function (e) {
         if (picker) {
             var hiddenUrl = picker.querySelector('[data-link-url]');
             var hiddenTarget = picker.querySelector('[data-link-target]');
+            var hiddenLabel = picker.querySelector('[data-link-label]');
             if (hiddenUrl) hiddenUrl.value = '';
             if (hiddenTarget) hiddenTarget.value = '_self';
+            if (hiddenLabel) hiddenLabel.value = '';
             var d = picker.querySelector('.ux-form-link-display');
             if (d) d.innerHTML = '<span class="ux-form-link-placeholder">未设置链接</span>';
             removeBtn.remove();

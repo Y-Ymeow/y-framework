@@ -81,9 +81,9 @@ class PostResource extends BaseResource
                     ->label(['admin:posts.excerpt', [], '摘要'])
                     ->rows(3),
 
-                Textarea::make('content')
+                \Framework\UX\Form\BlockEditor::make('content')
                     ->label(['admin:posts.content', [], '内容'])
-                    ->rows(8),
+                    ->height('600px'),
             ]),
         ]);
     }

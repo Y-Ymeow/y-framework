@@ -1,0 +1,45 @@
+.ux-form-link-picker {
+    display: grid;
+    gap: 0.625rem;
+}
+
+.ux-form-link-display {
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.ux-form-link-placeholder {
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.ux-form-link-url-display {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #111827;
+    font-size: 0.875rem;
+}
+
+.ux-form-link-target-display {
+    flex: none;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #4b5563;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.link-picker-modal {
+    display: grid;
+    gap: 1rem;
+}

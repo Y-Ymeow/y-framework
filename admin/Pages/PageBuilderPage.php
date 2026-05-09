@@ -35,6 +35,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     #[State]
     public string $newPageRoute = '';
 
+    #[State]
+    public string $newPageSlug = '';
+
+    #[State]
+    public string $newPageMiddleware = '';
+
     public static function getName(): string
     {
         return 'pages';
@@ -90,15 +96,20 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $name = trim($params['name'] ?? $this->newPageName);
         $route = trim($params['route'] ?? $this->newPageRoute);
+        $slug = trim($params['slug'] ?? $this->newPageSlug);
+        $middleware = trim($params['middleware'] ?? $this->newPageMiddleware);
 
-        if (empty($name) || empty($route)) {
-            $this->toast('请填写页面名称和路由', 'error');
+        if (empty($name)) {
+            $this->toast('请填写页面名称', 'error');
             $this->refresh('page-content');
             return;
         }
 
         $generator = new PageGenerator();
-        $result = $generator->generate($name, $route);
+        $result = $generator->generate($name, $route, 'blank', [
+            'slug' => $slug ?: $name,
+            'middleware' => $middleware,
+        ]);
 
         if (!$result['success']) {
             $this->toast($result['error'] ?? '创建失败', 'error');
@@ -106,6 +117,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $this->toast('页面已创建');
             $this->newPageName = '';
             $this->newPageRoute = '';
+            $this->newPageSlug = '';
+            $this->newPageMiddleware = '';
+            $this->closeModal('create-page-modal');
         }
 
         $this->refresh('page-content');
@@ -265,6 +279,60 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
+    public function selectMedia(array $params): void
+    {
+        $url = $params['url'] ?? '';
+        $name = $params['name'] ?? '';
+        $modalId = $params['modalId'] ?? '';
+
+        if (!$this->selectedUid) return;
+
+        $tree = json_decode($this->componentTreeJson, true);
+        if (!is_array($tree)) return;
+
+        $this->updateAllSettingsInTree($tree, $this->selectedUid, [$name => $url]);
+        $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+
+        $generator = new PageGenerator();
+        $generator->saveComponentTree($this->editingPage, $tree);
+
+        $this->closeModal($modalId);
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
+    }
+
+    #[LiveAction]
+    public function applyLink(array $params): void
+    {
+        $name = $params['name'] ?? '';
+        $modalId = $params['modalId'] ?? '';
+        
+        // 这里的 params 可能不包含 modal 里的输入值，除非我们在 JS 中处理或使用 data-live-model
+        // 目前我们让 JS 更新隐藏 input，我们只需要在这里关闭 modal 并刷新页面
+        
+        // 如果 params 里有数据（比如通过 JS 传递过来的）
+        $url = $params['url'] ?? '';
+        $target = $params['target'] ?? '_self';
+        $label = $params['label'] ?? '';
+
+        if ($url && $this->selectedUid) {
+            $tree = json_decode($this->componentTreeJson, true);
+            if (is_array($tree)) {
+                $this->updateAllSettingsInTree($tree, $this->selectedUid, [
+                    $name => ['url' => $url, 'target' => $target, 'label' => $label]
+                ]);
+                $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
+                $generator = new PageGenerator();
+                $generator->saveComponentTree($this->editingPage, $tree);
+            }
+        }
+
+        $this->closeModal($modalId);
+        $this->refresh('canvas');
+        $this->refresh('properties-panel');
+    }
+
+    #[LiveAction]
     public function addChildComponent(array $params): void
     {
         $parentUid = $params['parentUid'] ?? '';
@@ -410,8 +478,71 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         $wrapper->child($content);
+        $wrapper->child($this->renderCreateModal());
 
         return $wrapper;
+    }
+
+    protected function renderCreateModal(): Modal
+    {
+        $modal = Modal::make()
+            ->id('create-page-modal')
+            ->title('创建新页面')
+            ->size('md');
+
+        $body = Element::make('div')->class('p-4');
+        
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('页面名称'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '如 About')
+                    ->attr('data-live-model', 'newPageName')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('Slug'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '如 about-us')
+                    ->attr('data-live-model', 'newPageSlug')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('路由'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '留空使用 /slug')
+                    ->attr('data-live-model', 'newPageRoute')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('Middleware'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '逗号分隔，可选')
+                    ->attr('data-live-model', 'newPageMiddleware')
+            )
+        );
+
+        $modal->content($body);
+        $modal->footer(
+            Button::make()->label('取消')->secondary()->attr('data-ux-modal-close', 'create-page-modal'),
+            Button::make()->label('创建页面')->primary()->attr('data-action:click', 'createPage()')
+        );
+
+        return $modal;
     }
 
     protected function renderPageList(): Element
@@ -421,31 +552,19 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $generator = new PageGenerator();
         $pages = $generator->listPages();
 
-        $createRow = Element::make('div')->class('page-create-row');
-        $createRow->child(
-            Element::make('input')
-                ->class('page-input')
-                ->attr('type', 'text')
-                ->attr('placeholder', '页面名称 (如 About)')
-                ->attr('data-live-model', 'newPageName')
+        $headerRow = Element::make('div')->class('page-list-header-row mb-4 d-flex justify-content-between align-items-center');
+        $headerRow->child(Element::make('h2')->class('h5 mb-0')->text('现有页面'));
+        $headerRow->child(
+            Button::make()
+                ->label('新建页面')
+                ->primary()
+                ->attr('data-ux-modal-open', 'create-page-modal')
+                ->html('<i class="bi bi-plus-lg"></i> 新建页面')
         );
-        $createRow->child(
-            Element::make('input')
-                ->class('page-input')
-                ->attr('type', 'text')
-                ->attr('placeholder', '路由 (如 /about)')
-                ->attr('data-live-model', 'newPageRoute')
-        );
-        $createRow->child(
-            Element::make('button')
-                ->class('page-btn', 'page-btn-primary')
-                ->attr('data-action:click', 'createPage()')
-                ->text('创建页面')
-        );
-        $container->child($createRow);
+        $container->child($headerRow);
 
         if (empty($pages)) {
-            $container->child(Element::make('div')->class('page-list-empty')->text('暂无页面，请创建'));
+            $container->child(Element::make('div')->class('page-list-empty')->text('暂无页面，请点击上方按钮创建'));
             return $container;
         }
 
@@ -455,6 +574,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $info = Element::make('div')->class('page-list-item-info');
             $info->child(Element::make('div')->class('page-list-item-name')->text($page['name']));
             $info->child(Element::make('div')->class('page-list-item-route')->text($page['route'] ?? '/'));
+            if (!empty($page['slug'])) {
+                $info->child(Element::make('div')->class('page-list-item-route')->text('slug: ' . $page['slug']));
+            }
+            if (!empty($page['middleware'])) {
+                $info->child(Element::make('div')->class('page-list-item-route')->text('middleware: ' . implode(', ', $page['middleware'])));
+            }
 
             $actions = Element::make('div')->class('page-list-item-actions');
             $actions->child(

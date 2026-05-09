@@ -11,6 +11,8 @@ use Framework\UX\Form\Components\Textarea;
 use Framework\UX\Form\Components\Select;
 use Framework\UX\Form\Components\Checkbox;
 use Framework\UX\Form\Components\RadioGroup;
+use Framework\UX\Form\RichEditor;
+use Framework\UX\Form\BlockEditor;
 use Framework\UX\UI\Button;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
@@ -23,6 +25,7 @@ class FormBuilder extends UXComponent
     protected string $action = '';
     protected bool $multipart = false;
     protected ?string $submitLabel = null;
+    protected ?string $liveSubmitAction = null;
     protected array $data = [];
     protected array $liveBind = [];
     protected bool $submitMode = false;
@@ -85,6 +88,36 @@ class FormBuilder extends UXComponent
         return $this;
     }
 
+    public function liveSubmit(string $action, ?string $label = null): static
+    {
+        $this->submitMode = true;
+        $this->liveSubmitAction = $action;
+        if ($label !== null) {
+            $this->submitLabel = $label;
+        }
+        return $this;
+    }
+
+    public function add(FormComponent|UXComponent|Element $component): static
+    {
+        if ($this->submitMode && method_exists($component, 'submitMode')) {
+            $component->submitMode(true);
+        }
+
+        $this->components[] = $component;
+        return $this;
+    }
+
+    public function fields(array $components): static
+    {
+        foreach ($components as $component) {
+            if ($component instanceof FormComponent || $component instanceof UXComponent || $component instanceof Element) {
+                $this->add($component);
+            }
+        }
+        return $this;
+    }
+
     public function fill(array $data): static
     {
         $this->data = $data;
@@ -120,7 +153,7 @@ class FormBuilder extends UXComponent
     public function __call(string $name, array $arguments)
     {
         if (isset(static::$macros[$name])) {
-            return call_user_func_array(static::$macros[$name], $arguments);
+            return \Closure::fromCallable(static::$macros[$name])->call($this, ...$arguments);
         }
 
         throw new \BadMethodCallException("Method {$name} does not exist on " . static::class);
@@ -193,6 +226,10 @@ class FormBuilder extends UXComponent
             $form->attr('enctype', 'multipart/form-data');
         }
 
+        if ($this->liveSubmitAction) {
+            $form->attr('data-submit:submit.prevent', $this->liveSubmitAction);
+        }
+
         foreach ($this->renderComponents() as $element) {
             $form->child($element);
         }
@@ -241,8 +278,7 @@ class FormBuilder extends UXComponent
             $input->submitMode(true);
         }
 
-        $this->components[] = $input;
-        return $this;
+        return $this->add($this->applyFieldOptions($input, $options));
     }
 
     public function email(string $name, string|array $label = '', array $options = []): static
@@ -261,8 +297,7 @@ class FormBuilder extends UXComponent
             $input->required();
         }
         
-        $this->components[] = $input;
-        return $this;
+        return $this->add($this->applyFieldOptions($input, $options));
     }
 
     public function password(string $name, string|array $label = '', array $options = []): static
@@ -277,8 +312,7 @@ class FormBuilder extends UXComponent
             $input->required();
         }
         
-        $this->components[] = $input;
-        return $this;
+        return $this->add($this->applyFieldOptions($input, $options));
     }
 
     public function number(string $name, string|array $label = '', array $options = []): static
@@ -301,8 +335,7 @@ class FormBuilder extends UXComponent
             $input->withMeta('step', $options['step']);
         }
         
-        $this->components[] = $input;
-        return $this;
+        return $this->add($this->applyFieldOptions($input, $options));
     }
 
     public function textarea(string $name, string|array $label = '', array $options = []): static
@@ -325,8 +358,7 @@ class FormBuilder extends UXComponent
             $textarea->required();
         }
         
-        $this->components[] = $textarea;
-        return $this;
+        return $this->add($this->applyFieldOptions($textarea, $options));
     }
 
     public function select(string $name, string|array $label = '', array $options = [], array $selectOptions = []): static
@@ -353,8 +385,7 @@ class FormBuilder extends UXComponent
             $select->default($options['default']);
         }
         
-        $this->components[] = $select;
-        return $this;
+        return $this->add($this->applyFieldOptions($select, $options));
     }
 
     public function checkbox(string $name, string|array $label = '', array $options = []): static
@@ -369,8 +400,7 @@ class FormBuilder extends UXComponent
             $checkbox->default($options['default']);
         }
         
-        $this->components[] = $checkbox;
-        return $this;
+        return $this->add($this->applyFieldOptions($checkbox, $options));
     }
 
     public function radio(string $name, string|array $label = '', array $choices = [], array $options = []): static
@@ -393,16 +423,14 @@ class FormBuilder extends UXComponent
             $radio->default($options['default']);
         }
         
-        $this->components[] = $radio;
-        return $this;
+        return $this->add($this->applyFieldOptions($radio, $options));
     }
 
     public function hidden(string $name, string $value = ''): static
     {
         $input = TextInput::make($name)->inputType('hidden');
         $input->setValue($value);
-        $this->components[] = $input;
-        return $this;
+        return $this->add($input);
     }
 
     public function file(string $name, string|array $label = '', array $options = []): static
@@ -422,8 +450,7 @@ class FormBuilder extends UXComponent
             $input->withMeta('multiple', true);
         }
         
-        $this->components[] = $input;
-        return $this;
+        return $this->add($this->applyFieldOptions($input, $options));
     }
 
     public function richEditor(string $name, string|array $label = '', array $options = []): static
@@ -447,7 +474,49 @@ class FormBuilder extends UXComponent
             $editor->minimal($options['minimal']);
         }
         
-        $this->components[] = $editor;
-        return $this;
+        return $this->add($editor);
+    }
+
+    public function blockEditor(string $name, string|array $label = '', array $options = []): static
+    {
+        $editor = new BlockEditor();
+        $editor->name($name);
+        
+        if ($label) {
+            $editor->label($label);
+        }
+        
+        if (isset($options['height'])) {
+            $editor->height($options['height']);
+        }
+        
+        return $this->add($editor);
+    }
+
+    protected function applyFieldOptions(object $field, array $options): object
+    {
+        foreach (['placeholder', 'help', 'default', 'value'] as $method) {
+            if (array_key_exists($method, $options) && method_exists($field, $method)) {
+                $field->{$method}($options[$method]);
+            }
+        }
+
+        foreach (['required', 'disabled', 'readonly'] as $method) {
+            if (!empty($options[$method]) && method_exists($field, $method)) {
+                $field->{$method}();
+            }
+        }
+
+        if (!empty($options['class']) && method_exists($field, 'class')) {
+            foreach ((array) $options['class'] as $class) {
+                $field->class((string) $class);
+            }
+        }
+
+        if ($this->submitMode && method_exists($field, 'submitMode')) {
+            $field->submitMode(true);
+        }
+
+        return $field;
     }
 }

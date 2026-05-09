@@ -216,7 +216,12 @@ class MediaPicker extends BaseField
             $item = Element::make('div')
                 ->class('media-picker-item')
                 ->attr('data-media-url', $url)
-                ->attr('data-media-mime', $mimeType);
+                ->attr('data-media-mime', $mimeType)
+                ->liveAction('selectMedia', 'click', [
+                    'url' => $url,
+                    'name' => $this->name,
+                    'modalId' => $modalId
+                ]);
 
             if ($isImage) {
                 $item->child(

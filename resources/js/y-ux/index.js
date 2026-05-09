@@ -69,6 +69,7 @@ const UXFramework = {
      */
     init() {
         UX.registerSafeAttrs();
+        this.bindModalTriggers();
 
         registry.forEach((component, name) => {
             this._initComponent(name, component);
@@ -76,6 +77,49 @@ const UXFramework = {
 
         if (window.L) this.hookLive(window.L);
         window.addEventListener('l:ready', (e) => this.hookLive(e.detail || window.L));
+    },
+
+    bindModalTriggers() {
+        if (this._modalTriggersBound) return;
+        this._modalTriggersBound = true;
+
+        document.addEventListener('click', (e) => {
+            const open = e.target.closest?.('[data-ux-modal-open]');
+            if (open) {
+                e.preventDefault();
+                this.openModal(open.getAttribute('data-ux-modal-open'));
+                return;
+            }
+
+            const close = e.target.closest?.('[data-ux-modal-close]');
+            if (close) {
+                e.preventDefault();
+                this.closeModal(close.getAttribute('data-ux-modal-close'));
+                return;
+            }
+
+            if (e.target.classList?.contains('ux-modal-backdrop')) {
+                this.closeModal(e.target.getAttribute('data-ux-modal-close') || null);
+            }
+        });
+    },
+
+    openModal(id) {
+        const modal = id ? document.getElementById(id) : null;
+        if (!modal) return;
+        modal.classList.add('ux-modal-open');
+        modal.setAttribute('data-visible', 'true');
+        document.body.style.overflow = 'hidden';
+    },
+
+    closeModal(id = null) {
+        const modal = id ? document.getElementById(id) : document.querySelector('.ux-modal-open');
+        if (!modal) return;
+        modal.classList.remove('ux-modal-open');
+        modal.removeAttribute('data-visible');
+        if (!document.querySelector('.ux-modal-open')) {
+            document.body.style.overflow = '';
+        }
     },
 
     hookLive(L) {

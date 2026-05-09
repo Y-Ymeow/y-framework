@@ -14,23 +14,31 @@ class PageGenerator
         $this->pagesPath = base_path('/app/Pages');
     }
 
-    public function generate(string $name, string $route, string $template = 'blank'): array
+    public function generate(string $name, string $route, string $template = 'blank', array $options = []): array
     {
         $className = $this->sanitizeClassName($name);
+        $slug = $this->sanitizeSlug($options['slug'] ?? $name);
+        $middleware = $this->normalizeMiddleware($options['middleware'] ?? []);
+        $route = $this->normalizeRoute($route, $slug);
 
         $existing = $this->findDbRecord($className);
         if ($existing) {
             return ['success' => false, 'error' => '页面已存在'];
         }
 
-        $this->upsertDbRecord($className, $route, []);
+        $this->upsertDbRecord($className, $route, [], [
+            'slug' => $slug,
+            'middleware' => $middleware,
+        ]);
 
-        $this->registerDynamicRoute($className, $route);
+        $this->registerDynamicRoute($className, $route, $middleware);
 
         return [
             'success' => true,
             'class' => $this->namespace . '\\' . $className,
+            'slug' => $slug,
             'route' => $route,
+            'middleware' => $middleware,
         ];
     }
 
@@ -72,8 +80,10 @@ class PageGenerator
             foreach ($items as $row) {
                 $pages[] = [
                     'name' => $row['name'],
+                    'slug' => $row['slug'] ?? $this->sanitizeSlug($row['name'] ?? ''),
                     'file' => $this->pagesPath . '/' . $row['name'] . '.php',
                     'route' => $row['route'] ?? '/',
+                    'middleware' => $this->normalizeMiddleware($row['middleware'] ?? []),
                     'has_route' => !empty($row['route']) && $row['route'] !== '/',
                     'has_builder' => !empty($row['component_tree']),
                     'modified' => $row['updated_at'] ?? $row['created_at'] ?? '',
@@ -118,9 +128,11 @@ class PageGenerator
             }
 
             try {
-                PageBuilderPageModel::create([
+                $this->createRecordWithFallback([
                     'name' => $className,
+                    'slug' => $this->sanitizeSlug($className),
                     'route' => $route,
+                    'middleware' => [],
                     'component_tree' => $tree ?: null,
                 ]);
             } catch (\Throwable $e) {
@@ -174,30 +186,40 @@ class PageGenerator
         return ['success' => true];
     }
 
-    protected function upsertDbRecord(string $className, ?string $route = null, ?array $tree = null): void
+    protected function upsertDbRecord(string $className, ?string $route = null, ?array $tree = null, array $meta = []): void
     {
         try {
             $row = $this->findDbRecord($className);
 
             if (!$row) {
                 $data = ['name' => $className];
+                $data['slug'] = $meta['slug'] ?? $this->sanitizeSlug($className);
                 if ($route !== null) {
                     $data['route'] = $route;
+                }
+                if (array_key_exists('middleware', $meta)) {
+                    $data['middleware'] = $this->normalizeMiddleware($meta['middleware']);
                 }
                 if ($tree !== null) {
                     $data['component_tree'] = $tree;
                 }
-                PageBuilderPageModel::create($data);
+                $this->createRecordWithFallback($data);
             } else {
                 $updateData = [];
+                if (array_key_exists('slug', $meta)) {
+                    $updateData['slug'] = $meta['slug'];
+                }
                 if ($route !== null) {
                     $updateData['route'] = $route;
+                }
+                if (array_key_exists('middleware', $meta)) {
+                    $updateData['middleware'] = json_encode($this->normalizeMiddleware($meta['middleware']), JSON_UNESCAPED_UNICODE);
                 }
                 if ($tree !== null) {
                     $updateData['component_tree'] = json_encode($tree, JSON_UNESCAPED_UNICODE);
                 }
                 if (!empty($updateData)) {
-                    PageBuilderPageModel::where('name', $className)->update($updateData);
+                    $this->updateRecordWithFallback($className, $updateData);
                 }
             }
         } catch (\Throwable $e) {
@@ -223,13 +245,13 @@ class PageGenerator
         return null;
     }
 
-    protected function registerDynamicRoute(string $className, string $route): void
+    protected function registerDynamicRoute(string $className, string $route, array $middleware = []): void
     {
         try {
             $app = \Framework\Foundation\Application::getInstance();
             $router = $app->make(\Framework\Routing\Router::class);
-            $router->addRoute('GET', $route, function () use ($className) {
-                $renderer = new PageRenderer();
+            $routeObj = $router->addRoute('GET', $route, function () use ($className) {
+                $renderer = new \App\Service\PageRenderer();
                 $response = $renderer->render($className);
                 if ($response) {
                     return $response;
@@ -238,6 +260,9 @@ class PageGenerator
                     \Framework\View\Base\Element::make('div')->class('pb-page')->text('页面为空')
                 );
             }, 'page.' . strtolower($className));
+            if (!empty($middleware)) {
+                $routeObj->middleware($middleware);
+            }
         } catch (\Throwable $e) {
             $this->logError('registerDynamicRoute failed', ['class' => $className, 'route' => $route, 'error' => $e->getMessage()]);
         }
@@ -248,11 +273,61 @@ class PageGenerator
         try {
             $row = $this->findDbRecord($className);
             if ($row && !empty($row['route'])) {
-                $this->registerDynamicRoute($className, $row['route']);
+                $this->registerDynamicRoute($className, $row['route'], $this->normalizeMiddleware($row['middleware'] ?? []));
             }
         } catch (\Throwable $e) {
             $this->logError('ensureDynamicRoute failed', ['class' => $className, 'error' => $e->getMessage()]);
         }
+    }
+
+    protected function createRecordWithFallback(array $data): void
+    {
+        try {
+            PageBuilderPageModel::create($data);
+        } catch (\Throwable $e) {
+            unset($data['slug'], $data['middleware']);
+            PageBuilderPageModel::create($data);
+        }
+    }
+
+    protected function updateRecordWithFallback(string $className, array $data): void
+    {
+        try {
+            PageBuilderPageModel::where('name', $className)->update($data);
+        } catch (\Throwable $e) {
+            unset($data['slug'], $data['middleware']);
+            if (!empty($data)) {
+                PageBuilderPageModel::where('name', $className)->update($data);
+            }
+        }
+    }
+
+    protected function normalizeRoute(string $route, string $slug): string
+    {
+        $route = trim($route);
+        if ($route === '') {
+            $route = '/' . $slug;
+        }
+        return '/' . trim($route, '/');
+    }
+
+    protected function sanitizeSlug(string $slug): string
+    {
+        $slug = strtolower(trim($slug));
+        $slug = preg_replace('/[^a-z0-9_-]+/', '-', $slug);
+        $slug = trim((string) $slug, '-_');
+        return $slug !== '' ? $slug : 'page';
+    }
+
+    protected function normalizeMiddleware(string|array $middleware): array
+    {
+        if (is_string($middleware)) {
+            $middleware = preg_split('/[,\n]+/', $middleware) ?: [];
+        }
+        return array_values(array_filter(array_map(
+            static fn ($item) => trim((string) $item),
+            $middleware
+        )));
     }
 
     protected function logError(string $message, array $context = []): void

@@ -77,16 +77,26 @@ class Modal extends UXComponent
                     if (!el) return;
                     el.classList.remove("ux-modal-open");
                     el.removeAttribute("data-visible");
-                    document.body.style.overflow = "";
+                    if (!document.querySelector(".ux-modal-open")) document.body.style.overflow = "";
                 },
                 init() {
                     document.addEventListener("click", (e) => {
                         const open = e.target.closest("[data-ux-modal-open]");
-                        if (open) return Modal.open(open.getAttribute("data-ux-modal-open"));
+                        if (open) {
+                            e.preventDefault();
+                            return Modal.open(open.getAttribute("data-ux-modal-open"));
+                        }
                         const close = e.target.closest("[data-ux-modal-close]");
-                        if (close) return Modal.close(close.getAttribute("data-ux-modal-close"));
+                        if (close) {
+                            e.preventDefault();
+                            return Modal.close(close.getAttribute("data-ux-modal-close"));
+                        }
                         if (e.target.classList.contains("ux-modal-backdrop")) Modal.close();
                     });
+                },
+                liveHandler(op) {
+                    if (op.action === "open") this.open(op.id);
+                    else if (op.action === "close") this.close(op.id);
                 }
             };
             return Modal;
@@ -310,9 +320,9 @@ CSS
      * @return static
      * @ux-example Modal::make()->footer([Button::make()->label('取消')])
      */
-    public function footer(mixed $footer): static
+    public function footer(mixed ...$footer): static
     {
-        $this->footer = $footer;
+        $this->footer = count($footer) === 1 ? $footer[0] : $footer;
         return $this;
     }
 
@@ -459,15 +469,15 @@ CSS
         $contentEl->child(
             Element::make('div')
                 ->class('ux-modal-body')
-                ->html($this->content)
+                ->child($this->resolveChild($this->content))
         );
 
         if ($this->footer) {
-            $contentEl->child(
-                Element::make('div')
-                    ->class('ux-modal-footer')
-                    ->child($this->resolveChild($this->footer))
-            );
+            $footerEl = Element::make('div')->class('ux-modal-footer');
+            foreach ((array) $this->footer as $footerItem) {
+                $footerEl->child($this->resolveChild($footerItem));
+            }
+            $contentEl->child($footerEl);
         }
 
         $dialogEl->child($contentEl);

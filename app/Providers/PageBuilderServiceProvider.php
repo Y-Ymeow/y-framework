@@ -23,10 +23,15 @@ class PageBuilderServiceProvider extends ServiceProvider
                 $item = ($row instanceof \Framework\Support\Collection) ? $row->toArray() : (method_exists($row, 'toArray') ? $row->toArray() : (array) $row);
                 $className = $item['name'] ?? '';
                 $route = $item['route'] ?? '';
+                $middleware = $item['middleware'] ?? [];
+                if (is_string($middleware)) {
+                    $middleware = json_decode($middleware, true) ?: preg_split('/[,\n]+/', $middleware);
+                }
+                $middleware = array_values(array_filter(array_map('trim', (array) $middleware)));
 
                 if (empty($className) || empty($route)) continue;
 
-                $router->addRoute('GET', $route, function () use ($className) {
+                $routeObj = $router->addRoute('GET', $route, function () use ($className) {
                     $renderer = new \App\Service\PageRenderer();
                     $response = $renderer->render($className);
                     if ($response) {
@@ -36,6 +41,9 @@ class PageBuilderServiceProvider extends ServiceProvider
                         Element::make('div')->class('pb-page')->text('页面为空')
                     );
                 }, 'page.' . strtolower($className));
+                if (!empty($middleware)) {
+                    $routeObj->middleware($middleware);
+                }
             }
         } catch (\Throwable $e) {
             try {
