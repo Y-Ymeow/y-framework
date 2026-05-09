@@ -70,6 +70,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $this->excerpt = $post->excerpt;
         $this->status = $post->status;
         $this->categoryId = $post->category_id;
+        $this->coverImage = $this->normalizeMediaUrl($post->cover_image);
         $this->coverImage = $post->cover_image;
         $this->tagIds = $post->getTagIds();
     }
@@ -441,5 +442,18 @@ class PostEditPage extends EmbeddedLiveComponent
             ->attr('value', $value)
             ->attrs($this->status === $value ? ['selected' => 'selected'] : [])
             ->text($label);
+    }
+
+    protected function normalizeMediaUrl(string $path): string
+    {
+        if (empty($path)) {
+            return '';
+        }
+
+        if (str_starts_with($path, '/media/') || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return $path;
     }
 }

@@ -152,7 +152,7 @@ class Upload
 
         move_uploaded_file($this->file['tmp_name'], $path);
 
-        return $path;
+        return $filename;
     }
 
     public function storeAs(string $directory, string $name): string
