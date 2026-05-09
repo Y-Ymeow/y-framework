@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live;
 
-use Framework\Events\LiveActionEvent;
-use Framework\Http\Upload\Upload;
-use Framework\Foundation\AppEnvironment;
 use Framework\Foundation\Application;
+use Framework\Foundation\AppEnvironment;
+use Framework\Events\LiveActionEvent;
 use Framework\Http\Middleware\VerifyCsrfToken;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
-use Framework\Http\Session\Session;
-use Framework\Http\Response\StreamResponse;
 use Framework\Http\Response\SseResponse;
+use Framework\Http\Response\StreamResponse;
+use Framework\Http\Session\Session;
+use Framework\Http\Upload\Upload;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\FragmentRegistry;
@@ -47,7 +47,9 @@ class LiveRequestHandler
         }
 
         $error = $this->guardComponentClass($params['componentClass']);
-        if ($error) return $error;
+        if ($error) {
+            return $error;
+        }
 
         try {
             $component = $this->resolveComponent(
@@ -81,13 +83,6 @@ class LiveRequestHandler
 
             $after = $component->getDataForFrontend();
 
-            $patches = [];
-            foreach ($after as $key => $value) {
-                if (!array_key_exists($key, $before) || $before[$key] !== $value) {
-                    $patches[$key] = $value;
-                }
-            }
-
             $newState = $component->serializeState();
 
             $response = [
@@ -95,7 +90,7 @@ class LiveRequestHandler
                 'component' => $params['componentClass'],
                 'action' => $params['action'],
                 'state' => $newState,
-                'patches' => $patches,
+                'patches' => $this->diffPatches($before, $after),
                 'domPatches' => [],
                 'fragments' => [],
                 'operations' => [],
@@ -136,7 +131,9 @@ class LiveRequestHandler
         }
 
         $error = $this->guardComponentClass($componentClass);
-        if ($error) return $error;
+        if ($error) {
+            return $error;
+        }
 
         try {
             $component = $this->resolveComponent(
@@ -148,7 +145,9 @@ class LiveRequestHandler
 
             $state = $request->input('_state', '');
             $publicData = $request->input('_data', []);
-            if (!is_array($publicData)) $publicData = [];
+            if (!is_array($publicData)) {
+                $publicData = [];
+            }
 
             $before = $component->getDataForFrontend();
 
@@ -162,20 +161,13 @@ class LiveRequestHandler
 
             $after = $component->getDataForFrontend();
 
-            $patches = [];
-            foreach ($after as $key => $value) {
-                if (!array_key_exists($key, $before) || $before[$key] !== $value) {
-                    $patches[$key] = $value;
-                }
-            }
-
             $newState = $component->serializeState();
 
             return Response::json([
                 'success' => true,
                 'component' => $componentClass,
                 'state' => $newState,
-                'patches' => $patches,
+                'patches' => $this->diffPatches($before, $after),
                 'events' => $component->getEmittedEvents(),
             ]);
         } catch (\Throwable $e) {
@@ -212,7 +204,9 @@ class LiveRequestHandler
         }
 
         $error = $this->guardComponentClass($componentClass);
-        if ($error) return $error;
+        if ($error) {
+            return $error;
+        }
 
         try {
             $component = $this->resolveComponent(
@@ -222,7 +216,9 @@ class LiveRequestHandler
 
             $state = $request->input('_state', '');
             $publicData = $request->input('_data', []);
-            if (!is_array($publicData)) $publicData = [];
+            if (!is_array($publicData)) {
+                $publicData = [];
+            }
 
             if (!empty($state)) {
                 $component->deserializeState($state);
@@ -241,13 +237,6 @@ class LiveRequestHandler
             $component->$handlerMethod($eventParams);
             $after = $component->getDataForFrontend();
 
-            $patches = [];
-            foreach ($after as $key => $value) {
-                if (!array_key_exists($key, $before) || $before[$key] !== $value) {
-                    $patches[$key] = $value;
-                }
-            }
-
             $newState = $component->serializeState();
 
             return Response::json([
@@ -255,7 +244,7 @@ class LiveRequestHandler
                 'component' => $componentClass,
                 'event' => $eventName,
                 'state' => $newState,
-                'patches' => $patches,
+                'patches' => $this->diffPatches($before, $after),
             ]);
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
@@ -275,6 +264,19 @@ class LiveRequestHandler
             }
         }
         return null;
+    }
+
+    private function diffPatches(array $before, array $after): array
+    {
+        $patches = [];
+
+        foreach ($after as $key => $value) {
+            if (!array_key_exists($key, $before) || $before[$key] !== $value) {
+                $patches[$key] = $value;
+            }
+        }
+
+        return $patches;
     }
 
     #[Route('/stream', ['POST'], name: 'live.stream', middleware: [VerifyCsrfToken::class])]
@@ -473,8 +475,13 @@ class LiveRequestHandler
         $publicData = $request->input('_data', []);
         $params = $request->input('_params', []);
 
-        if (!is_array($publicData)) $publicData = [];
-        if (!is_array($params)) $params = [];
+        if (!is_array($publicData)) {
+            $publicData = [];
+        }
+
+        if (!is_array($params)) {
+            $params = [];
+        }
 
         if (empty($componentClass) || empty($action)) {
             return null;
@@ -706,7 +713,7 @@ class LiveRequestHandler
             $response['fragments'][] = [
                 'name' => $name,
                 'html' => $data['element']->render(),
-                'mode' => $data['mode']
+                'mode' => $data['mode'],
             ];
         }
     }
@@ -715,9 +722,17 @@ class LiveRequestHandler
     {
         if ($result instanceof LiveResponse) {
             $lr = $result->toArray();
-            if (!empty($lr['domPatches'])) $response['domPatches'] = $lr['domPatches'];
-            if (!empty($lr['fragments'])) $response['fragments'] = array_merge($response['fragments'], $lr['fragments']);
-            if (!empty($lr['operations'])) $response['operations'] = array_merge($response['operations'], $lr['operations']);
+            if (!empty($lr['domPatches'])) {
+                $response['domPatches'] = $lr['domPatches'];
+            }
+
+            if (!empty($lr['fragments'])) {
+                $response['fragments'] = array_merge($response['fragments'], $lr['fragments']);
+            }
+
+            if (!empty($lr['operations'])) {
+                $response['operations'] = array_merge($response['operations'], $lr['operations']);
+            }
         } elseif (is_array($result) && isset($result['operations'])) {
             $response['operations'] = array_merge($response['operations'], $result['operations']);
         }
@@ -735,7 +750,9 @@ class LiveRequestHandler
     private function processComponentUpdate(string $componentId, array &$response, callable $callback): void
     {
         $stateInfo = LiveEventBus::getComponentState($componentId);
-        if (!$stateInfo) return;
+        if (!$stateInfo) {
+            return;
+        }
 
         $class = $stateInfo['class'];
         $comp = new $class();
@@ -760,7 +777,7 @@ class LiveRequestHandler
                 $fragments[] = [
                     'name' => $name,
                     'html' => $data['element']->render(),
-                    'mode' => $data['mode']
+                    'mode' => $data['mode'],
                 ];
             }
         }
@@ -840,7 +857,7 @@ class LiveRequestHandler
         return Response::json([
             'success' => false,
             'error' => $e->getMessage(),
-            'trace' => \Framework\Foundation\Application::isDebug() ? $e->getTraceAsString() : null
+            'trace' => Application::isDebug() ? $e->getTraceAsString() : null,
         ], 500);
     }
 }

@@ -28,7 +28,7 @@ if (!window.Y_UI_SAFE_ATTRS) {
 }
 
 export function getComponentInfo(el) {
-    const raw = el.getAttribute('data-live-state') || ''
+    const raw = el.getAttribute('data-live-state') || '';
     if (!raw) {
         return {
             __component: el.dataset.live || '',
@@ -36,12 +36,12 @@ export function getComponentInfo(el) {
             __state: '',
             __props: {},
             __actions: [],
-        }
+        };
     }
 
     try {
-        const parsed = JSON.parse(raw)
-        if (parsed && parsed.__component) return parsed
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.__component) return parsed;
     } catch (e) {}
 
     return {
@@ -50,7 +50,7 @@ export function getComponentInfo(el) {
         __state: raw,
         __props: {},
         __actions: [],
-    }
+    };
 }
 
 export function setLoading(el, loading) {
@@ -66,27 +66,27 @@ export function setLoading(el, loading) {
 }
 
 function isJsonLiveState(raw) {
-    if (!raw) return false
+    if (!raw) return false;
     try {
-        const parsed = JSON.parse(raw)
-        return !!(parsed && parsed.__component)
+        const parsed = JSON.parse(raw);
+        return !!(parsed && parsed.__component);
     } catch (e) {
-        return false
+        return false;
     }
 }
 
 export function updateLiveStateAttr(el, newBase64State, patches) {
-    const raw = el.getAttribute('data-live-state') || ''
+    const raw = el.getAttribute('data-live-state') || '';
 
     if (isJsonLiveState(raw)) {
-        const info = JSON.parse(raw)
-        info.__state = newBase64State
+        const info = JSON.parse(raw);
+        info.__state = newBase64State;
         if (patches) {
-            info.__props = { ...info.__props, ...patches }
+            info.__props = { ...info.__props, ...patches };
         }
-        el.setAttribute('data-live-state', JSON.stringify(info))
+        el.setAttribute('data-live-state', JSON.stringify(info));
     } else {
-        el.setAttribute('data-live-state', newBase64State)
+        el.setAttribute('data-live-state', newBase64State);
     }
 }
 
@@ -98,7 +98,7 @@ function buildActionBody(el, componentClass, action, stateRef, state, event, ext
     const componentId = el.dataset.liveId || '';
     const parentId = extractParentId(el);
 
-    const info = getComponentInfo(el)
+    const info = getComponentInfo(el);
 
     const body = {
         _component: componentClass,
@@ -132,7 +132,7 @@ function buildStateBody(el, componentClass, stateRef, state) {
     const componentId = el.dataset.liveId || '';
     const parentId = extractParentId(el);
 
-    const info = getComponentInfo(el)
+    const info = getComponentInfo(el);
 
     const body = {
         _component: componentClass,
@@ -170,10 +170,6 @@ function extractParentId(el) {
     return null;
 }
 
-function buildRequestBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    return buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
-}
-
 export async function dispatchLive(el, componentClass, action, stateRef, state, event, extraParams = {}) {
     return dispatchAction(el, componentClass, action, stateRef, state, event, extraParams);
 }
@@ -191,11 +187,11 @@ export async function dispatchAction(el, componentClass, action, stateRef, state
         });
 
         const data = await response.json();
-        
+
         if (!response.ok) {
             return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
         }
-        
+
         return { success: true, data };
     } catch (err) {
         console.error('Live action error:', err);
@@ -218,11 +214,11 @@ export async function dispatchState(el, componentClass, stateRef, state) {
         });
 
         const data = await response.json();
-        
+
         if (!response.ok) {
             return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
         }
-        
+
         return { success: true, data };
     } catch (err) {
         console.error('Live state update error:', err);
@@ -379,9 +375,9 @@ function collectAllLiveComponents(currentEl = null) {
     const seenIds = new Set();
 
     const extractState = (el) => {
-        const info = getComponentInfo(el)
-        return info ? info.__state : ''
-    }
+        const info = getComponentInfo(el);
+        return info ? info.__state : '';
+    };
 
     if (currentEl) {
         let parent = currentEl.parentElement;
@@ -405,7 +401,7 @@ function collectAllLiveComponents(currentEl = null) {
         const id = el.dataset.liveId;
         if (id && !seenIds.has(id)) {
             components.push({
-                id: id,
+                id,
                 class: el.dataset.live,
                 state: extractState(el),
             });
@@ -418,7 +414,7 @@ function collectAllLiveComponents(currentEl = null) {
             const id = el.dataset.liveId;
             if (id && el.dataset.liveState && !seenIds.has(id)) {
                 components.push({
-                    id: id,
+                    id,
                     class: el.dataset.live,
                     state: extractState(el),
                 });

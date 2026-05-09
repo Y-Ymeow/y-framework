@@ -61,7 +61,7 @@ directive('live-model', (el, state, method, { content, modifiers, effect, execut
     const property = content;
     const isBlur = modifiers.includes('blur');
     const isLive = modifiers.includes('live');
-    
+
     // 确定监听事件
     const eventType = isBlur ? 'blur' : (
         (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email' || el.type === 'password')) || el.tagName === 'TEXTAREA'
@@ -71,7 +71,7 @@ directive('live-model', (el, state, method, { content, modifiers, effect, execut
     let timer = null;
     const handleInput = (e) => {
         const value = el.type === 'checkbox' ? el.checked : el.value;
-        
+
         // 1. 同步到本地 ReactiveState (y-directive 核心)
         if (state && typeof state.set === 'function') {
             state.set(property, value);
@@ -80,8 +80,8 @@ directive('live-model', (el, state, method, { content, modifiers, effect, execut
         // 2. 如果标记了 .live，则同步到后端 /live/state
         if (isLive) {
             clearTimeout(timer);
-            const delay = modifiers.includes('debounce') 
-                ? (parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300) 
+            const delay = modifiers.includes('debounce')
+                ? (parseInt(modifiers[modifiers.indexOf('debounce') + 1]) || 300)
                 : (isBlur ? 0 : 300);
 
             timer = setTimeout(() => {
@@ -112,6 +112,11 @@ directive('live-model', (el, state, method, { content, modifiers, effect, execut
 //    data-submit:click="saveSettings" → 收集 [data-model] 字段 → $live.saveSettings({field1: val1, ...})
 directive('submit', (el, state, method, { content, modifiers, $execute }) => {
     const eventType = method || 'click';
+    const collectFieldValue = (input) => {
+        if (input.type === 'checkbox') return input.checked;
+        if (input.type === 'radio') return input.checked ? input.value : undefined;
+        return input.value;
+    };
 
     const handler = (e) => {
         if (modifiers.includes('prevent')) e.preventDefault();
@@ -127,29 +132,17 @@ directive('submit', (el, state, method, { content, modifiers, $execute }) => {
         scope.querySelectorAll('[data-model]').forEach(input => {
             const key = input.getAttribute('data-model');
             if (!key) return;
-            if (input.type === 'checkbox') {
-                formData[key] = input.checked;
-            } else if (input.tagName === 'SELECT') {
-                formData[key] = input.value;
-            } else if (input.tagName === 'TEXTAREA') {
-                formData[key] = input.value;
-            } else {
-                formData[key] = input.value;
-            }
+
+            const value = collectFieldValue(input);
+            if (value !== undefined) formData[key] = value;
         });
 
         scope.querySelectorAll('[data-submit-field]').forEach(input => {
             const key = input.getAttribute('data-submit-field');
             if (!key) return;
-            if (input.type === 'checkbox') {
-                formData[key] = input.checked;
-            } else if (input.tagName === 'SELECT') {
-                formData[key] = input.value;
-            } else if (input.type === 'radio') {
-                if (input.checked) formData[key] = input.value;
-            } else {
-                formData[key] = input.value;
-            }
+
+            const value = collectFieldValue(input);
+            if (value !== undefined) formData[key] = value;
         });
 
         const actionName = content;
@@ -239,7 +232,7 @@ async function dispatchAction(el, componentClass, action, stateRef, state, event
     showProgress();
 
     if (isStream) {
-        dispatchStream(el, componentClass, action, stateRef, state, event, params, 
+        dispatchStream(el, componentClass, action, stateRef, state, event, params,
             (chunk) => processStreamChunk(chunk, el, state, stateRef),
             () => {
                 setLoading(el, false);
@@ -324,10 +317,10 @@ function showProgress() {
     }
     el.style.opacity = '1';
     el.style.width = '0%';
-    
+
     // 强制重绘
-    el.offsetWidth; 
-    
+    el.offsetWidth;
+
     el.style.width = '30%';
     
     clearTimeout(progressTimer);
@@ -339,7 +332,7 @@ function showProgress() {
 function hideProgress() {
     const el = document.getElementById('y-progress');
     if (!el) return;
-    
+
     clearTimeout(progressTimer);
     el.style.width = '100%';
     
@@ -369,8 +362,8 @@ const L = {
     executeOperation,
     navigate,
     getLive: (el) => {
-        const liveEl = el?.closest?.('[data-live]') || el
-        return liveEl?.$live || null
+        const liveEl = el?.closest?.('[data-live]') || el;
+        return liveEl?.$live || null;
     },
 };
 
