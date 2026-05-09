@@ -887,14 +887,14 @@ class LiveRequestHandler
 
     private function logNavigateError(\Throwable $e): void
     {
-        $logFile = __DIR__ . '/../../storage/logs/navigate-error.log';
+        $logFile = __DIR__ . '/../../../storage/logs/navigate-error.log';
         @mkdir(dirname($logFile), 0755, true);
         @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
     }
 
     private function logUploadError(\Throwable $e): void
     {
-        $logFile = __DIR__ . '/../../storage/logs/live-upload-error.log';
+        $logFile = __DIR__ . '/../../../storage/logs/live-upload-error.log';
         @mkdir(dirname($logFile), 0755, true);
         @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
     }
