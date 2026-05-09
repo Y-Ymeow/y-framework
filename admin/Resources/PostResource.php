@@ -5,6 +5,7 @@ namespace Admin\Resources;
 use Admin\Contracts\Resource\AdminResource;
 use Admin\Contracts\Resource\BaseResource;
 use Admin\Content\Post;
+use Admin\Pages\PostEditPage;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Form\Components\TextInput;
 use Framework\UX\Form\Components\Textarea;
@@ -43,6 +44,29 @@ class PostResource extends BaseResource
     public static function getRoutePrefix(): ?string
     {
         return 'admin/posts';
+    }
+
+    public static function getRoutes(): array
+    {
+        $prefix = \Admin\Services\AdminManager::getPrefix() ?: '/admin';
+
+        return [
+            'admin.posts' => [
+                'method' => 'GET',
+                'path' => '/posts',
+                'handler' => \Admin\Contracts\Live\AdminListPage::resource('posts'),
+            ],
+            'admin.posts.create' => [
+                'method' => 'GET',
+                'path' => '/posts/create',
+                'handler' => fn() => PostEditPage::go(null),
+            ],
+            'admin.posts.edit' => [
+                'method' => 'GET',
+                'path' => '/posts/{id}/edit',
+                'handler' => fn($id) => PostEditPage::go((int) $id),
+            ],
+        ];
     }
 
     public function configureForm(FormBuilder $form): void

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Framework\UX\Form\Components;
 
 use Admin\Content\Media;
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
 use Framework\UX\Dialog\Modal;
 use Framework\UX\UI\Button;
 use Framework\View\Base\Element;
@@ -17,6 +19,12 @@ class MediaPicker extends BaseField
     protected bool $multiple = false;
     protected ?int $maxSize = null;
     protected array $filterTypes = ['image', 'video', 'document'];
+
+    #[State]
+    public string $selectedUrl = '';
+
+    #[State]
+    public string $filterType = 'all';
 
     public function getType(): string
     {
@@ -39,6 +47,53 @@ class MediaPicker extends BaseField
     {
         $this->maxSize = $kb;
         return $this;
+    }
+
+    public function mount(): void
+    {
+        $this->selectedUrl = $this->getValue() ?? '';
+    }
+
+    #[LiveAction]
+    public function selectMedia(array $params): void
+    {
+        $url = $params['url'] ?? '';
+        $modalId = $params['modalId'] ?? '';
+
+        $this->selectedUrl = $url;
+        $this->value = $url;
+
+        if ($modalId) {
+            $this->closeModal($modalId);
+        }
+
+        $this->emit('fieldChange', [
+            'name' => $this->name,
+            'value' => $url,
+        ]);
+
+        $this->refresh('media-picker-' . $this->name);
+    }
+
+    #[LiveAction]
+    public function removeMedia(array $params): void
+    {
+        $this->selectedUrl = '';
+        $this->value = '';
+
+        $this->emit('fieldChange', [
+            'name' => $this->name,
+            'value' => '',
+        ]);
+
+        $this->refresh('media-picker-' . $this->name);
+    }
+
+    #[LiveAction]
+    public function filterMedia(array $params): void
+    {
+        $this->filterType = $params['type'] ?? 'all';
+        $this->refresh('media-grid-' . $this->name);
     }
 
     public function render(): Element
@@ -80,10 +135,12 @@ class MediaPicker extends BaseField
 
         $modalId = 'media-picker-' . $this->name;
 
-        $value = $this->getValue() ?? '';
+        $value = $this->selectedUrl ?: $this->getValue() ?? '';
         $hasValue = !empty($value);
 
-        $container = Element::make('div')->class('ux-form-media-picker');
+        $container = Element::make('div')
+            ->class('ux-form-media-picker')
+            ->liveFragment('media-picker-' . $this->name);
 
         $preview = Element::make('div')->class('ux-form-media-preview', $hasValue ? 'has-image' : 'empty');
         if ($hasValue) {
@@ -121,12 +178,12 @@ class MediaPicker extends BaseField
                 ->attr('data-ux-modal-open', $modalId)
         );
         if ($hasValue) {
-            $removeBtn = Element::make('button')
-                ->class('ux-form-media-remove')
-                ->attr('type', 'button')
-                ->attr('data-media-remove', '')
-                ->html('<i class="bi bi-x"></i>');
-            $actions->child($removeBtn);
+            $actions->child(
+                Button::make()
+                    ->label('移除')
+                    ->variant('secondary')
+                    ->liveAction('removeMedia', 'click')
+            );
         }
         $container->child($actions);
 
@@ -164,7 +221,7 @@ class MediaPicker extends BaseField
         $body = Element::make('div')->class('media-picker-modal');
 
         $body->child($this->renderUploadZone());
-        $body->child($this->renderFilterTabs($modalId));
+        $body->child($this->renderFilterTabs());
         $body->child($this->renderMediaGrid($modalId));
 
         return $body;
@@ -199,33 +256,25 @@ class MediaPicker extends BaseField
         return $zone;
     }
 
-    protected function renderFilterTabs(string $modalId): Element
+    protected function renderFilterTabs(): Element
     {
         $tabs = Element::make('div')->class('media-picker-filters');
-        $tabs->child(
-            Element::make('button')
-                ->class('media-picker-filter active')
-                ->attr('data-media-filter', 'all')
-                ->text('全部')
-        );
-        $tabs->child(
-            Element::make('button')
-                ->class('media-picker-filter')
-                ->attr('data-media-filter', 'image')
-                ->text('图片')
-        );
-        $tabs->child(
-            Element::make('button')
-                ->class('media-picker-filter')
-                ->attr('data-media-filter', 'video')
-                ->text('视频')
-        );
-        $tabs->child(
-            Element::make('button')
-                ->class('media-picker-filter')
-                ->attr('data-media-filter', 'document')
-                ->text('文档')
-        );
+
+        $filters = [
+            'all' => '全部',
+            'image' => '图片',
+            'video' => '视频',
+            'document' => '文档',
+        ];
+
+        foreach ($filters as $key => $label) {
+            $isActive = $this->filterType === $key;
+            $tab = Element::make('button')
+                ->class('media-picker-filter', $isActive ? 'active' : '')
+                ->liveAction('filterMedia', 'click', ['type' => $key])
+                ->text($label);
+            $tabs->child($tab);
+        }
 
         return $tabs;
     }
@@ -235,10 +284,13 @@ class MediaPicker extends BaseField
         $grid = Element::make('div')->class('media-picker-grid')
             ->liveFragment('media-grid-' . $this->name);
 
-        $items = Media::query()
-            ->orderBy('created_at', 'desc')
-            ->limit(40)
-            ->get();
+        $query = Media::query()->orderBy('created_at', 'desc')->limit(40);
+
+        if ($this->filterType !== 'all') {
+            $query->where('mime_type', 'like', $this->filterType . '/%');
+        }
+
+        $items = $query->get();
 
         foreach ($items as $itemData) {
             $m = is_array($itemData) ? $itemData : $itemData->toArray();
@@ -253,7 +305,7 @@ class MediaPicker extends BaseField
                 ->liveAction('selectMedia', 'click', [
                     'url' => $url,
                     'name' => $this->name,
-                    'modalId' => $modalId
+                    'modalId' => $modalId,
                 ]);
 
             if ($isImage) {
@@ -276,4 +328,3 @@ class MediaPicker extends BaseField
         return $grid;
     }
 }
-

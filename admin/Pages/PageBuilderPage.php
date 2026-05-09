@@ -11,7 +11,9 @@ use Admin\PageBuilder\PageBuilderCssService;
 use Admin\PageBuilder\Components\ComponentRegistry;
 use Framework\Component\Live\LiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\State;
+use Framework\Component\Live\EmbeddedLiveComponent;
 use Framework\UX\Dialog\Modal;
 use Framework\View\Base\Element;
 use Framework\UX\Form\FormBuilder;
@@ -311,61 +313,23 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $this->refresh('properties-panel');
     }
 
-    #[LiveAction]
-    public function selectMedia(?string $url = null, ?string $fieldName = null, ?string $modalId = null): void
+    #[LiveListener('fieldChange')]
+    public function onFieldChange(array $eventData): void
     {
-
         if (!$this->selectedUid) return;
 
-        // 1. Sync other submitted fields first to avoid losing data ("还原" fix)
-        $this->updateTreeFromParams([
-            'url' => $url,
-            'fieldName' => $fieldName,
-            'modalId' => $modalId,
-        ]);
+        $name = $eventData['name'] ?? '';
+        $value = $eventData['value'] ?? '';
 
-        // 2. Update the specific media field
         $tree = json_decode($this->componentTreeJson, true);
         if (is_array($tree)) {
-            $this->updateAllSettingsInTree($tree, $this->selectedUid, [$fieldName => $url]);
+            $this->updateAllSettingsInTree($tree, $this->selectedUid, [$name => $value]);
             $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
             $generator = new PageGenerator();
             $generator->saveComponentTree($this->editingPage, $tree);
         }
 
-        $this->closeModal($modalId);
-        $this->refresh('canvas');
-        $this->refresh('properties-panel');
-    }
-
-    #[LiveAction]
-    public function applyLink(?string $name = null, ?string $modalId = null, ?string $url = null, ?string $target = null, ?string $label = null): void
-    {
-        if (!$this->selectedUid) return;
-
-        // 1. Sync other submitted fields first
-        $this->updateTreeFromParams([
-            'name' => $name,
-            'modalId' => $modalId,
-            'url' => $url,
-            'target' => $target,
-            'label' => $label,
-        ]);
-
-        // 2. Update the link settings
-        $tree = json_decode($this->componentTreeJson, true);
-        if (is_array($tree)) {
-            $this->updateAllSettingsInTree($tree, $this->selectedUid, [
-                $name => ['url' => $url, 'target' => $target, 'label' => $label]
-            ]);
-            $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
-
-            $generator = new PageGenerator();
-            $generator->saveComponentTree($this->editingPage, $tree);
-        }
-
-        $this->closeModal($modalId);
         $this->refresh('canvas');
         $this->refresh('properties-panel');
     }
@@ -1058,7 +1022,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $contentForm->fill($component['settings'] ?? []);
 
         foreach ($contentForm->getComponents() as $formComponent) {
-            if (method_exists($formComponent, 'render')) {
+            if (EmbeddedLiveComponent::isLiveComponent($formComponent)) {
+                $formComponent->setParent($this);
+                $formComponent->_invoke();
+                $contentPanel->child(
+                    Element::make('div')->html($formComponent->toHtml())
+                );
+            } elseif (method_exists($formComponent, 'render')) {
                 $contentPanel->child($formComponent->render());
             }
         }

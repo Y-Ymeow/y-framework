@@ -17,6 +17,26 @@ abstract class EmbeddedLiveComponent extends AbstractLiveComponent
 {
     use HasParentInjection;
 
+    public static function isLiveComponent(object $component): bool
+    {
+        if (!($component instanceof EmbeddedLiveComponent)) {
+            return false;
+        }
+
+        $ref = new \ReflectionClass($component);
+        foreach ($ref->getProperties() as $prop) {
+            if (!empty($prop->getAttributes(Attribute\State::class))) {
+                return true;
+            }
+        }
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            if (!empty($method->getAttributes(Attribute\LiveAction::class))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function toHtml(): string
     {
         $metadata = $this->getLiveMetadata();

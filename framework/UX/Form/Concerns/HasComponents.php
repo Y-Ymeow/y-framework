@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Framework\UX\Form\Concerns;
 
+use Framework\Component\Live\EmbeddedLiveComponent;
+use Framework\View\Base\Element;
+
 trait HasComponents
 {
     protected array $components = [];
@@ -37,7 +40,13 @@ trait HasComponents
     {
         $elements = [];
         foreach ($this->components as $component) {
-            if (method_exists($component, 'render')) {
+            if (EmbeddedLiveComponent::isLiveComponent($component)) {
+                if ($this instanceof EmbeddedLiveComponent) {
+                    $component->setParent($this);
+                }
+                $component->_invoke();
+                $elements[] = Element::make('div')->html($component->toHtml());
+            } elseif (method_exists($component, 'render')) {
                 $elements[] = $component->render();
             }
         }
