@@ -438,6 +438,7 @@ PHP;
             $type = $component['type'] ?? '';
             $settings = $component['settings'] ?? [];
             $children = $component['children'] ?? [];
+            $slots = $component['slots'] ?? [];
             $uid = $component['uid'] ?? $index;
 
             $settingsExport = var_export($settings, true);
@@ -447,6 +448,17 @@ PHP;
             $code .= "\n{$pad}if (\$type_{$uid}) {";
             $code .= "\n{$pad}    {$compVar} = \$type_{$uid}->render({$settingsExport});";
 
+            // Slot-based children
+            foreach ($slots as $slotName => $slotItems) {
+                if (!empty($slotItems)) {
+                    $slotVar = "\$slot_{$uid}_{$slotName}";
+                    $code .= "\n{$pad}    {$slotVar} = \$type_{$uid}->getSlotElement({$compVar}, '{$slotName}');";
+                    $childCode = $this->buildRenderCode($slotItems, $slotVar, $indent + 2);
+                    $code .= $childCode;
+                }
+            }
+
+            // Legacy flat children
             if (!empty($children)) {
                 $childCode = $this->buildRenderCode($children, $compVar, $indent + 2);
                 $code .= $childCode;

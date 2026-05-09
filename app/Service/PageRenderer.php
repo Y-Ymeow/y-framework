@@ -53,6 +53,7 @@ class PageRenderer
             $type = $component['type'] ?? '';
             $settings = $component['settings'] ?? [];
             $children = $component['children'] ?? [];
+            $slots = $component['slots'] ?? [];
 
             $componentType = ComponentRegistry::get($type);
             if (!$componentType) {
@@ -60,6 +61,13 @@ class PageRenderer
             }
 
             $element = $componentType->render($settings);
+
+            foreach ($slots as $slotName => $slotItems) {
+                if (!empty($slotItems)) {
+                    $slotEl = $componentType->getSlotElement($element, $slotName);
+                    $this->renderTree($slotItems, $slotEl);
+                }
+            }
 
             if (!empty($children)) {
                 $this->renderTree($children, $element);

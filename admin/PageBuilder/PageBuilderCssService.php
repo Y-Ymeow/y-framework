@@ -37,6 +37,12 @@ class PageBuilderCssService
                 $element = $type->render($component['settings'] ?? []);
                 $this->extractClassesFromElement($element, $classes);
             }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as $slotItems) {
+                if (!empty($slotItems)) {
+                    $this->collectClassesFromTree($slotItems, $classes);
+                }
+            }
             if (!empty($component['children'])) {
                 $this->collectClassesFromTree($component['children'], $classes);
             }

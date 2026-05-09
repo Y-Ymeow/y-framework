@@ -767,21 +767,126 @@ private static function boot(): void
 
 ### 8.3 ComponentType 接口
 
-每个 PageBuilder 组件实现 `ComponentType` 接口：
+每个 PageBuilder 组件实现 `ComponentType` 抽象类：
 
 ```php
-interface ComponentType
+abstract class ComponentType
 {
-    public function name(): string;       // 组件标识
-    public function label(): string;      // 显示名称
-    public function category(): string;   // 分类（sections/basic/layout/media）
-    public function icon(): string;       // 图标
-    public function fields(): array;      // 可配置字段
-    public function render(array $data): string;  // 渲染 HTML
+    abstract public function name(): string;       // 组件标识
+    abstract public function label(): string;      // 显示名称
+    abstract public function category(): string;   // 分类（sections/basic/layout/media）
+    abstract public function icon(): string;       // 图标
+    abstract public function render(array $settings): Element;  // 渲染 Element
+
+    public function settings(FormBuilder $form): void { }
+    public function styleTargets(): array { return ['root' => '根容器']; }
+    public function isContainer(): bool { return false; }
 }
 ```
 
-### 8.4 分类
+### 8.5 Slot 插槽系统
+
+布局类组件（GridContainer、Columns）支持 **Slot 插槽**，允许子组件插入到指定区域。
+
+#### 插槽定义
+
+```php
+// ComponentType 基类方法
+public function slots(array $settings = []): array { return []; }
+public function slotLimits(array $settings = []): array { return []; }
+public function getSlotElement(Element $rendered, string $slotName): Element { return $rendered; }
+```
+
+| 方法 | 用途 |
+|------|------|
+| `slots($settings)` | 返回插槽定义数组 `[['name' => 'col_1', 'label' => '列 1'], ...]` |
+| `slotLimits($settings)` | 每个 slot 的子组件上限，`null` = 无限制 |
+| `getSlotElement($rendered, $slotName)` | 返回渲染后的 Element 中该 slot 对应的子元素（默认返回根元素） |
+
+#### GridContainer 示例
+
+```php
+class GridContainer extends ComponentType
+{
+    public function slots(array $settings = []): array
+    {
+        $count = (int)($settings['columns'] ?? 2);
+        $slots = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $slots[] = ['name' => "col_{$i}", 'label' => "列 {$i}"];
+        }
+        return $slots;
+    }
+}
+```
+
+GridContainer 的 slot 直接挂载到根元素（CSS Grid 自动排列子元素），不需要覆盖 `getSlotElement()`。
+
+#### Columns 示例
+
+```php
+class Columns extends ComponentType
+{
+    public function slots(array $settings = []): array
+    {
+        $count = (int)($settings['count'] ?? 2);
+        $slots = [];
+        for ($i = 0; $i < $count; $i++) {
+            $slots[] = ['name' => "col_{$i}", 'label' => "列 " . ($i + 1)];
+        }
+        return $slots;
+    }
+
+    public function getSlotElement(Element $rendered, string $slotName): Element
+    {
+        $index = substr($slotName, 4);
+        foreach ($rendered->getChildren() as $child) {
+            if ($child instanceof Element && $child->getAttr('data-pb-style') === "column_{$index}") {
+                return $child;
+            }
+        }
+        return $rendered;
+    }
+}
+```
+
+Columns 的 slot 对应到内部 `data-pb-style="column_{N}"` 的 div，需要覆盖 `getSlotElement()` 确保子组件渲染到正确的列容器内。
+
+#### 树结构
+
+```json
+{
+  "uid": "x",
+  "type": "columns",
+  "settings": { "count": 2 },
+  "slots": {
+    "col_0": [{ "uid": "a", "type": "heading", "settings": {} }],
+    "col_1": [{ "uid": "b", "type": "text_block", "settings": {} }]
+  }
+}
+```
+
+#### 渲染流程
+
+```
+PageRenderer::renderTree():
+  for each component:
+    render(settings) → element
+    for each slot:
+      getSlotElement(element, slotName) → targetEl
+      renderTree(slotItems, targetEl)   ← 子组件注入到目标元素
+    parent->child(element)
+```
+
+#### 上限校验
+
+在 `PageBuilderPage` 的 `addChildComponent()` 和 `updateComponentTree()` 中自动校验 `slotLimits()`，超出上限时拒绝操作并 toast 提示。
+
+### 8.6 自包含组件
+
+Section 类组件（Header、Hero、Banner、FeatureGrid、CTA、Footer）不覆盖 `slots()`，保持默认空数组，不接受子组件。插入即完整区块。
+
+### 8.7 分类
 
 ```php
 public static function categories(): array

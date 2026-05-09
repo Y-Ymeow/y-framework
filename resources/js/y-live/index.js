@@ -132,7 +132,7 @@ directive(
             );
             let expr;
             if (args.length === 0) {
-                expr = action + '()';
+                expr = action + "()";
             } else {
                 expr = `${action}(${args.map((a) => (typeof a === "object" ? JSON.stringify(a) : JSON.stringify(a))).join(", ")})`;
             }
@@ -234,7 +234,8 @@ directive("submit", (el, state, method, { content, modifiers, $execute }) => {
             ? content
             : `${content}(formData)`;
 
-        $execute(`$live.${actionExpr}`, { formData }, e);
+        const params = { formData };
+        $execute(`$live.${actionExpr}`, { formData: params }, e);
     };
 
     if (el._y_submit_bound) return;
@@ -523,6 +524,16 @@ const L = {
             }
             current[parts[parts.length - 1]] = value;
         };
+
+        scope.querySelectorAll("[data-submit-field]").forEach((input) => {
+            const key = input.getAttribute("data-submit-field");
+            if (!key) return;
+
+            const value = collectFieldValue(input);
+            if (value !== undefined) {
+                setNestedValue(data, key, value);
+            }
+        });
         return data;
     },
 };

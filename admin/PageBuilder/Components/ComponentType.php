@@ -14,6 +14,34 @@ abstract class ComponentType
     abstract public function icon(): string;
     abstract public function category(): string;
 
+    /**
+     * Define named slots for this component.
+     * Each slot: ['name' => 'slot_name', 'label' => '显示名称']
+     * Empty array = no slots (cannot accept child components).
+     */
+    public function slots(array $settings = []): array
+    {
+        return [];
+    }
+
+    /**
+     * Maximum children per slot.
+     * Key = slot name, Value = int limit (null = unlimited).
+     */
+    public function slotLimits(array $settings = []): array
+    {
+        return [];
+    }
+
+    /**
+     * Return the target Element where slot children should be appended.
+     * Override in components that render inner containers (e.g. Columns).
+     */
+    public function getSlotElement(Element $rendered, string $slotName): Element
+    {
+        return $rendered;
+    }
+
     public function settings(FormBuilder $form): void
     {
     }

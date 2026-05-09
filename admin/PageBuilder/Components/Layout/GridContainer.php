@@ -63,4 +63,14 @@ class GridContainer extends ComponentType
     }
 
     public function isContainer(): bool { return true; }
+
+    public function slots(array $settings = []): array
+    {
+        $count = (int)($settings['columns'] ?? 2);
+        $slots = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $slots[] = ['name' => "col_{$i}", 'label' => "列 {$i}"];
+        }
+        return $slots;
+    }
 }

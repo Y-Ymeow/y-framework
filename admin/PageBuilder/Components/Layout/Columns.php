@@ -80,4 +80,25 @@ class Columns extends ComponentType
     }
 
     public function isContainer(): bool { return true; }
+
+    public function slots(array $settings = []): array
+    {
+        $count = (int)($settings['count'] ?? 2);
+        $slots = [];
+        for ($i = 0; $i < $count; $i++) {
+            $slots[] = ['name' => "col_{$i}", 'label' => "列 " . ($i + 1)];
+        }
+        return $slots;
+    }
+
+    public function getSlotElement(Element $rendered, string $slotName): Element
+    {
+        $index = substr($slotName, 4);
+        foreach ($rendered->getChildren() as $child) {
+            if ($child instanceof Element && $child->getAttr('data-pb-style') === "column_{$index}") {
+                return $child;
+            }
+        }
+        return $rendered;
+    }
 }

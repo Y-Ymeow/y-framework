@@ -324,6 +324,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $tree = json_decode($this->componentTreeJson, true);
         if (is_array($tree)) {
             $this->updateAllSettingsInTree($tree, $this->selectedUid, [$name => $value]);
+            $this->reconcileNodeSlots($tree, $this->selectedUid);
             $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
             $generator = new PageGenerator();
@@ -358,6 +359,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         $this->updateAllSettingsInTree($tree, $uid, $settings);
+        $this->reconcileNodeSlots($tree, $uid);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
         $generator = new PageGenerator();
@@ -365,9 +367,10 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function saveComponentSettings(array $params): void
+    public function saveComponentSettings(array $formData): void
     {
-        $this->updateTreeFromParams($params);
+        error_log(json_encode($formData, JSON_UNESCAPED_UNICODE));
+        $this->updateTreeFromParams($formData);
         $this->toast('设置已保存');
         $this->refresh('canvas');
         $this->refresh('properties-panel');
@@ -378,10 +381,27 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $parentUid = $params['parentUid'] ?? '';
         $componentType = $params['componentType'] ?? '';
+        $slotName = $params['slotName'] ?? '';
         if (empty($parentUid) || empty($componentType)) return;
 
         $tree = json_decode($this->componentTreeJson, true);
         if (!is_array($tree)) return;
+
+        if ($slotName) {
+            $parent = $this->findInTree($tree, $parentUid);
+            if ($parent) {
+                $parentTypeObj = ComponentRegistry::get($parent['type'] ?? '');
+                if ($parentTypeObj) {
+                    $limits = $parentTypeObj->slotLimits($parent['settings'] ?? []);
+                    $limit = $limits[$slotName] ?? null;
+                    $currentCount = count($parent['slots'][$slotName] ?? []);
+                    if ($limit !== null && $currentCount >= $limit) {
+                        $this->toast('该位置已达上限', 'error');
+                        return;
+                    }
+                }
+            }
+        }
 
         $uid = 'c' . substr(md5(uniqid((string)mt_rand(), true)), 0, 10) ?: 'c' . bin2hex(random_bytes(5));
         $componentTypeObj = ComponentRegistry::get($componentType);
@@ -391,10 +411,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             'uid' => $uid,
             'type' => $componentType,
             'settings' => $defaults,
-            'children' => [],
         ];
 
-        $this->addChildToTree($tree, $parentUid, $newChild);
+        $this->addChildToTree($tree, $parentUid, $newChild, $slotName);
         $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
         $generator = new PageGenerator();
@@ -413,6 +432,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         if (!is_array($tree)) {
             return;
         }
+
+        if (!$this->validateSlotLimits($tree)) {
+            $this->toast('拖放后某些插槽超出上限', 'error');
+            return;
+        }
+
         $this->componentTreeJson = $treeJson;
 
         $generator = new PageGenerator();
@@ -447,6 +472,11 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             if (($component['uid'] ?? '') === $uid) {
                 return $component;
             }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as $slotItems) {
+                $found = $this->findInTree($slotItems, $uid);
+                if ($found) return $found;
+            }
             $children = $component['children'] ?? [];
             if (!empty($children)) {
                 $found = $this->findInTree($children, $uid);
@@ -462,6 +492,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             if (($component['uid'] ?? '') === $uid) {
                 $component['settings'] = array_merge($component['settings'] ?? [], $settings);
                 return true;
+            }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as $sn => &$slotItems) {
+                if ($this->updateAllSettingsInTree($slotItems, $uid, $settings)) {
+                    $component['slots'][$sn] = $slotItems;
+                    return true;
+                }
             }
             $children = $component['children'] ?? [];
             if (!empty($children) && $this->updateAllSettingsInTree($children, $uid, $settings)) {
@@ -479,6 +516,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 array_splice($tree, $i, 1);
                 return true;
             }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as $sn => &$slotItems) {
+                if ($this->removeFromTree($slotItems, $uid)) {
+                    $component['slots'][$sn] = $slotItems;
+                    return true;
+                }
+            }
             $children = $component['children'] ?? [];
             if (!empty($children) && $this->removeFromTree($children, $uid)) {
                 $tree[$i]['children'] = $children;
@@ -488,16 +532,29 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         return false;
     }
 
-    private function addChildToTree(array &$tree, string $parentUid, array $newChild): bool
+    private function addChildToTree(array &$tree, string $parentUid, array $newChild, string $slotName = ''): bool
     {
         foreach ($tree as &$component) {
             if (($component['uid'] ?? '') === $parentUid) {
-                if (!isset($component['children'])) $component['children'] = [];
-                $component['children'][] = $newChild;
+                if ($slotName) {
+                    if (!isset($component['slots'])) $component['slots'] = [];
+                    if (!isset($component['slots'][$slotName])) $component['slots'][$slotName] = [];
+                    $component['slots'][$slotName][] = $newChild;
+                } else {
+                    if (!isset($component['children'])) $component['children'] = [];
+                    $component['children'][] = $newChild;
+                }
                 return true;
             }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as $sn => &$slotItems) {
+                if ($this->addChildToTree($slotItems, $parentUid, $newChild, $slotName)) {
+                    $component['slots'][$sn] = $slotItems;
+                    return true;
+                }
+            }
             $children = $component['children'] ?? [];
-            if (!empty($children) && $this->addChildToTree($children, $parentUid, $newChild)) {
+            if (!empty($children) && $this->addChildToTree($children, $parentUid, $newChild, $slotName)) {
                 $component['children'] = $children;
                 return true;
             }
@@ -882,13 +939,16 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $type = $item['type'] ?? '';
         $settings = $item['settings'] ?? [];
         $children = $item['children'] ?? [];
+        $slots = $item['slots'] ?? null;
 
         $componentType = ComponentRegistry::get($type);
         $isSelected = $uid === $this->selectedUid;
         $isContainer = $componentType && method_exists($componentType, 'isContainer') && $componentType->isContainer();
+        $slotDefs = $componentType ? $componentType->slots($settings) : [];
+        $hasSlots = !empty($slotDefs);
 
         $comp = Element::make('div')
-            ->class('pb-comp', $isSelected ? 'pb-comp-selected' : '', $isContainer ? 'pb-comp-container' : '')
+            ->class('pb-comp', $isSelected ? 'pb-comp-selected' : '', ($isContainer || $hasSlots) ? 'pb-comp-container' : '', $hasSlots ? 'pb-comp-has-slots' : '')
             ->attr('data-uid', $uid)
             ->attr('data-component-type', $type)
             ->liveFragment('comp-' . $uid);
@@ -922,14 +982,37 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $comp->child($preview);
         }
 
-        if ($isContainer) {
+        if ($hasSlots) {
+            $limits = $componentType->slotLimits($settings);
+            $slotChildren = $slots ?? [];
+
+            foreach ($slotDefs as $slotDef) {
+                $slotName = $slotDef['name'];
+                $slotLabel = $slotDef['label'];
+                $slotItems = $slotChildren[$slotName] ?? [];
+                $limit = $limits[$slotName] ?? null;
+                $isFull = $limit !== null && count($slotItems) >= $limit;
+
+                $targetEl = $componentType->getSlotElement($preview, $slotName);
+
+                if (!empty($slotItems)) {
+                    foreach ($slotItems as $childItem) {
+                        $targetEl->child($this->renderCanvasItem($childItem));
+                    }
+                }
+
+                if ($isSelected) {
+                    if (!$isFull) {
+                        $targetEl->child($this->renderAddChildBar($uid, $slotName));
+                    }
+                }
+            }
+        } elseif (!empty($children)) {
             $childArea = Element::make('div')
                 ->class('pb-comp-children')
                 ->attr('data-builder-canvas', '');
 
-            if (!empty($children)) {
-                $this->renderCanvasItems($childArea, $children);
-            }
+            $this->renderCanvasItems($childArea, $children);
 
             if ($isSelected) {
                 $childArea->child($this->renderAddChildBar($uid));
@@ -1130,7 +1213,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         return $panel;
     }
 
-    protected function renderAddChildBar(string $parentUid): Element
+    protected function renderAddChildBar(string $parentUid, string $slotName = ''): Element
     {
         $bar = Element::make('div')->class('pb-comp-add-child');
 
@@ -1146,9 +1229,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
             foreach ($types as $type) {
                 $isContainer = method_exists($type, 'isContainer') && $type->isContainer();
+                $actionParams = ['parentUid' => $parentUid, 'componentType' => $type->name()];
+                if ($slotName) {
+                    $actionParams['slotName'] = $slotName;
+                }
                 $btn = Element::make('button')
                     ->class('pb-comp-add-child-btn', $isContainer ? 'is-container' : '')
-                    ->liveAction('addChildComponent', 'click', ['parentUid' => $parentUid, 'componentType' => $type->name()])
+                    ->liveAction('addChildComponent', 'click', $actionParams)
                     ->html('<i class="bi bi-' . $type->icon() . '"></i> ' . $type->label());
                 $group->child($btn);
             }
@@ -1157,5 +1244,65 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         return $bar;
+    }
+
+    protected function validateSlotLimits(array $tree): bool
+    {
+        foreach ($tree as $component) {
+            $slots = $component['slots'] ?? [];
+            if (!empty($slots)) {
+                $componentType = ComponentRegistry::get($component['type'] ?? '');
+                if ($componentType) {
+                    $limits = $componentType->slotLimits($component['settings'] ?? []);
+                    foreach ($limits as $slotName => $limit) {
+                        if ($limit !== null) {
+                            $count = count($slots[$slotName] ?? []);
+                            if ($count > $limit) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children) && !$this->validateSlotLimits($children)) {
+                return false;
+            }
+            foreach ($slots as $slotItems) {
+                if (!empty($slotItems) && !$this->validateSlotLimits($slotItems)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    protected function reconcileNodeSlots(array &$tree, string $uid): void
+    {
+        foreach ($tree as &$component) {
+            if (($component['uid'] ?? '') === $uid) {
+                $componentType = ComponentRegistry::get($component['type'] ?? '');
+                if (!$componentType) return;
+
+                $newSlotDefs = $componentType->slots($component['settings'] ?? []);
+                $newSlotNames = array_map(fn($s) => $s['name'], $newSlotDefs);
+                $currentSlots = $component['slots'] ?? [];
+
+                $reconciled = [];
+                foreach ($newSlotNames as $name) {
+                    $reconciled[$name] = $currentSlots[$name] ?? [];
+                }
+                $component['slots'] = $reconciled;
+                return;
+            }
+            $slots = $component['slots'] ?? [];
+            foreach ($slots as &$slotItems) {
+                $this->reconcileNodeSlots($slotItems, $uid);
+            }
+            $children = $component['children'] ?? [];
+            if (!empty($children)) {
+                $this->reconcileNodeSlots($children, $uid);
+            }
+        }
     }
 }

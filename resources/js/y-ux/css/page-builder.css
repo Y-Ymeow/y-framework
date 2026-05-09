@@ -415,6 +415,10 @@
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
+.pb-comp-has-slots {
+    padding-top: 2.5rem;
+}
+
 /* === Component Toolbar === */
 
 .pb-comp-toolbar {
