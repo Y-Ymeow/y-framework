@@ -115,6 +115,11 @@ class LinkSelector extends BaseField
         $modal = Modal::make()
             ->title('设置链接')
             ->size('md')
+            ->state([
+                'url' => '',
+                'label' => '',
+                'target' => '_self',
+            ])
             ->content($this->renderModalBody($modalId))
             ->footer(
                 Button::make()
@@ -125,10 +130,13 @@ class LinkSelector extends BaseField
                     ->label('确定')
                     ->primary()
                     ->attr('data-link-apply', $modalId)
-                    ->attr('data-link-params', json_encode([
+                    ->liveAction('applyLink', 'click', [
                         'name' => $this->name,
-                        'modalId' => $modalId
-                    ], JSON_UNESCAPED_UNICODE))
+                        'modalId' => $modalId,
+                        'url' => '$url',
+                        'label' => '$label',
+                        'target' => '$target',
+                    ])
             );
 
         $modal->id($modalId);
@@ -154,7 +162,7 @@ class LinkSelector extends BaseField
                 ->class('ux-form-input')
                 ->attr('type', 'url')
                 ->attr('placeholder', 'https://example.com')
-                ->attr('data-link-modal-url', '')
+                ->model('url')
                 ->attr('value', $url)
         );
         $body->child($group);
@@ -168,7 +176,7 @@ class LinkSelector extends BaseField
                 ->class('ux-form-input')
                 ->attr('type', 'text')
                 ->attr('placeholder', '可选')
-                ->attr('data-link-modal-label', '')
+                ->model('label')
                 ->attr('value', $label)
         );
         $body->child($group2);
@@ -179,7 +187,8 @@ class LinkSelector extends BaseField
         );
         $targetSelect = Element::make('select')
             ->class('ux-form-input')
-            ->attr('data-link-modal-target', '');
+            ->attr('data-link-modal-target', '')
+            ->liveModel('target');
         foreach ($this->targetOptions as $key => $name) {
             $opt = Element::make('option')->attr('value', $key)->text($name);
             if ($key === $target) $opt->attr('selected', '');

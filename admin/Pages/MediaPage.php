@@ -288,8 +288,8 @@ class MediaPage extends LiveComponent implements PageInterface
         foreach ($types as $type => $label) {
             $btn = Element::make('button')
                 ->class('media-filter-btn', $this->filterType === $type ? 'active' : '')
-                < -liveAction('setFilterType', 'click', ['type' => $type])
-                    ->text($label);
+                ->liveAction('setFilterType', 'click', ['type' => $type])
+                ->text($label);
             $filters->child($btn);
         }
         $toolbar->child($filters);

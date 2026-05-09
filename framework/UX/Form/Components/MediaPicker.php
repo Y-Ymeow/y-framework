@@ -244,7 +244,7 @@ class MediaPicker extends BaseField
             $m = is_array($itemData) ? $itemData : $itemData->toArray();
             $mimeType = $m['mime_type'] ?? '';
             $isImage = str_starts_with($mimeType, 'image/');
-            $url = '/uploads/' . ($m['path'] ?? '');
+            $url = '/media/' . ($m['path'] ?? '');
 
             $item = Element::make('div')
                 ->class('media-picker-item')

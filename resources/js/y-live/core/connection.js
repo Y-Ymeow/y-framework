@@ -1,26 +1,26 @@
 // Live Connection - 与后端通信
 export const LIVE_SAFE_DATA_ATTRS = new Set([
-    'data-action',
-    'data-live',
-    'data-live-id',
-    'data-live-state',
-    'data-live-fragment',
-    'data-live-listeners',
-    'data-live-model',
-    'data-live-debounce',
-    'data-ux-action',
-    'data-intl',
-    'data-intl-params',
-    'data-navigate',
-    'data-navigate-fragment',
-    'data-navigate-replace',
-    'data-navigate-state',
-    'data-state',
-    'data-component',
-    'data-poll',
-    'data-stream',
-    'data-stream-target',
-    'data-live-sse',
+    "data-action",
+    "data-live",
+    "data-live-id",
+    "data-live-state",
+    "data-live-fragment",
+    "data-live-listeners",
+    "data-live-model",
+    "data-live-debounce",
+    "data-ux-action",
+    "data-intl",
+    "data-intl-params",
+    "data-navigate",
+    "data-navigate-fragment",
+    "data-navigate-replace",
+    "data-navigate-state",
+    "data-state",
+    "data-component",
+    "data-poll",
+    "data-stream",
+    "data-stream-target",
+    "data-live-sse",
 ]);
 
 if (!window.Y_UI_SAFE_ATTRS) {
@@ -28,12 +28,12 @@ if (!window.Y_UI_SAFE_ATTRS) {
 }
 
 export function getComponentInfo(el) {
-    const raw = el.getAttribute('data-live-state') || '';
+    const raw = el.getAttribute("data-live-state") || "";
     if (!raw) {
         return {
-            __component: el.dataset.live || '',
-            __id: el.dataset.liveId || '',
-            __state: '',
+            __component: el.dataset.live || "",
+            __id: el.dataset.liveId || "",
+            __state: "",
             __props: {},
             __actions: [],
         };
@@ -45,8 +45,8 @@ export function getComponentInfo(el) {
     } catch (e) {}
 
     return {
-        __component: el.dataset.live || '',
-        __id: el.dataset.liveId || '',
+        __component: el.dataset.live || "",
+        __id: el.dataset.liveId || "",
         __state: raw,
         __props: {},
         __actions: [],
@@ -54,15 +54,17 @@ export function getComponentInfo(el) {
 }
 
 export function setLoading(el, loading) {
-    const liveEl = el.closest('[data-live]') || el;
-    if (loading) liveEl.classList.add('y-loading-root');
-    else liveEl.classList.remove('y-loading-root');
+    const liveEl = el.closest("[data-live]") || el;
+    if (loading) liveEl.classList.add("y-loading-root");
+    else liveEl.classList.remove("y-loading-root");
 
-    liveEl.querySelectorAll('[data-action], [data-live-action]').forEach(btn => {
-        btn.disabled = loading;
-        if (loading) btn.classList.add('y-loading');
-        else btn.classList.remove('y-loading');
-    });
+    liveEl
+        .querySelectorAll("[data-action], [data-live-action]")
+        .forEach((btn) => {
+            btn.disabled = loading;
+            if (loading) btn.classList.add("y-loading");
+            else btn.classList.remove("y-loading");
+        });
 }
 
 function isJsonLiveState(raw) {
@@ -76,7 +78,7 @@ function isJsonLiveState(raw) {
 }
 
 export function updateLiveStateAttr(el, newBase64State, patches) {
-    const raw = el.getAttribute('data-live-state') || '';
+    const raw = el.getAttribute("data-live-state") || "";
 
     if (isJsonLiveState(raw)) {
         const info = JSON.parse(raw);
@@ -84,18 +86,30 @@ export function updateLiveStateAttr(el, newBase64State, patches) {
         if (patches) {
             info.__props = { ...info.__props, ...patches };
         }
-        el.setAttribute('data-live-state', JSON.stringify(info));
+        el.setAttribute("data-live-state", JSON.stringify(info));
     } else {
-        el.setAttribute('data-live-state', newBase64State);
+        el.setAttribute("data-live-state", newBase64State);
     }
 }
 
-function buildActionBody(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
+function buildActionBody(
+    el,
+    componentClass,
+    action,
+    stateRef,
+    state,
+    event,
+    extraParams = {},
+) {
+    const publicData =
+        state && typeof state.all === "function" ? state.all() : state || {};
     const actionParams = collectParams(el, event, extraParams);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const csrfToken =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content") || "";
     const componentsSnapshot = collectAllLiveComponents(el);
-    const componentId = el.dataset.liveId || '';
+    const componentId = el.dataset.liveId || "";
     const parentId = extractParentId(el);
 
     const info = getComponentInfo(el);
@@ -116,20 +130,24 @@ function buildActionBody(el, componentClass, action, stateRef, state, event, ext
 
     return {
         headers: {
-            'Content-Type': 'application/json',
-            'X-Live-Component': componentClass,
-            'X-Live-Action': action,
-            'X-CSRF-Token': csrfToken,
-            'X-Component-Id': componentId,
+            "Content-Type": "application/json",
+            "X-Live-Component": componentClass,
+            "X-Live-Action": action,
+            "X-CSRF-Token": csrfToken,
+            "X-Component-Id": componentId,
         },
         body: JSON.stringify(body),
     };
 }
 
 function buildStateBody(el, componentClass, stateRef, state) {
-    const publicData = state && typeof state.all === 'function' ? state.all() : (state || {});
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const componentId = el.dataset.liveId || '';
+    const publicData =
+        state && typeof state.all === "function" ? state.all() : state || {};
+    const csrfToken =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content") || "";
+    const componentId = el.dataset.liveId || "";
     const parentId = extractParentId(el);
 
     const info = getComponentInfo(el);
@@ -147,10 +165,10 @@ function buildStateBody(el, componentClass, stateRef, state) {
 
     return {
         headers: {
-            'Content-Type': 'application/json',
-            'X-Live-Component': componentClass,
-            'X-CSRF-Token': csrfToken,
-            'X-Component-Id': componentId,
+            "Content-Type": "application/json",
+            "X-Live-Component": componentClass,
+            "X-CSRF-Token": csrfToken,
+            "X-Component-Id": componentId,
         },
         body: JSON.stringify(body),
     };
@@ -163,25 +181,57 @@ function buildStateBody(el, componentClass, stateRef, state) {
  */
 function extractParentId(el) {
     if (!el || !el.parentElement) return null;
-    const parentLiveEl = el.parentElement.closest('[data-live]');
+    const parentLiveEl = el.parentElement.closest("[data-live]");
     if (parentLiveEl && parentLiveEl !== el) {
         return parentLiveEl.dataset.liveId || null;
     }
     return null;
 }
 
-export async function dispatchLive(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    return dispatchAction(el, componentClass, action, stateRef, state, event, extraParams);
+export async function dispatchLive(
+    el,
+    componentClass,
+    action,
+    stateRef,
+    state,
+    event,
+    extraParams = {},
+) {
+    return dispatchAction(
+        el,
+        componentClass,
+        action,
+        stateRef,
+        state,
+        event,
+        extraParams,
+    );
 }
 
-export async function dispatchAction(el, componentClass, action, stateRef, state, event, extraParams = {}) {
-    const { headers, body } = buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
+export async function dispatchAction(
+    el,
+    componentClass,
+    action,
+    stateRef,
+    state,
+    event,
+    extraParams = {},
+) {
+    const { headers, body } = buildActionBody(
+        el,
+        componentClass,
+        action,
+        stateRef,
+        state,
+        event,
+        extraParams,
+    );
 
     setLoading(el, true);
 
     try {
-        const response = await fetch('/live/action', {
-            method: 'POST',
+        const response = await fetch("/live/action", {
+            method: "POST",
             headers,
             body,
         });
@@ -189,12 +239,17 @@ export async function dispatchAction(el, componentClass, action, stateRef, state
         const data = await response.json();
 
         if (!response.ok) {
-            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+            return {
+                success: false,
+                error: data.message || data.error || "Request failed",
+                status: response.status,
+                data,
+            };
         }
 
         return { success: true, data };
     } catch (err) {
-        console.error('Live action error:', err);
+        console.error("Live action error:", err);
         return { success: false, error: err };
     } finally {
         setLoading(el, false);
@@ -202,13 +257,18 @@ export async function dispatchAction(el, componentClass, action, stateRef, state
 }
 
 export async function dispatchState(el, componentClass, stateRef, state) {
-    const { headers, body } = buildStateBody(el, componentClass, stateRef, state);
+    const { headers, body } = buildStateBody(
+        el,
+        componentClass,
+        stateRef,
+        state,
+    );
 
     setLoading(el, true);
 
     try {
-        const response = await fetch('/live/state', {
-            method: 'POST',
+        const response = await fetch("/live/state", {
+            method: "POST",
             headers,
             body,
         });
@@ -216,21 +276,36 @@ export async function dispatchState(el, componentClass, stateRef, state) {
         const data = await response.json();
 
         if (!response.ok) {
-            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+            return {
+                success: false,
+                error: data.message || data.error || "Request failed",
+                status: response.status,
+                data,
+            };
         }
 
         return { success: true, data };
     } catch (err) {
-        console.error('Live state update error:', err);
+        console.error("Live state update error:", err);
         return { success: false, error: err };
     } finally {
         setLoading(el, false);
     }
 }
 
-function buildEventBody(el, componentClass, state, publicData, eventName, eventParams) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const componentId = el.dataset.liveId || '';
+function buildEventBody(
+    el,
+    componentClass,
+    state,
+    publicData,
+    eventName,
+    eventParams,
+) {
+    const csrfToken =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content") || "";
+    const componentId = el.dataset.liveId || "";
 
     const body = {
         _component: componentClass,
@@ -243,23 +318,37 @@ function buildEventBody(el, componentClass, state, publicData, eventName, eventP
 
     return {
         headers: {
-            'Content-Type': 'application/json',
-            'X-Live-Component': componentClass,
-            'X-CSRF-Token': csrfToken,
-            'X-Component-Id': componentId,
+            "Content-Type": "application/json",
+            "X-Live-Component": componentClass,
+            "X-CSRF-Token": csrfToken,
+            "X-Component-Id": componentId,
         },
         body: JSON.stringify(body),
     };
 }
 
-export async function dispatchEvent(el, componentClass, state, publicData, eventName, eventParams) {
-    const { headers, body } = buildEventBody(el, componentClass, state, publicData, eventName, eventParams);
+export async function dispatchEvent(
+    el,
+    componentClass,
+    state,
+    publicData,
+    eventName,
+    eventParams,
+) {
+    const { headers, body } = buildEventBody(
+        el,
+        componentClass,
+        state,
+        publicData,
+        eventName,
+        eventParams,
+    );
 
     setLoading(el, true);
 
     try {
-        const response = await fetch('/live/event', {
-            method: 'POST',
+        const response = await fetch("/live/event", {
+            method: "POST",
             headers,
             body,
         });
@@ -267,32 +356,55 @@ export async function dispatchEvent(el, componentClass, state, publicData, event
         const data = await response.json();
 
         if (!response.ok) {
-            return { success: false, error: data.message || data.error || 'Request failed', status: response.status, data };
+            return {
+                success: false,
+                error: data.message || data.error || "Request failed",
+                status: response.status,
+                data,
+            };
         }
 
         return { success: true, data };
     } catch (err) {
-        console.error('Live event dispatch error:', err);
+        console.error("Live event dispatch error:", err);
         return { success: false, error: err };
     } finally {
         setLoading(el, false);
     }
 }
 
-export function dispatchStream(el, componentClass, action, stateRef, state, event, extraParams = {}, onChunk = null, onDone = null) {
-    const { headers, body } = buildActionBody(el, componentClass, action, stateRef, state, event, extraParams);
+export function dispatchStream(
+    el,
+    componentClass,
+    action,
+    stateRef,
+    state,
+    event,
+    extraParams = {},
+    onChunk = null,
+    onDone = null,
+) {
+    const { headers, body } = buildActionBody(
+        el,
+        componentClass,
+        action,
+        stateRef,
+        state,
+        event,
+        extraParams,
+    );
 
     setLoading(el, true);
 
-    fetch('/live/stream', { method: 'POST', headers, body })
+    fetch("/live/stream", { method: "POST", headers, body })
         .then(async (response) => {
             if (!response.ok) {
                 const text = await response.text();
                 try {
                     const err = JSON.parse(text);
-                    console.error('Stream error:', err.error || text);
+                    console.error("Stream error:", err.error || text);
                 } catch (e) {
-                    console.error('Stream error:', text);
+                    console.error("Stream error:", text);
                 }
                 setLoading(el, false);
                 if (onDone) onDone();
@@ -301,7 +413,7 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let buffer = '';
+            let buffer = "";
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -309,8 +421,8 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
 
                 buffer += decoder.decode(value, { stream: true });
 
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
 
                 for (const line of lines) {
                     if (!line.trim()) continue;
@@ -332,7 +444,7 @@ export function dispatchStream(el, componentClass, action, stateRef, state, even
             if (onDone) onDone();
         })
         .catch((err) => {
-            console.error('Stream network error:', err);
+            console.error("Stream network error:", err);
             setLoading(el, false);
             if (onDone) onDone();
         });
@@ -342,7 +454,8 @@ export function collectFormData(scope) {
     const data = {};
     const collectFieldValue = (input) => {
         if (input.type === "checkbox") return input.checked;
-        if (input.type === "radio") return input.checked ? input.value : undefined;
+        if (input.type === "radio")
+            return input.checked ? input.value : undefined;
         return input.value;
     };
     const setNestedValue = (obj, path, value) => {
@@ -360,15 +473,6 @@ export function collectFormData(scope) {
         current[parts[parts.length - 1]] = value;
     };
 
-    scope.querySelectorAll("[data-model], [data-submit-field]").forEach((input) => {
-        const key = input.getAttribute("data-model") || input.getAttribute("data-submit-field");
-        if (!key) return;
-
-        const value = collectFieldValue(input);
-        if (value !== undefined) {
-            setNestedValue(data, key, value);
-        }
-    });
     return data;
 }
 
@@ -376,20 +480,27 @@ function collectParams(el, event, extraParams = {}) {
     let params = { ...extraParams };
 
     // 1. 如果是在 scope 内部触发，自动收集表单数据防止还原
-    const scope = el.closest('[data-live-state]') || el.closest('[data-state]') || el.parentElement;
-    if (scope && scope.querySelector('[data-submit-field], [data-model]')) {
+    const scope =
+        el.closest("[data-live-state]") ||
+        el.closest("[data-state]") ||
+        el.parentElement;
+    if (scope && scope.querySelector("[data-submit-field], [data-model]")) {
         params = { ...collectFormData(scope), ...params };
     }
 
     let form = null;
     if (event && event.target) {
-        if (event.type === 'submit' && event.target.tagName === 'FORM') {
+        if (event.type === "submit" && event.target.tagName === "FORM") {
             form = event.target;
-        } else if (event.type === 'click') {
-            const btn = event.target.closest('button[type="submit"], input[type="submit"]');
+        } else if (event.type === "click") {
+            const btn = event.target.closest(
+                'button[type="submit"], input[type="submit"]',
+            );
             if (btn) {
-                const formId = btn.getAttribute('form');
-                form = formId ? document.getElementById(formId) : btn.closest('form');
+                const formId = btn.getAttribute("form");
+                form = formId
+                    ? document.getElementById(formId)
+                    : btn.closest("form");
             }
         }
     }
@@ -397,7 +508,7 @@ function collectParams(el, event, extraParams = {}) {
     if (form) {
         const fd = new FormData(form);
         for (const [key, value] of fd.entries()) {
-            if (key.endsWith('[]')) {
+            if (key.endsWith("[]")) {
                 const arrKey = key.slice(0, -2);
                 if (!params[arrKey]) params[arrKey] = [];
                 if (!params[arrKey].includes(value)) params[arrKey].push(value);
@@ -416,14 +527,18 @@ function collectAllLiveComponents(currentEl = null) {
 
     const extractState = (el) => {
         const info = getComponentInfo(el);
-        return info ? info.__state : '';
+        return info ? info.__state : "";
     };
 
     if (currentEl) {
         let parent = currentEl.parentElement;
         while (parent) {
-            const liveParent = parent.closest('[data-live]');
-            if (liveParent && liveParent.dataset.liveId && !seenIds.has(liveParent.dataset.liveId)) {
+            const liveParent = parent.closest("[data-live]");
+            if (
+                liveParent &&
+                liveParent.dataset.liveId &&
+                !seenIds.has(liveParent.dataset.liveId)
+            ) {
                 components.push({
                     id: liveParent.dataset.liveId,
                     class: liveParent.dataset.live,
@@ -437,7 +552,7 @@ function collectAllLiveComponents(currentEl = null) {
         }
     }
 
-    document.querySelectorAll('[data-live-listeners]').forEach(el => {
+    document.querySelectorAll("[data-live-listeners]").forEach((el) => {
         const id = el.dataset.liveId;
         if (id && !seenIds.has(id)) {
             components.push({
@@ -450,7 +565,7 @@ function collectAllLiveComponents(currentEl = null) {
     });
 
     if (components.length === 0) {
-        document.querySelectorAll('[data-live]').forEach(el => {
+        document.querySelectorAll("[data-live]").forEach((el) => {
             const id = el.dataset.liveId;
             if (id && el.dataset.liveState && !seenIds.has(id)) {
                 components.push({

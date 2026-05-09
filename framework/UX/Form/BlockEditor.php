@@ -10,7 +10,7 @@ use Framework\CSS\BlockEditorRules;
 
 /**
  * 区块编辑器 (Block Editor)
- * 
+ *
  * 类似 Gutenberg 的区块化编辑器，支持左侧主编辑区和右侧属性面板。
  * 数据以 JSON 格式存储。
  *
@@ -45,7 +45,7 @@ class BlockEditor extends FormField
                     const hiddenInput = el.querySelector("input[type=\"hidden\"]");
                     const canvas = el.querySelector(".ux-block-editor-canvas");
                     const sidebar = el.querySelector(".ux-block-editor-sidebar-content");
-                    
+
                     let blocks = [];
                     try {
                         blocks = JSON.parse(hiddenInput.value || "[]");
@@ -58,7 +58,7 @@ class BlockEditor extends FormField
                         sidebar,
                         blocks,
                         selectedUid: null,
-                        
+
                         render() {
                             canvas.innerHTML = "";
                             if (this.blocks.length === 0) {
@@ -72,12 +72,12 @@ class BlockEditor extends FormField
                             });
                             this.updateInput();
                         },
-                        
+
                         createBlockElement(block, index) {
                             const bEl = document.createElement("div");
                             bEl.className = "ux-block-item" + (this.selectedUid === block.uid ? " is-selected" : "");
                             bEl.dataset.uid = block.uid;
-                            
+
                             const toolbar = document.createElement("div");
                             toolbar.className = "ux-block-item-toolbar";
                             toolbar.innerHTML = `
@@ -88,10 +88,10 @@ class BlockEditor extends FormField
                                     <button type="button" class="ux-block-item-action" data-action="delete"><i class="bi bi-trash"></i></button>
                                 </div>
                             `;
-                            
+
                             const content = document.createElement("div");
                             content.className = "ux-block-item-content";
-                            
+
                             if (block.type === "paragraph") {
                                 content.contentEditable = "true";
                                 content.innerHTML = block.content || "";
@@ -107,34 +107,34 @@ class BlockEditor extends FormField
                             } else {
                                 content.innerHTML = `<pre>${JSON.stringify(block)}</pre>`;
                             }
-                            
+
                             bEl.appendChild(toolbar);
                             bEl.appendChild(content);
-                            
+
                             bEl.onclick = (e) => {
                                 e.stopPropagation();
                                 this.selectBlock(block.uid);
                             };
-                            
+
                             bEl.querySelector("[data-action=\"delete\"]").onclick = () => this.deleteBlock(index);
                             bEl.querySelector("[data-action=\"move-up\"]").onclick = () => this.moveBlock(index, -1);
                             bEl.querySelector("[data-action=\"move-down\"]").onclick = () => this.moveBlock(index, 1);
-                            
+
                             return bEl;
                         },
-                        
+
                         selectBlock(uid) {
                             this.selectedUid = uid;
                             this.render();
                             this.renderSidebar();
                         },
-                        
+
                         deleteBlock(index) {
                             this.blocks.splice(index, 1);
                             this.render();
                             this.renderSidebar();
                         },
-                        
+
                         moveBlock(index, dir) {
                             const target = index + dir;
                             if (target < 0 || target >= this.blocks.length) return;
@@ -143,7 +143,7 @@ class BlockEditor extends FormField
                             this.blocks[target] = temp;
                             this.render();
                         },
-                        
+
                         addBlock(type) {
                             const uid = "b" + Math.random().toString(36).substr(2, 9);
                             const newBlock = { uid, type, content: "" };
@@ -152,7 +152,7 @@ class BlockEditor extends FormField
                             this.render();
                             this.selectBlock(uid);
                         },
-                        
+
                         renderSidebar() {
                             sidebar.innerHTML = "";
                             const block = this.blocks.find(b => b.uid === this.selectedUid);
@@ -160,11 +160,11 @@ class BlockEditor extends FormField
                                 sidebar.innerHTML = "<p class=\"text-muted\">选择一个区块进行设置</p>";
                                 return;
                             }
-                            
+
                             const title = document.createElement("h4");
                             title.innerText = "区块设置 (" + block.type + ")";
                             sidebar.appendChild(title);
-                            
+
                             if (block.type === "heading") {
                                 const label = document.createElement("label");
                                 label.innerText = "标题层级";
@@ -181,7 +181,7 @@ class BlockEditor extends FormField
                                 sidebar.appendChild(label);
                                 sidebar.appendChild(select);
                             }
-                            
+
                             if (block.type === "image") {
                                 const btn = document.createElement("button");
                                 btn.className = "page-btn page-btn-outline w-100";
@@ -193,18 +193,18 @@ class BlockEditor extends FormField
                                 sidebar.appendChild(btn);
                             }
                         },
-                        
+
                         updateInput() {
                             this.hiddenInput.value = JSON.stringify(this.blocks);
                             el.dispatchEvent(new CustomEvent("ux:change", { detail: { value: this.hiddenInput.value }, bubbles: true }));
                         }
                     };
-                    
+
                     el.querySelector(".ux-block-editor-add-btn").onclick = () => {
                         const type = prompt("输入区块类型 (paragraph, heading, image):", "paragraph");
                         if (type) editor.addBlock(type);
                     };
-                    
+
                     editor.render();
                     this.editors.set(editorId, editor);
                 }
@@ -229,7 +229,7 @@ class BlockEditor extends FormField
         $wrapper = Element::make('div')
             ->class('ux-block-editor')
             ->attr('data-editor-id', $editorId);
-        
+
         if ($this->height) {
             $wrapper->style("height: {$this->height}");
         }
@@ -244,7 +244,7 @@ class BlockEditor extends FormField
         $wrapper->child($header);
 
         $main = Element::make('div')->class('ux-block-editor-main');
-        
+
         $canvas = Element::make('div')->class('ux-block-editor-canvas');
         $main->child($canvas);
 
@@ -257,16 +257,16 @@ class BlockEditor extends FormField
 
         $hiddenInput = Element::make('input')
             ->attr('type', 'hidden')
-            ->attr('name', $this->name)
-            ->attr('value', (string)$this->getValue());
+            ->attr('name', $this->name);
+        // ->attr('value', (string)$this->getValue());
 
         if ($this->liveModel) {
             $hiddenInput->attr('data-live-model', $this->liveModel);
         }
 
-        if ($this->submitMode) {
-            $hiddenInput->attr('data-submit-field', $this->name);
-        }
+        // if ($this->submitMode) {
+        //     $hiddenInput->attr('data-submit-field', $this->name);
+        // }
 
         $wrapper->child($hiddenInput);
         $groupEl->child($wrapper);

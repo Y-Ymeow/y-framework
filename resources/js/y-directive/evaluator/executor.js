@@ -41,6 +41,7 @@ export function execute(expr, state, event, el) {
 
     try {
         let fn = getCachedExpr(expr, execCache);
+
         if (!fn) {
             // 执行模式不需要 return
             fn = new Function(
@@ -61,4 +62,5 @@ export function execute(expr, state, event, el) {
     } catch (e) {
         console.warn(`[y-directive] Execute error: "${expr}"`, e);
     }
+    return null;
 }

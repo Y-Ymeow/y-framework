@@ -22,7 +22,7 @@ use Framework\View\Base\Element;
 abstract class FormField extends UXComponent
 {
     protected string $name = '';
-    protected string $label = '';
+    protected string|array $label = '';
     protected bool $required = false;
     protected mixed $value = null;
     protected string $placeholder = '';
@@ -37,7 +37,8 @@ abstract class FormField extends UXComponent
 
     protected function init(): void
     {
-        $this->registerCss(<<<'CSS'
+        $this->registerCss(
+            <<<'CSS'
 .ux-form-group {
     margin-bottom: 1rem;
 }
@@ -139,7 +140,7 @@ CSS
      * @return static
      * @ux-example Input::make()->label('用户名')
      */
-    public function label(string $label): static
+    public function label(string|array $label): static
     {
         $this->label = $label;
         return $this;
@@ -342,8 +343,13 @@ CSS
 
         $labelEl = Element::make('label')
             ->class('ux-form-label')
-            ->attr('for', $this->name)
-            ->text($this->label);
+            ->attr('for', $this->name);
+
+        if (is_array($this->label)) {
+            $labelEl->intl(...$this->label);
+        } else {
+            $labelEl->text($this->label);
+        }
 
         if ($this->required) {
             $labelEl->child(Element::make('span')->class('ux-form-required')->text('*'));

@@ -27,6 +27,7 @@ class SystemRoute
         return new self();
     }
 
+    #[Route('/media/{path...}', methods: ['GET'], name: 'media')]
     public function media(Request $request, string $path): Response
     {
         $route = new MediaRoute(

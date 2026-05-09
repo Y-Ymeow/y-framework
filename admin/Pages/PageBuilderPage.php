@@ -43,6 +43,21 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     #[State]
     public string $newPageMiddleware = '';
 
+    #[State]
+    public string $editingPageSettings = '';
+
+    #[State]
+    public string $editPageName = '';
+
+    #[State]
+    public string $editSlug = '';
+
+    #[State]
+    public string $editRoute = '';
+
+    #[State]
+    public string $editMiddleware = '';
+
     public static function getName(): string
     {
         return 'pages';
@@ -172,6 +187,70 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
+    public function openPageSettings(string $name): void
+    {
+        if (empty($name)) return;
+
+        $generator = new PageGenerator();
+        $pages = $generator->listPages();
+
+        foreach ($pages as $page) {
+            if ($page['name'] === $name) {
+                $this->editingPageSettings = $page['name'];
+                $this->editPageName = $page['name'];
+                $this->editSlug = $page['slug'];
+                $this->editRoute = $page['route'];
+                $this->editMiddleware = is_array($page['middleware']) ? implode(', ', $page['middleware']) : (string) $page['middleware'];
+                break;
+            }
+        }
+
+        $this->openModal('edit-page-modal');
+    }
+
+    #[LiveAction]
+    public function savePageSettings(): void
+    {
+        $name = trim($this->editPageName);
+        $slug = trim($this->editSlug);
+        $route = trim($this->editRoute);
+        $middleware = trim($this->editMiddleware);
+
+        if (empty($name)) {
+            $this->toast('页面名称不能为空', 'error');
+            return;
+        }
+
+        $originalName = $this->editingPageSettings;
+
+        $generator = new PageGenerator();
+        $result = $generator->updatePage($originalName, [
+            'name' => $name,
+            'slug' => $slug,
+            'route' => $route,
+            'middleware' => $middleware,
+        ]);
+
+        if ($result['success']) {
+            $this->toast('页面设置已保存');
+            $this->closeModal('edit-page-modal');
+            $this->editingPageSettings = '';
+
+            // If the builder was open for the renamed page, close it
+            if ($this->builderOpen === 'true' && $this->editingPage === $originalName && $originalName !== $name) {
+                $this->builderOpen = 'false';
+                $this->editingPage = '';
+                $this->selectedUid = '';
+                $this->componentTreeJson = '[]';
+            }
+        } else {
+            $this->toast($result['error'] ?? '保存失败', 'error');
+        }
+
+        $this->refresh('page-content');
+    }
+
+    #[LiveAction]
     public function saveTree(array $params): void
     {
         $treeJson = $params['tree'] ?? '[]';
@@ -261,13 +340,13 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     }
 
     #[LiveAction]
-    public function applyLink(?string $fieldName = null, ?string $modalId = null, ?string $url = null, ?string $target = null, ?string $label = null): void
+    public function applyLink(?string $name = null, ?string $modalId = null, ?string $url = null, ?string $target = null, ?string $label = null): void
     {
         if (!$this->selectedUid) return;
 
         // 1. Sync other submitted fields first
         $this->updateTreeFromParams([
-            'fieldName' => $fieldName,
+            'name' => $name,
             'modalId' => $modalId,
             'url' => $url,
             'target' => $target,
@@ -278,7 +357,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $tree = json_decode($this->componentTreeJson, true);
         if (is_array($tree)) {
             $this->updateAllSettingsInTree($tree, $this->selectedUid, [
-                $fieldName => ['url' => $url, 'target' => $target, 'label' => $label]
+                $name => ['url' => $url, 'target' => $target, 'label' => $label]
             ]);
             $this->componentTreeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
 
@@ -477,6 +556,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $wrapper->child($content);
         $wrapper->child($this->renderCreateModal());
+        $wrapper->child($this->renderEditModal());
 
         return $wrapper;
     }
@@ -543,6 +623,68 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         return $modal;
     }
 
+    protected function renderEditModal(): Modal
+    {
+        $modal = Modal::make()
+            ->id('edit-page-modal')
+            ->title('编辑页面设置')
+            ->size('md');
+
+        $body = Element::make('div')->class('p-4');
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('页面名称'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '如 About')
+                    ->attr('data-live-model', 'editPageName')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('Slug'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '如 about-us')
+                    ->attr('data-live-model', 'editSlug')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('路由'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '留空使用 /slug')
+                    ->attr('data-live-model', 'editRoute')
+            )
+        );
+
+        $body->child(
+            Element::make('div')->class('mb-3')->children(
+                Element::make('label')->class('form-label')->text('Middleware'),
+                Element::make('input')
+                    ->class('ux-form-input')
+                    ->attr('type', 'text')
+                    ->attr('placeholder', '逗号分隔，可选')
+                    ->attr('data-live-model', 'editMiddleware')
+            )
+        );
+
+        $modal->content($body);
+        $modal->footer(
+            Button::make()->label('取消')->secondary()->attr('data-ux-modal-close', 'edit-page-modal'),
+            Button::make()->label('保存设置')->primary()->attr('data-action:click', 'savePageSettings()')
+        );
+
+        return $modal;
+    }
+
     protected function renderPageList(): Element
     {
         $container = Element::make('div')->class('page-list');
@@ -585,6 +727,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                     ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
                     ->liveAction('openBuilder', 'click', ['name' => $page['name']])
                     ->html('<i class="bi bi-pencil-square"></i> 编辑')
+            );
+            $actions->child(
+                Element::make('button')
+                    ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
+                    ->liveAction('openPageSettings', 'click', ['name' => $page['name']])
+                    ->html('<i class="bi bi-gear"></i>')
             );
             $actions->child(
                 Element::make('button')

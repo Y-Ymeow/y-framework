@@ -186,6 +186,59 @@ class PageGenerator
         return ['success' => true];
     }
 
+    public function updatePage(string $name, array $options): array
+    {
+        $className = $this->sanitizeClassName($name);
+        $existing = $this->findDbRecord($className);
+        if (!$existing) {
+            return ['success' => false, 'error' => '页面不存在'];
+        }
+
+        $newName = null;
+        if (isset($options['name']) && $options['name'] !== $className) {
+            $newName = $this->sanitizeClassName($options['name']);
+            if ($this->findDbRecord($newName)) {
+                return ['success' => false, 'error' => '目标名称已存在'];
+            }
+        }
+
+        $targetName = $newName ?? $className;
+        $slug = isset($options['slug']) ? $this->sanitizeSlug($options['slug']) : ($existing['slug'] ?? $this->sanitizeSlug($className));
+        $middleware = isset($options['middleware']) ? $this->normalizeMiddleware($options['middleware']) : $this->normalizeMiddleware($existing['middleware'] ?? []);
+        $route = $this->normalizeRoute($options['route'] ?? ($existing['route'] ?? ''), $slug);
+
+        if ($newName) {
+            $tree = $existing['component_tree'] ?? null;
+            if (is_string($tree)) $tree = json_decode($tree, true);
+
+            // Create new record with all data
+            $data = ['name' => $newName, 'slug' => $slug, 'route' => $route, 'middleware' => $middleware];
+            if ($tree) $data['component_tree'] = $tree;
+            $this->createRecordWithFallback($data);
+
+            // Delete old record
+            PageBuilderPageModel::where('name', $className)->delete();
+
+            // Rename PHP file
+            $oldFile = $this->pagesPath . '/' . $className . '.php';
+            $newFile = $this->pagesPath . '/' . $newName . '.php';
+            if (file_exists($oldFile)) {
+                $content = str_replace("class {$className}", "class {$newName}", file_get_contents($oldFile));
+                file_put_contents($newFile, $content);
+                unlink($oldFile);
+            }
+        } else {
+            $this->upsertDbRecord($className, $route, null, [
+                'slug' => $slug,
+                'middleware' => $middleware,
+            ]);
+        }
+
+        $this->registerDynamicRoute($targetName, $route, $middleware);
+
+        return ['success' => true];
+    }
+
     protected function upsertDbRecord(string $className, ?string $route = null, ?array $tree = null, array $meta = []): void
     {
         try {

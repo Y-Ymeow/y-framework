@@ -84,6 +84,7 @@ abstract class AbstractLiveComponent
         $liveActions = $this->getLiveActions();
 
         unset($liveActions[array_search('__updateProperty', $liveActions)]);
+        unset($liveActions[array_search('__refresh', $liveActions)]);
 
         return [
             '__component' => static::class,

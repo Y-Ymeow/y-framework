@@ -44,6 +44,26 @@ trait HasLiveDirectives
         return $this;
     }
 
+    private function convertValue(mixed $value): mixed
+    {
+        if (is_bool($value)) {
+            $value = $value ? 'true' : 'false';
+        } elseif (is_null($value)) {
+            $value = 'null';
+        } elseif (is_array($value)) {
+            $value = json_encode($value);
+        } elseif (is_object($value)) {
+            $value = json_encode($value);
+        } elseif (is_string($value)) {
+            if (str_starts_with($value, '$')) {
+                $value = substr($value, 1);
+            } else {
+                $value = "'{$value}'";
+            }
+        }
+        return $value;
+    }
+
     /**
      * LiveComponent Action 绑定（data-live-action / data-action）
      *
@@ -69,20 +89,10 @@ trait HasLiveDirectives
 
             $paramString = [];
             foreach ($params as $key => $value) {
+                $value = $this->convertValue($value);
                 if (is_numeric($key)) {
                     $paramString[] = $value;
                 } else {
-                    if (is_bool($value)) {
-                        $value = $value ? 'true' : 'false';
-                    } elseif (is_null($value)) {
-                        $value = 'null';
-                    } elseif (is_array($value)) {
-                        $value = json_encode($value);
-                    } elseif (is_object($value)) {
-                        $value = json_encode($value);
-                    } elseif (is_string($value)) {
-                        $value = "'{$value}'";
-                    }
                     $paramString[] = "{$key}: {$value}";
                 }
             }

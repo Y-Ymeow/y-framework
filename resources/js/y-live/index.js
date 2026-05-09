@@ -12,7 +12,7 @@ import { bindNavigateLinks, navigate } from "./navigate.js";
 import Poll from "./poll.js";
 
 // ─── Action Content Parser ─────────────────────────────────────
-function parseActionContent(content) {
+function parseActionContent(content, $execute = null) {
     const parenIdx = content.indexOf("(");
     if (parenIdx === -1) return { action: content, args: [] };
 
@@ -52,7 +52,7 @@ function parseActionContent(content) {
             continue;
         }
         if (ch === "," && depth === 0) {
-            const parsed = parseArg(current.trim());
+            const parsed = parseArg(current.trim(), $execute);
             if (parsed.named) {
                 namedParams[parsed.key] = parsed.value;
                 hasNamed = true;
@@ -62,7 +62,7 @@ function parseActionContent(content) {
         }
         current += ch;
     }
-    const last = parseArg(current.trim());
+    const last = parseArg(current.trim(), $execute);
     if (last.named) {
         namedParams[last.key] = last.value;
         hasNamed = true;
@@ -72,13 +72,18 @@ function parseActionContent(content) {
     return { action, args };
 }
 
-function parseArg(arg) {
+function parseArg(arg, $execute = null) {
     const m = arg.match(/^(\w+)\s*:\s*(.*)$/);
-    if (m) return { named: true, key: m[1], value: parseValue(m[2].trim()) };
-    return { named: false, value: parseValue(arg) };
+    if (m)
+        return {
+            named: true,
+            key: m[1],
+            value: parseValue(m[2].trim(), $execute),
+        };
+    return { named: false, value: parseValue(arg, $execute) };
 }
 
-function parseValue(str) {
+function parseValue(str, $execute = null) {
     if (
         (str.startsWith("'") && str.endsWith("'")) ||
         (str.startsWith('"') && str.endsWith('"'))
@@ -88,6 +93,11 @@ function parseValue(str) {
     if (str === "true") return true;
     if (str === "false") return false;
     if (str === "null") return null;
+
+    if ($execute && !(str.startsWith("'") || str.startsWith('"'))) {
+        return $execute(str);
+    }
+
     return str;
 }
 
@@ -99,41 +109,46 @@ directive("live", (el, state, method, { content }) => {
 
 // 2. 注册 data-action 指令
 //    data-action:click="openBuilder(1, name: 'About')" → $live.openBuilder(1, {name:'About'})
-directive("action", (el, state, method, { content, modifiers, $execute }) => {
-    const eventType = method || "click";
+directive(
+    "action",
+    (el, state, method, { content, modifiers, $execute, $evaluate }) => {
+        const eventType = method || "click";
 
-    const handler = (e) => {
-        if (modifiers.includes("prevent")) e.preventDefault();
-        if (modifiers.includes("stop")) e.stopPropagation();
-        if (el.disabled) return;
+        const handler = (e) => {
+            if (modifiers.includes("prevent")) e.preventDefault();
+            if (modifiers.includes("stop")) e.stopPropagation();
+            if (el.disabled) return;
 
-        if (
-            eventType === "submit" ||
-            (eventType === "click" &&
-                (el.tagName === "A" || el.type === "submit"))
-        ) {
-            e.preventDefault();
-        }
+            if (
+                eventType === "submit" ||
+                (eventType === "click" &&
+                    (el.tagName === "A" || el.type === "submit"))
+            ) {
+                e.preventDefault();
+            }
 
-        const { action, args } = parseActionContent(content);
-        let expr;
-        if (args.length === 0) {
-            expr = action;
-        } else {
-            expr = `${action}(${args.map((a) => (typeof a === "object" ? JSON.stringify(a) : JSON.stringify(a))).join(", ")})`;
-        }
-        $execute("$live." + expr, null, e);
-    };
+            const { action, args } = parseActionContent(content, (val) =>
+                $evaluate(val, state, e),
+            );
+            let expr;
+            if (args.length === 0) {
+                expr = action + '()';
+            } else {
+                expr = `${action}(${args.map((a) => (typeof a === "object" ? JSON.stringify(a) : JSON.stringify(a))).join(", ")})`;
+            }
+            $execute("$live." + expr, state, e);
+        };
 
-    if (el._y_action_bound) return;
-    el._y_action_bound = true;
+        if (el._y_action_bound) return;
+        el._y_action_bound = true;
 
-    el.addEventListener(eventType, handler);
-    return () => {
-        el._y_action_bound = false;
-        el.removeEventListener(eventType, handler);
-    };
-});
+        el.addEventListener(eventType, handler);
+        return () => {
+            el._y_action_bound = false;
+            el.removeEventListener(eventType, handler);
+        };
+    },
+);
 
 // 3. 注册 data-live-model 指令 — 绑定输入到 $live.update(property, value)
 directive(
@@ -508,20 +523,6 @@ const L = {
             }
             current[parts[parts.length - 1]] = value;
         };
-
-        scope
-            .querySelectorAll("[data-model], [data-submit-field]")
-            .forEach((input) => {
-                const key =
-                    input.getAttribute("data-model") ||
-                    input.getAttribute("data-submit-field");
-                if (!key) return;
-
-                const value = collectFieldValue(input);
-                if (value !== undefined) {
-                    setNestedValue(data, key, value);
-                }
-            });
         return data;
     },
 };

@@ -67,6 +67,10 @@ trait HasActions
             $this->actionCache['__updateProperty'] = '__updateProperty';
         }
 
+        if (!isset($this->actionCache['__refresh'])) {
+            $this->actionCache['__refresh'] = '__refresh';
+        }
+
         return $this->actionCache;
     }
 

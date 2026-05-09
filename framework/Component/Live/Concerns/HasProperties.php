@@ -293,6 +293,14 @@ trait HasProperties
         }
     }
 
+    public function __refresh(array $params): void
+    {
+        $fragment = $params['fragment'] ?? null;
+        if ($fragment) {
+            $this->refresh($fragment);
+        }
+    }
+
     protected function persistPropertiesInternal(): void
     {
         $ref = new \ReflectionClass($this);

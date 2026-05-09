@@ -18,6 +18,7 @@ use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
 use Framework\View\Document\AssetRegistry;
 use Framework\View\FragmentRegistry;
+use Admin\Content\Media;
 
 #[RouteGroup('/live', name: 'live')]
 class LiveRequestHandler
@@ -435,7 +436,22 @@ class LiveRequestHandler
         $directory = paths()->uploads() . '/' . $datePath;
         $storedName = $file->store($directory);
 
-        $url = '/uploads/' . $datePath . '/' . $storedName;
+        $url = '/media/' . $datePath . '/' . $storedName;
+
+        try {
+            $media = Media::create([
+                'disk'      => 'uploads',
+                'path'      => $datePath . '/' . $storedName,
+                'filename'  => $file->getName(),
+                'extension' => (string) $file->getExtension(),
+                'mime_type' => $file->getMime(),
+                'size'      => $file->getSize(),
+                'alt'       => '',
+                'title'     => pathinfo((string) $file->getName(), PATHINFO_FILENAME),
+            ]);
+        } catch (\Throwable $e) {
+            $this->logUploadError($e);
+        }
 
         return Response::json([
             'success' => true,
@@ -443,6 +459,7 @@ class LiveRequestHandler
             'name' => $file->getName(),
             'size' => $file->getSize(),
             'mime' => $file->getMime(),
+            'id' => isset($media) ? $media->id : null,
         ]);
     }
 
@@ -871,6 +888,13 @@ class LiveRequestHandler
     private function logNavigateError(\Throwable $e): void
     {
         $logFile = __DIR__ . '/../../storage/logs/navigate-error.log';
+        @mkdir(dirname($logFile), 0755, true);
+        @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+    }
+
+    private function logUploadError(\Throwable $e): void
+    {
+        $logFile = __DIR__ . '/../../storage/logs/live-upload-error.log';
         @mkdir(dirname($logFile), 0755, true);
         @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
     }

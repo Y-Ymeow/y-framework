@@ -476,6 +476,12 @@ abstract class UXComponent
         return 'div';
     }
 
+    public function state(array $state): static
+    {
+        $this->attrs['data-state'] = json_encode($state);
+        return $this;
+    }
+
     /**
      * 构建 Element 的通用属性
      * @ux-internal
