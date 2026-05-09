@@ -43,7 +43,6 @@ function hideLiveProgress() {
 function parseActionArgs(args) {
     if (args.length === 0) return {};
 
-    console.log(args);
     if (
         args.length === 1 &&
         args[0] &&
