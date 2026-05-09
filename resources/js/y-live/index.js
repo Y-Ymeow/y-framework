@@ -11,14 +11,94 @@ import { initIntl } from "./intl.js";
 import { bindNavigateLinks, navigate } from "./navigate.js";
 import Poll from "./poll.js";
 
+// ─── Action Content Parser ─────────────────────────────────────
+function parseActionContent(content) {
+    const parenIdx = content.indexOf("(");
+    if (parenIdx === -1) return { action: content, args: [] };
+
+    const action = content.slice(0, parenIdx);
+    const argsStr = content.slice(parenIdx + 1, -1).trim();
+    if (!argsStr) return { action, args: [] };
+
+    const args = [];
+    let namedParams = {};
+    let hasNamed = false;
+    let current = "",
+        inStr = false,
+        strChar = "",
+        depth = 0;
+
+    for (let i = 0; i < argsStr.length; i++) {
+        const ch = argsStr[i];
+        if (inStr) {
+            current += ch;
+            if (ch === strChar && argsStr[i - 1] !== "\\") inStr = false;
+            continue;
+        }
+        if (ch === "'" || ch === '"') {
+            inStr = true;
+            strChar = ch;
+            current += ch;
+            continue;
+        }
+        if ("([{".includes(ch)) {
+            depth++;
+            current += ch;
+            continue;
+        }
+        if (")]}".includes(ch)) {
+            depth--;
+            current += ch;
+            continue;
+        }
+        if (ch === "," && depth === 0) {
+            const parsed = parseArg(current.trim());
+            if (parsed.named) {
+                namedParams[parsed.key] = parsed.value;
+                hasNamed = true;
+            } else args.push(parsed.value);
+            current = "";
+            continue;
+        }
+        current += ch;
+    }
+    const last = parseArg(current.trim());
+    if (last.named) {
+        namedParams[last.key] = last.value;
+        hasNamed = true;
+    } else args.push(last.value);
+
+    if (hasNamed) args.push(namedParams);
+    return { action, args };
+}
+
+function parseArg(arg) {
+    const m = arg.match(/^(\w+)\s*:\s*(.*)$/);
+    if (m) return { named: true, key: m[1], value: parseValue(m[2].trim()) };
+    return { named: false, value: parseValue(arg) };
+}
+
+function parseValue(str) {
+    if (
+        (str.startsWith("'") && str.endsWith("'")) ||
+        (str.startsWith('"') && str.endsWith('"'))
+    )
+        return str.slice(1, -1);
+    if (/^-?\d+(\.\d+)?$/.test(str)) return Number(str);
+    if (str === "true") return true;
+    if (str === "false") return false;
+    if (str === "null") return null;
+    return str;
+}
+
 // 1. 注册 data-live 指令
 directive("live", (el, state, method, { content }) => {
     setupLiveComponent(el, () => {});
     el._y_live_managed = true;
 });
 
-// 2. 注册 data-action 指令 — 解析为 $live.actionName(params)
-//    data-action:click="loadPage(1, 10)" → $live.loadPage(1, 10)
+// 2. 注册 data-action 指令
+//    data-action:click="openBuilder(1, name: 'About')" → $live.openBuilder(1, {name:'About'})
 directive("action", (el, state, method, { content, modifiers, $execute }) => {
     const eventType = method || "click";
 
@@ -35,7 +115,14 @@ directive("action", (el, state, method, { content, modifiers, $execute }) => {
             e.preventDefault();
         }
 
-        $execute("$live." + content, null, e);
+        const { action, args } = parseActionContent(content);
+        let expr;
+        if (args.length === 0) {
+            expr = action;
+        } else {
+            expr = `${action}(${args.map((a) => (typeof a === "object" ? JSON.stringify(a) : JSON.stringify(a))).join(", ")})`;
+        }
+        $execute("$live." + expr, null, e);
     };
 
     if (el._y_action_bound) return;
@@ -128,7 +215,9 @@ directive("submit", (el, state, method, { content, modifiers, $execute }) => {
         if (!scope) return;
 
         const formData = L.collectFormData(scope);
-        const actionExpr = content.includes("(") ? content : `${content}(formData)`;
+        const actionExpr = content.includes("(")
+            ? content
+            : `${content}(formData)`;
 
         $execute(`$live.${actionExpr}`, { formData }, e);
     };

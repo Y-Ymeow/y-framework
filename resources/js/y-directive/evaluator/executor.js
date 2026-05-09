@@ -1,7 +1,7 @@
 // Evaluator Executor - 执行器
-import { validateForExecution } from '../security/index.js';
-import { getFullScope, getRootState } from '../scope/index.js';
-import { getCachedExpr, setCachedExpr, execCache } from './cache.js';
+import { validateForExecution } from "../security/index.js";
+import { getFullScope, getRootState } from "../scope/index.js";
+import { getCachedExpr, setCachedExpr, execCache } from "./cache.js";
 
 export function evaluate(expr, state, el) {
     if (!validateForExecution(expr)) {
@@ -13,7 +13,13 @@ export function evaluate(expr, state, el) {
         let fn = getCachedExpr(expr);
         if (!fn) {
             // 使用 return 确保返回值
-            fn = new Function('$', '$dispatch', '$el', '$root', `with($) { return (${expr}) }`);
+            fn = new Function(
+                "$",
+                "$dispatch",
+                "$el",
+                "$root",
+                `with($) { return (${expr}) }`,
+            );
             setCachedExpr(expr, fn);
         }
 
@@ -37,7 +43,14 @@ export function execute(expr, state, event, el) {
         let fn = getCachedExpr(expr, execCache);
         if (!fn) {
             // 执行模式不需要 return
-            fn = new Function('$', '$event', '$dispatch', '$el', '$root', `with($) { ${expr} }`);
+            fn = new Function(
+                "$",
+                "$event",
+                "$dispatch",
+                "$el",
+                "$root",
+                `with($) { ${expr} }`,
+            );
             setCachedExpr(expr, fn, execCache);
         }
 

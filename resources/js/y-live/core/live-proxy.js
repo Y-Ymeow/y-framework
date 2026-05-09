@@ -37,7 +37,13 @@ function parseActionArgs(args) {
     }
 
     const result = {}
-    args.forEach((val, i) => { result[i] = val })
+    args.forEach((val, i) => {
+        if (i === args.length - 1 && val && typeof val === 'object' && !Array.isArray(val)) {
+            Object.assign(result, val)
+        } else {
+            result[i] = val
+        }
+    })
     return result
 }
 
