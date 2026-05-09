@@ -382,7 +382,7 @@ class LiveRequestHandler
         }
     }
 
-    #[Route('/intl', ['POST'], name: 'live.intl', middleware: [VerifyCsrfToken::class])]
+    #[Route('/intl', ['POST'], name: 'live.intl', middleware: [])]
     public function intl(Request $request): Response
     {
         $error = $this->guardCsrf($request);
