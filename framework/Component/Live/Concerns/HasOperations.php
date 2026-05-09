@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Framework\Component\Live\Concerns;
 
+use Framework\View\Document\AssetRegistry;
+
 /**
  * @mixin \Framework\Component\Live\LiveComponent
  */
@@ -69,6 +71,36 @@ trait HasOperations
     public function dispatchEvent(string $event, array $detail = []): void
     {
         $this->operation('dispatch', ['event' => $event, 'detail' => $detail]);
+    }
+
+    /**
+     * 加载外部 JS 资源。
+     */
+    public function loadScript(string $src, ?string $id = null): void
+    {
+        if ($src === '') {
+            return;
+        }
+
+        $this->operation('loadScript', [
+            'src' => $src,
+            'id' => $id ?? md5($src),
+        ]);
+    }
+
+    /**
+     * 通过 /_js?ids=... 加载 AssetRegistry 中已注册的 JS 片段。
+     */
+    public function loadScriptIds(string|array $ids): void
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+        $src = AssetRegistry::getInstance()->buildScriptUrl($ids);
+
+        if ($src === '') {
+            return;
+        }
+
+        $this->loadScript($src, 'live:' . md5(implode(',', $ids)));
     }
 
     /**

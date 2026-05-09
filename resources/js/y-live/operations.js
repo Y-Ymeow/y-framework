@@ -2,6 +2,21 @@
 import { createSafeFragment, replaceLiveHtml, applyLiveFragment } from './core/dom.js';
 import { bindNavigateLinks, navigate as clientNavigate } from './navigate.js';
 
+function loadExternalScript(src, id = null) {
+    if (!src) return;
+
+    const key = id || src;
+    const exists = Array.from(document.querySelectorAll('script[data-live-script]'))
+        .some(script => script.dataset.liveScript === key);
+    if (exists) return;
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.defer = true;
+    script.dataset.liveScript = key;
+    document.body.appendChild(script);
+}
+
 export function executeOperation(op) {
     switch (op.op) {
         case 'update': {
@@ -78,6 +93,9 @@ export function executeOperation(op) {
             break;
         case 'js':
             console.warn('Live js operation is disabled for security reasons.');
+            break;
+        case 'loadScript':
+            loadExternalScript(op.src, op.id || null);
             break;
         case 'dispatch':
             window.dispatchEvent(new CustomEvent(op.event, { detail: op.detail || {} }));

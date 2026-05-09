@@ -53,6 +53,28 @@ class AssetRegistry
         return $this->namedScripts[$id] ?? null;
     }
 
+    public function getRequestedScriptIds(): array
+    {
+        return array_values(array_unique(array_merge(
+            array_keys($this->requestedScripts),
+            array_keys($this->namedScripts)
+        )));
+    }
+
+    public function buildScriptUrl(array $ids): string
+    {
+        $ids = array_values(array_unique(array_filter($ids, static fn ($id) => is_string($id) && $id !== '')));
+
+        if (empty($ids)) {
+            return '';
+        }
+
+        $idsParam = implode(',', $ids);
+        $v = substr(md5($idsParam), 0, 8);
+
+        return '/_js?ids=' . urlencode($idsParam) . '&v=' . $v;
+    }
+
     public function css(string $href, ?string $id = null): self
     {
         $key = $id ?? $href;
@@ -144,15 +166,10 @@ class AssetRegistry
             $html .= '<script src="' . htmlspecialchars($js['src']) . '"' . $defer . $module . $id . '></script>';
         }
 
-        $idsToLoad = array_unique(array_merge(
-            array_keys($this->requestedScripts),
-            array_keys($this->namedScripts)
-        ));
+        $idsToLoad = $this->getRequestedScriptIds();
 
         if (!empty($idsToLoad)) {
-            $ids = implode(',', $idsToLoad);
-            $v = substr(md5($ids), 0, 8);
-            $html .= '<script src="/_js?ids=' . urlencode($ids) . '&v=' . $v . '" defer></script>';
+            $html .= '<script src="' . htmlspecialchars($this->buildScriptUrl($idsToLoad)) . '" defer></script>';
         }
 
         return $html;

@@ -70,7 +70,15 @@ class SystemRoute
             return new Response('', 200, ['Content-Type' => 'application/javascript']);
         }
 
-        $ids = explode(',', $idsStr);
+        $ids = array_values(array_filter(
+            array_unique(explode(',', $idsStr)),
+            static fn ($id) => is_string($id) && preg_match('/^[A-Za-z0-9:_-]+$/', $id) === 1
+        ));
+
+        if (empty($ids)) {
+            return new Response('', 200, ['Content-Type' => 'application/javascript']);
+        }
+
         $registry = AssetRegistry::getInstance();
         $js = "/* Y-Framework Dynamic JS Resource */\n\n";
 

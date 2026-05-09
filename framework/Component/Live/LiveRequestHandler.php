@@ -16,6 +16,7 @@ use Framework\Http\Session\Session;
 use Framework\Http\Upload\Upload;
 use Framework\Routing\Attribute\Route;
 use Framework\Routing\Attribute\RouteGroup;
+use Framework\View\Document\AssetRegistry;
 use Framework\View\FragmentRegistry;
 
 #[RouteGroup('/live', name: 'live')]
@@ -107,6 +108,7 @@ class LiveRequestHandler
             $event = new LiveActionEvent($response, $component, app()->make(Request::class));
             \Framework\Events\Hook::getInstance()->dispatch($event);
             $response = $event->getResponse();
+            $this->appendRequestedScripts($response);
 
             return Response::json($response);
         } catch (\Throwable $e) {
@@ -745,6 +747,27 @@ class LiveRequestHandler
         if (!empty($componentOps)) {
             $response['operations'] = array_merge($response['operations'], $componentOps);
         }
+    }
+
+    private function appendRequestedScripts(array &$response): void
+    {
+        $registry = AssetRegistry::getInstance();
+        $ids = $registry->getRequestedScriptIds();
+
+        if (empty($ids)) {
+            return;
+        }
+
+        $src = $registry->buildScriptUrl($ids);
+        if ($src === '') {
+            return;
+        }
+
+        $response['operations'][] = [
+            'op' => 'loadScript',
+            'src' => $src,
+            'id' => 'live:' . md5(implode(',', $ids)),
+        ];
     }
 
     private function processComponentUpdate(string $componentId, array &$response, callable $callback): void
