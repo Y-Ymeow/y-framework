@@ -62,6 +62,7 @@ export function bindNavigateLinks(root) {
             const href = link.getAttribute('href');
             if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
             if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+            if (isExternalUrl(href)) return;
 
             e.preventDefault();
 
@@ -75,6 +76,54 @@ export function bindNavigateLinks(root) {
             navigate(href, options);
         });
     });
+}
+
+function isExternalUrl(href) {
+    try {
+        const url = new URL(href, window.location.origin);
+        return url.origin !== window.location.origin;
+    } catch {
+        return false;
+    }
+}
+
+function loadSources(sources) {
+    const cssList = sources.css || [];
+    const jsList = sources.js || [];
+    const promises = [];
+
+    cssList.forEach(item => {
+        const key = item.id || item.href;
+        if (!key) return;
+        if (document.querySelector(`link[id="${item.id}"]`) || document.querySelector(`link[href="${item.href}"]`)) return;
+        promises.push(new Promise((resolve) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = item.href;
+            if (item.id) link.id = item.id;
+            link.onload = resolve;
+            link.onerror = resolve;
+            document.head.appendChild(link);
+        }));
+    });
+
+    jsList.forEach(item => {
+        const key = item.id || item.src;
+        if (!key) return;
+        if (document.querySelector(`script[id="${item.id}"]`) || document.querySelector(`script[src="${item.src}"]`)) return;
+        promises.push(new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = item.src;
+            if (item.id) script.id = item.id;
+            if (item.module) script.type = 'module';
+            script.defer = true;
+            script.onload = resolve;
+            script.onerror = resolve;
+            document.head.appendChild(script);
+        }));
+    });
+
+    return Promise.all(promises);
 }
 
 export async function navigate(url, options = {}) {
@@ -113,23 +162,25 @@ export async function navigate(url, options = {}) {
                 window.history.pushState({ navigateUrl: url }, data.title || '', url);
             }
 
-            data.fragments.forEach(fragment => {
-                if (!fragment.name) return;
-                const target = fragment.name === 'body' 
-                    ? document.body 
-                    : document.querySelector(`[data-navigate-fragment="${fragment.name}"]`);
-                if (target) replaceNavigateHtml(target, fragment.html);
-            });
+            loadSources(data.sources || {}).then(() => {
+                data.fragments.forEach(fragment => {
+                    if (!fragment.name) return;
+                    const target = fragment.name === 'body' 
+                        ? document.body 
+                        : document.querySelector(`[data-navigate-fragment="${fragment.name}"]`);
+                    if (target) replaceNavigateHtml(target, fragment.html);
+                });
 
-            data.fragments.forEach(fragment => {
-                if (!fragment.name) return;
-                const target = fragment.name === 'body'
-                    ? document.body
-                    : document.querySelector(`[data-navigate-fragment="${fragment.name}"]`);
-                if (target) bindNavigateLinks(target);
-            });
+                data.fragments.forEach(fragment => {
+                    if (!fragment.name) return;
+                    const target = fragment.name === 'body'
+                        ? document.body
+                        : document.querySelector(`[data-navigate-fragment="${fragment.name}"]`);
+                    if (target) bindNavigateLinks(target);
+                });
 
-            applyActiveState(url);
+                applyActiveState(url);
+            });
         };
 
         if (document.startViewTransition) {

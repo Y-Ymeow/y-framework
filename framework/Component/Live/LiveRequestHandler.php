@@ -364,11 +364,13 @@ class LiveRequestHandler
             $html = $response->getContent() ?? '';
             $fragments = $this->extractNavigateFragments($html);
             $title = $this->extractTitle($html);
+            $sources = $this->extractSources($html);
 
             return Response::json([
                 'url' => $url,
                 'title' => $title,
                 'fragments' => $fragments,
+                'sources' => $sources,
             ]);
         } catch (\Throwable $e) {
             $this->logNavigateError($e);
@@ -883,6 +885,38 @@ class LiveRequestHandler
     private function extractTitle(string $html): string
     {
         return \Framework\Support\Dom::load($html)->getTitle();
+    }
+
+    private function extractSources(string $html): array
+    {
+        $dom = \Framework\Support\Dom::load($html);
+        $css = [];
+        $js = [];
+
+        $links = $dom->query('//head/link[@rel="stylesheet"]');
+        foreach ($links as $link) {
+            if ($link instanceof \DOMElement) {
+                $href = $link->getAttribute('href');
+                if ($href) {
+                    $id = $link->getAttribute('id') ?: null;
+                    $css[] = ['href' => $href, 'id' => $id];
+                }
+            }
+        }
+
+        $scripts = $dom->query('//head/script[@src]');
+        foreach ($scripts as $script) {
+            if ($script instanceof \DOMElement) {
+                $src = $script->getAttribute('src');
+                if ($src) {
+                    $id = $script->getAttribute('id') ?: null;
+                    $isModule = $script->getAttribute('type') === 'module';
+                    $js[] = ['src' => $src, 'id' => $id, 'module' => $isModule];
+                }
+            }
+        }
+
+        return ['css' => $css, 'js' => $js];
     }
 
     private function logNavigateError(\Throwable $e): void
