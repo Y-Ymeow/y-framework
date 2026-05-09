@@ -13,7 +13,7 @@ class ParagraphBlock extends BlockType
     public function __construct()
     {
         parent::__construct('paragraph');
-        $this->title = t('editor.blocks.paragraph');
+        $this->title = t('ux:editor.blocks.paragraph');
         $this->icon = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 16h2v-6h2v6h2V8H9v8zM5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>';
         $this->category = 'text';
         $this->attribute('content', ['type' => 'rich-text', 'default' => [], 'source' => 'children']);

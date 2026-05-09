@@ -12,7 +12,7 @@ class ImageBlock extends BlockType
     public function __construct()
     {
         parent::__construct('image');
-        $this->title = t('editor.blocks.image');
+        $this->title = t('ux:editor.blocks.image');
         $this->icon = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
         $this->category = 'media';
         $this->attribute('src', ['type' => 'string', 'default' => '']);

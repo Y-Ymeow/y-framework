@@ -13,7 +13,7 @@ class QuoteBlock extends BlockType
     public function __construct()
     {
         parent::__construct('quote');
-        $this->title = t('editor.blocks.quote');
+        $this->title = t('ux:editor.blocks.quote');
         $this->icon = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>';
         $this->category = 'text';
         $this->attribute('content', ['type' => 'rich-text', 'default' => [], 'source' => 'children']);

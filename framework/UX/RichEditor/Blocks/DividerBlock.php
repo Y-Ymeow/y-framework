@@ -12,7 +12,7 @@ class DividerBlock extends BlockType
     public function __construct()
     {
         parent::__construct('divider');
-        $this->title = t('editor.blocks.divider');
+        $this->title = t('ux:editor.blocks.divider');
         $this->icon = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 11h16v2H4z"/></svg>';
         $this->category = 'common';
         $this->attribute('style', ['type' => 'string', 'default' => 'solid']);

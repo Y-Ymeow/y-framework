@@ -13,7 +13,7 @@ class HeadingBlock extends BlockType
     public function __construct()
     {
         parent::__construct('heading');
-        $this->title = t('editor.blocks.heading');
+        $this->title = t('ux:editor.blocks.heading');
         $this->icon = '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>';
         $this->category = 'text';
         $this->attribute('level', ['type' => 'number', 'default' => 2, 'min' => 1, 'max' => 6]);
