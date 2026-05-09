@@ -50,6 +50,8 @@ class BlockType
     public string $category = 'common';
     public array $attributes = [];
     public bool $supportsInnerBlocks = false;
+    public bool $supportsInlineFormats = false;
+    public array $inlineFormats = [];
 
     private ?\Closure $renderElementCallback = null;
     private ?\Closure $editFormCallback = null;
@@ -105,6 +107,19 @@ class BlockType
     public function supportsInnerBlocks(bool $supports = true): static
     {
         $this->supportsInnerBlocks = $supports;
+        return $this;
+    }
+
+    public function supportsInlineFormats(bool $supports = true): static
+    {
+        $this->supportsInlineFormats = $supports;
+        return $this;
+    }
+
+    public function withInlineFormats(string ...$formats): static
+    {
+        $this->supportsInlineFormats = true;
+        $this->inlineFormats = $formats;
         return $this;
     }
 
@@ -199,6 +214,8 @@ class BlockType
             'category' => $this->category,
             'attributes' => $this->attributes,
             'supportsInnerBlocks' => $this->supportsInnerBlocks,
+            'supportsInlineFormats' => $this->supportsInlineFormats,
+            'inlineFormats' => $this->inlineFormats,
             'defaultAttributes' => $this->getDefaultAttributes(),
         ];
     }

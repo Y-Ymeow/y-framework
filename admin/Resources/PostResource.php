@@ -82,8 +82,7 @@ class PostResource extends BaseResource
                     ->rows(3),
 
                 \Framework\UX\Form\BlockEditor::make('content')
-                    ->label(['admin:posts.content', [], '内容'])
-                    ->height('600px'),
+                    ->label(['admin:posts.content', [], '内容']),
             ]),
         ]);
     }

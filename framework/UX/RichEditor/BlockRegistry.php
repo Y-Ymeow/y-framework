@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Framework\UX\RichEditor;
 
-use Framework\View\Base\Element;
+use Framework\UX\RichEditor\Blocks\ParagraphBlock;
+use Framework\UX\RichEditor\Blocks\HeadingBlock;
+use Framework\UX\RichEditor\Blocks\ImageBlock;
+use Framework\UX\RichEditor\Blocks\QuoteBlock;
+use Framework\UX\RichEditor\Blocks\CodeBlock;
+use Framework\UX\RichEditor\Blocks\ListBlock;
+use Framework\UX\RichEditor\Blocks\DividerBlock;
 
 /**
  * Block 注册表
@@ -88,127 +94,13 @@ class BlockRegistry
 
     public static function registerCoreBlocks(): void
     {
-        self::register('paragraph', BlockType::make('paragraph')
-            ->title(t('editor.blocks.paragraph'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 16h2v-6h2v6h2V8H9v8zM5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>')
-            ->category('text')
-            ->attribute('content', ['type' => 'rich-text', 'default' => '', 'source' => 'children'])
-        );
-
-        self::register('heading', BlockType::make('heading')
-            ->title(t('editor.blocks.heading'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>')
-            ->category('text')
-            ->attribute('level', ['type' => 'number', 'default' => 2, 'min' => 1, 'max' => 6])
-            ->attribute('content', ['type' => 'string', 'default' => '', 'source' => 'children'])
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                $level = 'h' . min(max((int)($attrs['level'] ?? 2), 1), 6);
-                return Element::make($level)
-                    ->html($attrs['content'] ?? '');
-            })
-        );
-
-        self::register('image', BlockType::make('image')
-            ->title(t('editor.blocks.image'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>')
-            ->category('media')
-            ->attribute('src', ['type' => 'string', 'default' => ''])
-            ->attribute('alt', ['type' => 'string', 'default' => ''])
-            ->attribute('caption', ['type' => 'string', 'default' => ''])
-            ->attribute('align', ['type' => 'string', 'default' => 'center'])
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                $figure = Element::make('figure');
-
-                $align = $attrs['align'] ?? 'center';
-                $figure->style('text-align:' . $align);
-
-                $img = Element::make('img')
-                    ->attr('src', $attrs['src'] ?? '')
-                    ->attr('alt', $attrs['alt'] ?? '');
-                $figure->child($img);
-
-                $caption = $attrs['caption'] ?? '';
-                if ($caption) {
-                    $figure->child(
-                        Element::make('figcaption')->text($caption)
-                    );
-                }
-
-                return $figure;
-            })
-        );
-
-        self::register('quote', BlockType::make('quote')
-            ->title(t('editor.blocks.quote'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>')
-            ->category('text')
-            ->attribute('content', ['type' => 'rich-text', 'default' => '', 'source' => 'children'])
-            ->attribute('citation', ['type' => 'string', 'default' => ''])
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                $blockquote = Element::make('blockquote')
-                    ->html($attrs['content'] ?? '');
-
-                $citation = $attrs['citation'] ?? '';
-                if ($citation) {
-                    $blockquote->child(
-                        Element::make('cite')->text($citation)
-                    );
-                }
-
-                return $blockquote;
-            })
-        );
-
-        self::register('code', BlockType::make('code')
-            ->title(t('editor.blocks.code'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>')
-            ->category('text')
-            ->attribute('content', ['type' => 'string', 'default' => ''])
-            ->attribute('language', ['type' => 'string', 'default' => ''])
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                $code = Element::make('code')
-                    ->text($attrs['content'] ?? '');
-
-                $lang = $attrs['language'] ?? '';
-                if ($lang) {
-                    $code->class('language-' . $lang);
-                }
-
-                return Element::make('pre')->child($code);
-            })
-        );
-
-        self::register('list', BlockType::make('list')
-            ->title(t('editor.blocks.list'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4zM2 6h2v2H2zm0 5h2v2H2zm0 5h2v2H2z"/></svg>')
-            ->category('text')
-            ->attribute('ordered', ['type' => 'boolean', 'default' => false])
-            ->attribute('items', ['type' => 'array', 'default' => []])
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                $ordered = (bool)($attrs['ordered'] ?? false);
-                $items = (array)($attrs['items'] ?? []);
-                $tag = $ordered ? 'ol' : 'ul';
-
-                $list = Element::make($tag);
-
-                foreach ($items as $item) {
-                    $list->child(
-                        Element::make('li')->text((string)$item)
-                    );
-                }
-
-                return $list;
-            })
-        );
-
-        self::register('divider', BlockType::make('divider')
-            ->title(t('editor.blocks.divider'))
-            ->icon('<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>')
-            ->category('common')
-            ->withRenderElement(function (array $attrs, array $innerBlocks): Element {
-                return Element::make('hr');
-            })
-        );
+        self::register('paragraph', new ParagraphBlock());
+        self::register('heading', new HeadingBlock());
+        self::register('image', new ImageBlock());
+        self::register('quote', new QuoteBlock());
+        self::register('code', new CodeBlock());
+        self::register('list', new ListBlock());
+        self::register('divider', new DividerBlock());
     }
 
     public static function serialize(array $blocks): string
@@ -273,7 +165,7 @@ class BlockRegistry
         if (empty($blocks) && trim(strip_tags($html))) {
             $blocks[] = [
                 'blockName' => 'paragraph',
-                'attributes' => ['content' => $html],
+                'attributes' => ['content' => SegmentRenderer::htmlToSegments($html)],
             ];
         }
 
@@ -283,17 +175,18 @@ class BlockRegistry
     private static function domNodeToBlock(\DOMElement $node): ?array
     {
         $tag = strtolower($node->nodeName);
+        $innerHtml = self::getInnerHtml($node);
 
         $blockMap = [
-            'p' => ['paragraph', ['content' => self::getInnerHtml($node)]],
-            'h1' => ['heading', ['level' => 1, 'content' => self::getInnerHtml($node)]],
-            'h2' => ['heading', ['level' => 2, 'content' => self::getInnerHtml($node)]],
-            'h3' => ['heading', ['level' => 3, 'content' => self::getInnerHtml($node)]],
-            'h4' => ['heading', ['level' => 4, 'content' => self::getInnerHtml($node)]],
-            'h5' => ['heading', ['level' => 5, 'content' => self::getInnerHtml($node)]],
-            'h6' => ['heading', ['level' => 6, 'content' => self::getInnerHtml($node)]],
-            'blockquote' => ['quote', ['content' => self::getInnerHtml($node)]],
-            'pre' => ['code', ['content' => self::getInnerHtml($node)]],
+            'p' => ['paragraph', ['content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h1' => ['heading', ['level' => 1, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h2' => ['heading', ['level' => 2, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h3' => ['heading', ['level' => 3, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h4' => ['heading', ['level' => 4, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h5' => ['heading', ['level' => 5, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'h6' => ['heading', ['level' => 6, 'content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'blockquote' => ['quote', ['content' => SegmentRenderer::htmlToSegments($innerHtml)]],
+            'pre' => ['code', ['content' => strip_tags($innerHtml)]],
             'ul' => ['list', ['ordered' => false, 'items' => self::getListItems($node)]],
             'ol' => ['list', ['ordered' => true, 'items' => self::getListItems($node)]],
             'hr' => ['divider', []],
@@ -317,7 +210,7 @@ class BlockRegistry
 
         return [
             'blockName' => 'paragraph',
-            'attributes' => ['content' => self::getInnerHtml($node)],
+            'attributes' => ['content' => SegmentRenderer::htmlToSegments($innerHtml)],
         ];
     }
 

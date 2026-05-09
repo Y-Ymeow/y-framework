@@ -232,6 +232,158 @@ class DocumentParser
      * @param callable $processor 处理器回调
      * @return static
      */
+    public static function htmlToBlocks(string $html): array
+    {
+        if (trim($html) === '') {
+            return [];
+        }
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+        $container = null;
+        foreach ($dom->childNodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $container = $node;
+                break;
+            }
+        }
+
+        if (!$container) {
+            return [['blockName' => 'paragraph', 'attributes' => ['content' => SegmentRenderer::htmlToSegments($html)]]];
+        }
+
+        $blocks = [];
+        foreach ($container->childNodes as $child) {
+            if (!($child instanceof \DOMElement)) {
+                $text = trim($child->textContent);
+                if ($text !== '') {
+                    $blocks[] = ['blockName' => 'paragraph', 'attributes' => ['content' => SegmentRenderer::htmlToSegments($text)]];
+                }
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+            $innerHtml = '';
+            foreach ($child->childNodes as $innerChild) {
+                $innerHtml .= $dom->saveHTML($innerChild);
+            }
+
+            switch ($tag) {
+                case 'h1':
+                case 'h2':
+                case 'h3':
+                case 'h4':
+                case 'h5':
+                case 'h6':
+                    $level = (int) substr($tag, 1);
+                    $blocks[] = [
+                        'blockName' => 'heading',
+                        'attributes' => [
+                            'level' => $level,
+                            'content' => SegmentRenderer::htmlToSegments($innerHtml),
+                        ],
+                    ];
+                    break;
+
+                case 'blockquote':
+                    $cite = $child->getAttribute('cite') ?: '';
+                    $blocks[] = [
+                        'blockName' => 'quote',
+                        'attributes' => [
+                            'content' => SegmentRenderer::htmlToSegments($innerHtml),
+                            'cite' => $cite,
+                        ],
+                    ];
+                    break;
+
+                case 'pre':
+                    $codeEl = $child->getElementsByTagName('code')->item(0);
+                    $codeContent = $codeEl ? $codeEl->textContent : $child->textContent;
+                    $language = '';
+                    if ($codeEl) {
+                        $class = $codeEl->getAttribute('class') ?: '';
+                        if (preg_match('/language-(\w+)/', $class, $m)) {
+                            $language = $m[1];
+                        }
+                    }
+                    $blocks[] = [
+                        'blockName' => 'code',
+                        'attributes' => [
+                            'content' => $codeContent,
+                            'language' => $language,
+                        ],
+                    ];
+                    break;
+
+                case 'ul':
+                case 'ol':
+                    $items = [];
+                    foreach ($child->getElementsByTagName('li') as $li) {
+                        $liHtml = '';
+                        foreach ($li->childNodes as $liChild) {
+                            $liHtml .= $dom->saveHTML($liChild);
+                        }
+                        $items[] = strip_tags($liHtml);
+                    }
+                    $blocks[] = [
+                        'blockName' => 'list',
+                        'attributes' => [
+                            'items' => $items,
+                            'ordered' => $tag === 'ol',
+                        ],
+                    ];
+                    break;
+
+                case 'img':
+                    $blocks[] = [
+                        'blockName' => 'image',
+                        'attributes' => [
+                            'src' => $child->getAttribute('src') ?: '',
+                            'alt' => $child->getAttribute('alt') ?: '',
+                            'caption' => $child->getAttribute('title') ?: '',
+                        ],
+                    ];
+                    break;
+
+                case 'hr':
+                    $blocks[] = [
+                        'blockName' => 'divider',
+                        'attributes' => [],
+                    ];
+                    break;
+
+                case 'p':
+                default:
+                    $blocks[] = [
+                        'blockName' => 'paragraph',
+                        'attributes' => [
+                            'content' => SegmentRenderer::htmlToSegments($innerHtml),
+                        ],
+                    ];
+                    break;
+            }
+        }
+
+        return $blocks;
+    }
+
+    public static function blocksToHtml(array $blocks): string
+    {
+        $html = '';
+        foreach ($blocks as $block) {
+            $blockName = $block['blockName'] ?? 'paragraph';
+            $attrs = $block['attributes'] ?? [];
+            $blockType = BlockRegistry::get($blockName);
+
+            if ($blockType) {
+                $element = $blockType->renderElement($attrs);
+                $html .= $element->render();
+            }
+        }
+        return $html;
+    }
+
     public function registerProcessor(string $name, callable $processor): static
     {
         $this->processors[$name] = $processor;
