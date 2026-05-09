@@ -21,6 +21,7 @@ return [
 
         \Admin\Services\AdminServiceProvider::class,
         \App\Providers\PageBuilderServiceProvider::class,
+        \Framework\Plugin\PluginServiceProvider::class,
     ],
 
     'debug_providers' => [

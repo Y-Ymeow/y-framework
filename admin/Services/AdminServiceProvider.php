@@ -16,6 +16,7 @@ use Admin\Resources\UserResource;
 use Admin\Pages\MenuManagerPage;
 use Admin\Pages\MediaPage;
 use Admin\Pages\PageBuilderPage;
+use Admin\Pages\PluginPage;
 use Admin\DashboardData\Register;
 use Framework\Foundation\Application;
 use Framework\Foundation\ServiceProvider;
@@ -76,6 +77,7 @@ class AdminServiceProvider extends ServiceProvider
         AdminManager::registerPage(MenuManagerPage::class);
         AdminManager::registerPage(MediaPage::class);
         AdminManager::registerPage(PageBuilderPage::class);
+        AdminManager::registerPage(PluginPage::class);
         AdminManager::registerResource(PostResource::class);
         AdminManager::registerResource(CategoryResource::class);
         AdminManager::registerResource(TagResource::class);
