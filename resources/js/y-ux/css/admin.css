@@ -138,9 +138,13 @@ body > .admin-main.admin-sidebar-collapsed {
 }
 
 .admin-form-wrapper {
-    max-width: 720px;
     margin: 0 auto;
 }
+.admin-form-width--sm { max-width: 36rem; }
+.admin-form-width--md { max-width: 48rem; }
+.admin-form-width--lg { max-width: 64rem; }
+.admin-form-width--xl { max-width: 80rem; }
+.admin-form-width--full { max-width: 100%; }
 
 .admin-form-header {
     display: flex;

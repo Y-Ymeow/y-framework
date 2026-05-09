@@ -19,9 +19,7 @@ return [
     'last_modified' => '最后修改时间',
     'unknown' => '未知',
     'logout' => '退出登录',
-    'settings' => '设置',
     'media' => '媒体库',
-    'roles' => '角色管理',
     'permissions' => '权限管理',
     'menus' => '菜单管理',
     'posts' => '文章管理',
@@ -91,18 +89,6 @@ return [
         'viewer' => '查看',
         'super_admin' => '超级管理员',
     ],
-
-    'edit' => '编辑',
-    'delete' => '删除',
-    'save' => '保存',
-    'cancel' => '取消',
-    'create' => '新建',
-    'search' => '搜索',
-    'filter' => '筛选',
-    'export' => '导出',
-    'no_results' => '暂无数据',
-    'confirm_delete' => '确认删除？',
-    'upload' => '上传',
 
     'settings' => [
         'title' => '系统设置',
@@ -184,5 +170,11 @@ return [
         'security' => '安全管理',
         'performance' => '性能管理',
         'content' => '内容管理',
+    ],
+
+    'plugins' => [
+        'title' => '插件管理',
+        'description' => '管理已安装的插件',
+        'no_plugins' => '暂无已安装的插件',
     ]
 ];
