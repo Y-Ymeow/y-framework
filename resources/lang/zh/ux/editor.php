@@ -1,5 +1,7 @@
 <?php
 
+use PhpParser\Node\Expr\Cast\Void_;
+
 return [
     'format' => [
         'bold' => '加粗',
@@ -18,6 +20,10 @@ return [
         'code' => '代码块',
         'list' => '列表',
         'divider' => '分割线',
+        'callout' => '提示框',
+        'table' => '表格',
+        'video' => '视频',
+        'columns' => '列数',
     ],
     'placeholder' => [
         'paragraph' => '输入段落文字...',

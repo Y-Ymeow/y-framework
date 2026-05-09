@@ -71,7 +71,6 @@ class PostEditPage extends EmbeddedLiveComponent
         $this->status = $post->status;
         $this->categoryId = $post->category_id;
         $this->coverImage = $this->normalizeMediaUrl($post->cover_image);
-        $this->coverImage = $post->cover_image;
         $this->tagIds = $post->getTagIds();
     }
 
@@ -172,7 +171,7 @@ class PostEditPage extends EmbeddedLiveComponent
     protected function renderToolbar(): Element
     {
         $toolbar = Element::make('div')
-            ->class('post-edit-toolbar', 'flex', 'items-center', 'justify-between', 'px-6', 'py-3', 'border-b', 'bg-white', 'sticky', 'top-0', 'z-10');
+            ->class('post-edit-toolbar', 'flex', 'items-center', 'justify-between', 'px-6', 'py-3', 'border-b', 'border-gray-200', 'bg-white', 'sticky', 'top-0', 'z-10');
 
         $left = Element::make('div')->class('flex', 'items-center', 'gap-4');
 
@@ -194,7 +193,7 @@ class PostEditPage extends EmbeddedLiveComponent
 
         $right->child(
             Element::make('select')
-                ->class('form-select', 'text-sm', 'border', 'rounded', 'px-3', 'py-1.5')
+                ->class('form-select', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-1.5')
                 ->attr('data-live-model', 'status')
                 ->attr('data-live-debounce', '0')
                 ->child($this->option('draft', '草稿'))
@@ -277,11 +276,11 @@ class PostEditPage extends EmbeddedLiveComponent
     protected function renderSidebarCard(string $title, Element $content): Element
     {
         $card = Element::make('div')
-            ->class('bg-white', 'rounded-lg', 'shadow-sm', 'border', 'overflow-hidden');
+            ->class('bg-white', 'rounded-lg', 'shadow-sm', 'border', 'border-gray-200', 'overflow-hidden');
 
         $card->child(
             Element::make('div')
-                ->class('px-4', 'py-2.5', 'border-b', 'bg-gray-50', 'text-sm', 'font-semibold', 'text-gray-700')
+                ->class('px-4', 'py-2.5', 'border-b', 'border-gray-200', 'bg-gray-50', 'text-sm', 'font-semibold', 'text-gray-700')
                 ->text($title)
         );
 
@@ -334,7 +333,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $categories = Category::query()->orderBy('sort', 'asc')->get()->toArray();
 
         $select = Element::make('select')
-            ->class('form-select', 'w-full', 'text-sm', 'border', 'rounded', 'px-3', 'py-2')
+            ->class('form-select', 'w-full', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-2')
             ->attr('data-live-model', 'categoryId')
             ->attr('data-live-debounce', '0');
 
@@ -397,7 +396,7 @@ class PostEditPage extends EmbeddedLiveComponent
     protected function renderExcerptField(): Element
     {
         return Element::make('textarea')
-            ->class('w-full', 'text-sm', 'border', 'rounded', 'px-3', 'py-2', 'resize-none')
+            ->class('w-full', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-2', 'resize-none')
             ->attr('rows', '4')
             ->attr('placeholder', '输入文章摘要...')
             ->attr('data-live-model', 'excerpt')
@@ -414,7 +413,7 @@ class PostEditPage extends EmbeddedLiveComponent
                 ->attr('type', 'text')
                 ->attr('placeholder', 'auto-generated')
                 ->attr('value', $this->slug)
-                ->class('w-full', 'text-sm', 'border', 'rounded', 'px-3', 'py-2')
+                ->class('w-full', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-2')
                 ->attr('data-live-model', 'slug')
                 ->attr('data-live-debounce', '500')
         );

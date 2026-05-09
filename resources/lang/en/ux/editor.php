@@ -18,6 +18,10 @@ return [
         'code' => 'Code Block',
         'list' => 'List',
         'divider' => 'Divider',
+        'callout' => 'Callout',
+        'table' => 'Table',
+        'video' => 'Video',
+        'columns' => 'Columns',
     ],
     'placeholder' => [
         'paragraph' => 'Type paragraph text...',
