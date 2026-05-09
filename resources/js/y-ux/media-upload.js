@@ -54,11 +54,16 @@ class MediaUpload {
         }
 
         try {
+            const csrfToken = () =>
+                document.querySelector('meta[name="csrf-token"]')
+                    ?.getAttribute("content") || "";
+
             const resp = await fetch(uploadUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken(),
                 },
             });
 
