@@ -56,7 +56,7 @@ class BlockEditor extends FormField
                     if (state.blocks.length === 0) {
                         state.blocks.push({ blockName: "paragraph", attributes: { content: [{ text: "" }] } });
                     }
-                    this.editors.set(editorId, { wrapperEl, canvasEl, hiddenInput, state });
+                    this.editors.set(editorId, { wrapperEl, canvasEl, hiddenInput, state, dragState: null });
                     this.renderBlocks(editorId);
                     this.bindGlobalEvents(editorId);
                 },
@@ -84,8 +84,7 @@ class BlockEditor extends FormField
                     const handle = document.createElement("div");
                     handle.className = "ux-block-editor__block-handle";
                     handle.innerHTML = \'<svg viewBox="0 0 24 24" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>\';
-                    handle.draggable = true;
-                    handle.addEventListener("dragstart", (e) => this.onDragStart(e, editorId, index));
+                    handle.addEventListener("mousedown", (e) => { e.preventDefault(); this.startDrag(editorId, index, e); });
                     wrapper.appendChild(handle);
                     const content = document.createElement("div");
                     content.className = "ux-block-editor__block-content";
@@ -682,25 +681,63 @@ class BlockEditor extends FormField
                     this.renderBlocks(editorId);
                     this.syncToHidden(editorId);
                 },
-                onDragStart(e, editorId, index) {
-                    e.dataTransfer.setData("text/plain", index.toString());
-                    e.dataTransfer.effectAllowed = "move";
-                },
-                onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; },
-                onDrop(e, editorId) {
-                    e.preventDefault();
-                    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
-                    const blockEl = e.target.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const toIndex = parseInt(blockEl.dataset.blockIndex);
-                    if (fromIndex === toIndex) return;
+                startDrag(editorId, index, e) {
                     const editor = this.editors.get(editorId);
                     if (!editor) return;
-                    const block = editor.state.blocks.splice(fromIndex, 1)[0];
-                    editor.state.blocks.splice(toIndex, 0, block);
-                    editor.state.selectedBlockIndex = toIndex;
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
+                    const blockEl = editor.canvasEl.children[index];
+                    if (!blockEl) return;
+                    editor.dragState = { fromIndex: index, startY: e.clientY, blockEl, placeholder: null };
+                    blockEl.classList.add("ux-block-editor__block--dragging");
+                    const onMove = (ev) => this.onDragMove(ev, editorId);
+                    const onUp = (ev) => {
+                        this.onDragEnd(ev, editorId);
+                        document.removeEventListener("mousemove", onMove);
+                        document.removeEventListener("mouseup", onUp);
+                    };
+                    document.addEventListener("mousemove", onMove);
+                    document.addEventListener("mouseup", onUp);
+                },
+                onDragMove(e, editorId) {
+                    const editor = this.editors.get(editorId);
+                    if (!editor || !editor.dragState) return;
+                    const { fromIndex, blockEl } = editor.dragState;
+                    const blocks = editor.canvasEl.children;
+                    let targetIndex = fromIndex;
+                    for (let i = 0; i < blocks.length; i++) {
+                        if (blocks[i] === blockEl) continue;
+                        const rect = blocks[i].getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        if (e.clientY < midY && i <= fromIndex) { targetIndex = i; break; }
+                        if (e.clientY > midY && i >= fromIndex) { targetIndex = i; }
+                    }
+                    for (let i = 0; i < blocks.length; i++) {
+                        blocks[i].classList.remove("ux-block-editor__block--drop-before", "ux-block-editor__block--drop-after");
+                    }
+                    if (targetIndex !== fromIndex) {
+                        const targetEl = blocks[targetIndex];
+                        if (targetEl) {
+                            targetEl.classList.add(targetIndex < fromIndex ? "ux-block-editor__block--drop-before" : "ux-block-editor__block--drop-after");
+                        }
+                    }
+                    editor.dragState.targetIndex = targetIndex;
+                },
+                onDragEnd(e, editorId) {
+                    const editor = this.editors.get(editorId);
+                    if (!editor || !editor.dragState) return;
+                    const { fromIndex, blockEl, targetIndex } = editor.dragState;
+                    blockEl.classList.remove("ux-block-editor__block--dragging");
+                    const blocks = editor.canvasEl.children;
+                    for (let i = 0; i < blocks.length; i++) {
+                        blocks[i].classList.remove("ux-block-editor__block--drop-before", "ux-block-editor__block--drop-after");
+                    }
+                    if (targetIndex !== undefined && targetIndex !== fromIndex) {
+                        const block = editor.state.blocks.splice(fromIndex, 1)[0];
+                        editor.state.blocks.splice(targetIndex, 0, block);
+                        editor.state.selectedBlockIndex = targetIndex;
+                        this.renderBlocks(editorId);
+                        this.syncToHidden(editorId);
+                    }
+                    editor.dragState = null;
                 },
                 bindGlobalEvents(editorId) {
                     const editor = this.editors.get(editorId);
@@ -716,8 +753,6 @@ class BlockEditor extends FormField
                         const blockName = item.dataset.blockName;
                         if (blockName) this.insertBlock(editorId, blockName);
                     });
-                    editor.canvasEl.addEventListener("dragover", (e) => this.onDragOver(e));
-                    editor.canvasEl.addEventListener("drop", (e) => this.onDrop(e, editorId));
                     document.addEventListener("selectionchange", () => {
                         const sel = window.getSelection();
                         if (!sel || sel.isCollapsed) this.hideFormatToolbar();

@@ -432,6 +432,18 @@ CSS;
     box-shadow: inset 0 0 0 1.5px var(--ux-primary, #3b82f6) !important;
 }
 
+.ux-block-editor__block--dragging {
+    opacity: 0.4;
+}
+
+.ux-block-editor__block--drop-before {
+    box-shadow: inset 0 2px 0 0 var(--ux-primary, #3b82f6);
+}
+
+.ux-block-editor__block--drop-after {
+    box-shadow: inset 0 -2px 0 0 var(--ux-primary, #3b82f6);
+}
+
 .ux-block-editor__block-handle {
     display: flex;
     align-items: center;
@@ -444,6 +456,7 @@ CSS;
     color: var(--ux-text-muted, #9ca3af);
     transition: opacity 0.15s ease;
     user-select: none;
+    -webkit-user-select: none;
 }
 
 .ux-block-editor__block:hover .ux-block-editor__block-handle,
