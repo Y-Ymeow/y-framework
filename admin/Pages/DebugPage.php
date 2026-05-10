@@ -31,6 +31,9 @@ class DebugPage extends LiveComponent
     #[State]
     public string $duration = '';
 
+    #[State]
+    public ?int $selectedRequestIndex = null;
+
     private bool $mounted = false;
 
     public function mount(): void
@@ -68,10 +71,19 @@ class DebugPage extends LiveComponent
     }
 
     #[LiveAction]
-    public function selectTab(string $tab): void
+    public function selectTab(array $params): void
     {
-        $this->activeTab = $tab;
-        $this->refresh('debug-content');
+        $this->activeTab = $params['tab'] ?? 'overview';
+        $this->selectedRequestIndex = null;
+        $this->refresh('debug-body');
+    }
+
+    #[LiveAction]
+    public function toggleRequest(array $params): void
+    {
+        $index = $params['index'] ?? null;
+        $this->selectedRequestIndex = $this->selectedRequestIndex === $index ? null : $index;
+        $this->refresh('debug-body');
     }
 
     #[LiveAction]
@@ -84,6 +96,7 @@ class DebugPage extends LiveComponent
         $this->sqlCount = 0;
         $this->memory = '';
         $this->duration = '';
+        $this->refresh('debug-body');
     }
 
     public function render(): Element
@@ -129,7 +142,8 @@ class DebugPage extends LiveComponent
 
     protected function renderBody(): Element
     {
-        $body = Element::make('div')->class('flex', 'h-[calc(100vh-56px)]');
+        $body = Element::make('div')->class('flex', 'h-[calc(100vh-56px)]')
+            ->liveFragment('debug-body');
 
         $body->child($this->renderSidebar());
         $body->child($this->renderContent());
@@ -285,7 +299,8 @@ class DebugPage extends LiveComponent
         $header->child(Element::make('div')->class('w-16')->text('时间'));
         $table->child($header);
 
-        foreach ($history as $req) {
+        foreach ($history as $idx => $req) {
+            $isSelected = $this->selectedRequestIndex === $idx;
             $status = $req['status'] ?? 200;
             $statusColor = $status >= 400 ? 'text-red-400' : ($status >= 300 ? 'text-yellow-400' : 'text-green-400');
             $typeColor = match ($req['type'] ?? '') {
@@ -294,13 +309,47 @@ class DebugPage extends LiveComponent
                 default => 'text-gray-400',
             };
 
-            $row = Element::make('div')->class('flex', 'px-4', 'py-2', 'border-b', 'border-gray-700', 'last:border-0', 'hover:bg-gray-750', 'text-xs');
-            $row->child(Element::make('div')->class('w-16', $typeColor)->text($req['type'] ?? '-'));
-            $row->child(Element::make('div')->class('w-16')->text($req['method'] ?? '-'));
-            $row->child(Element::make('div')->class('w-20', $statusColor)->text((string)($status)));
-            $row->child(Element::make('div')->class('flex-1', 'truncate')->text($req['url'] ?? '-'));
-            $row->child(Element::make('div')->class('w-20')->text($req['duration'] ?? '-'));
-            $row->child(Element::make('div')->class('w-16')->text($req['time'] ?? '-'));
+            $row = Element::make('div')
+                ->class('cursor-pointer', 'hover:bg-gray-750')
+                ->liveAction('toggleRequest', 'click', ['index' => $idx]);
+
+            $cols = Element::make('div')->class('flex', 'px-4', 'py-2', 'border-b', 'border-gray-700', 'text-xs');
+            $cols->child(Element::make('div')->class('w-16', $typeColor)->text($req['type'] ?? '-'));
+            $cols->child(Element::make('div')->class('w-16')->text($req['method'] ?? '-'));
+            $cols->child(Element::make('div')->class('w-20', $statusColor)->text((string)($status)));
+            $cols->child(Element::make('div')->class('flex-1', 'truncate')->text($req['url'] ?? '-'));
+            $cols->child(Element::make('div')->class('w-20')->text($req['duration'] ?? '-'));
+            $cols->child(Element::make('div')->class('w-16')->text($req['time'] ?? '-'));
+            $row->child($cols);
+
+            if ($isSelected) {
+                $detail = Element::make('div')->class('px-4', 'py-3', 'bg-gray-850', 'border-b', 'border-gray-700', 'space-y-2');
+                $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold')->text('请求详情'));
+
+                $requestBody = $req['requestBody'] ?? [];
+                if (!empty($requestBody)) {
+                    $detail->child(
+                        Element::make('pre')->class('text-xs', 'text-green-300', 'bg-gray-900', 'p-2', 'rounded', 'overflow-x-auto')
+                            ->text(json_encode($requestBody, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))
+                    );
+                }
+
+                $responseSummary = $req['responseSummary'] ?? [];
+                if (!empty($responseSummary)) {
+                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold', 'mt-2')->text('响应摘要'));
+                    $detail->child(
+                        Element::make('pre')->class('text-xs', 'text-blue-300', 'bg-gray-900', 'p-2', 'rounded', 'overflow-x-auto')
+                            ->text(json_encode($responseSummary, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))
+                    );
+                }
+
+                if (empty($requestBody) && empty($responseSummary)) {
+                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-500')->text('无详细数据'));
+                }
+
+                $row->child($detail);
+            }
+
             $table->child($row);
         }
 

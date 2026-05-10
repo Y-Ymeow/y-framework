@@ -55,15 +55,50 @@ class BlockEditor extends UXLiveComponent
         return parent::make($props, $routeParams);
     }
 
-    public function name(string $name): static { $this->fieldName = $name; return $this; }
-    public function label(string|array $label): static { $this->fieldLabel = $label; return $this; }
-    public function placeholder(string $placeholder): static { $this->fieldPlaceholder = $placeholder; return $this; }
-    public function help(string $help): static { $this->fieldHelp = $help; return $this; }
-    public function required(bool $required = true): static { $this->fieldRequired = $required; return $this; }
-    public function allowedBlocks(array $blocks): static { $this->allowedBlocks = $blocks; return $this; }
-    public function minHeight(string $height): static { $this->minHeight = $height; return $this; }
-    public function height(string $height): static { return $this->minHeight($height); }
-    public function liveModel(string $property): static { $this->liveModelProperty = $property; return $this; }
+    public function name(string $name): static
+    {
+        $this->fieldName = $name;
+        return $this;
+    }
+    public function label(string|array $label): static
+    {
+        $this->fieldLabel = $label;
+        return $this;
+    }
+    public function placeholder(string $placeholder): static
+    {
+        $this->fieldPlaceholder = $placeholder;
+        return $this;
+    }
+    public function help(string $help): static
+    {
+        $this->fieldHelp = $help;
+        return $this;
+    }
+    public function required(bool $required = true): static
+    {
+        $this->fieldRequired = $required;
+        return $this;
+    }
+    public function allowedBlocks(array $blocks): static
+    {
+        $this->allowedBlocks = $blocks;
+        return $this;
+    }
+    public function minHeight(string $height): static
+    {
+        $this->minHeight = $height;
+        return $this;
+    }
+    public function height(string $height): static
+    {
+        return $this->minHeight($height);
+    }
+    public function liveModel(string $property): static
+    {
+        $this->liveModelProperty = $property;
+        return $this;
+    }
 
     public function value(mixed $value): static
     {
@@ -87,8 +122,12 @@ class BlockEditor extends UXLiveComponent
     }
 
     #[LiveAction]
-    public function addBlock(array $formData): void
+    public function addBlock(string $blockName): void
     {
+        $formData = [
+            'blockName' => $blockName,
+        ];
+
         $this->mergeCurrentBlocks($formData);
         $blockName = $formData['blockName'] ?: 'paragraph';
         $blockType = BlockRegistry::get($blockName);
@@ -394,7 +433,7 @@ class BlockEditor extends UXLiveComponent
             ->class('ux-block-editor__toolbar-btn')
             ->attr('type', 'button')
             ->attr('title', $title)
-            ->attr('data-submit:click', 'addBlock')
+            ->liveAction('addBlock', 'click', ['blockName' => $blockName])
             ->attr('data-block-name', $blockName)
             ->html('<i class="bi ' . $icon . '"></i>');
     }
@@ -403,6 +442,7 @@ class BlockEditor extends UXLiveComponent
     {
         $canvas = Element::make('div')
             ->class('ux-block-editor__canvas', $this->previewMode ? 'ux-block-editor__canvas--preview' : '')
+            ->state(['block' => json_decode('{}')])
             ->liveFragment('canvas');
 
         if ($this->minHeight) {
@@ -563,6 +603,9 @@ class BlockEditor extends UXLiveComponent
         $container->child(
             Element::make('div')
                 ->class('ux-block-editor__editable')
+                ->state(['content' => null])
+                ->model('content')
+                ->liveAction('updateBlockAttr', 'input', ['index' => $index, 'attr' => 'content', 'value' => '$content'])
                 ->attr('contenteditable', 'true')
                 ->attr('data-editable-index', (string)$index)
                 ->attr('data-editable-attr', $attrName)
@@ -594,7 +637,12 @@ class BlockEditor extends UXLiveComponent
                 ->attr('data-editable-placeholder', '输入标题...')
                 ->html($this->contentToHtml($attrs['content'] ?? ''))
                 ->style('font-size:' . match ((int)$level) {
-                    1 => '2rem', 2 => '1.5rem', 3 => '1.25rem', 4 => '1.1rem', 5 => '1rem', default => '0.9rem'
+                    1 => '2rem',
+                    2 => '1.5rem',
+                    3 => '1.25rem',
+                    4 => '1.1rem',
+                    5 => '1rem',
+                    default => '0.9rem'
                 } . ';font-weight:600')
         );
     }
