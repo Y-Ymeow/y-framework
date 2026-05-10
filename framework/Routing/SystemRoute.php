@@ -27,6 +27,13 @@ class SystemRoute
         return new self();
     }
 
+    #[Route('/_debug', methods: ['GET'], name: 'debug')]
+    public function debug(): Response
+    {
+        $page = new \Admin\Pages\DebugPage();
+        return Response::html($page);
+    }
+
     #[Route('/media/{path...}', methods: ['GET'], name: 'media')]
     public function media(Request $request, string $path): Response
     {
