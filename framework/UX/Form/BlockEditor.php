@@ -4,963 +4,1026 @@ declare(strict_types=1);
 
 namespace Framework\UX\Form;
 
+use Framework\Component\Live\Attribute\LiveAction;
+use Framework\Component\Live\Attribute\State;
+use Framework\CSS\RichEditorRules;
+use Framework\UX\RichEditor\BlockRegistry;
+use Framework\UX\RichEditor\InlineFormatRegistry;
+use Framework\UX\RichEditor\SegmentRenderer;
+use Framework\UX\UXLiveComponent;
 use Framework\View\Base\Element;
 use Framework\View\Document\AssetRegistry;
-use Framework\UX\RichEditor\BlockRegistry;
-use Framework\UX\RichEditor\BlockType;
-use Framework\UX\RichEditor\InlineFormatRegistry;
-use Framework\UX\RichEditor\RichEditorExtension;
-use Framework\CSS\RichEditorRules;
 
-class BlockEditor extends FormField
+class BlockEditor extends UXLiveComponent
 {
-    protected static ?string $componentName = 'blockEditor';
+    #[State]
+    public array $blocks = [];
 
-    protected array $allowedBlocks = [];
-    protected string $placeholder = '';
-    protected ?string $width = null;
-    protected ?string $minHeight = null;
-    protected array $customBlockTypes = [];
-    protected array $blockExtensions = [];
+    #[State]
+    public int $selectedIndex = -1;
 
-    public function __construct()
+    #[State]
+    public bool $previewMode = false;
+
+    private string $fieldName = '';
+    private string|array $fieldLabel = '';
+    private string $fieldPlaceholder = '';
+    private string $fieldHelp = '';
+    private bool $fieldRequired = false;
+    private array $allowedBlocks = [];
+    private string $minHeight = '';
+    private string $liveModelProperty = '';
+
+    public function __construct(string $name = '')
     {
         parent::__construct();
+        if ($name) {
+            $this->fieldName = $name;
+        }
         AssetRegistry::getInstance()->inlineStyle('ux:block-editor', RichEditorRules::getBlockEditorStyles());
         BlockRegistry::registerCoreBlocks();
         InlineFormatRegistry::registerCoreFormats();
     }
 
-    protected function init(): void
+    public static function make(array|string $props = [], array $routeParams = []): static
     {
-        $this->registerJs('blockEditor', '
-            const BlockEditor = {
-                editors: new Map(),
-                init() {
-                    document.querySelectorAll(".ux-block-editor[data-editor-id]").forEach(el => {
-                        if (!this.editors.has(el.dataset.editorId)) this.initEditor(el);
-                    });
-                },
-                initEditor(wrapperEl) {
-                    const editorId = wrapperEl.dataset.editorId;
-                    if (!editorId) return;
-                    const canvasEl = wrapperEl.querySelector(".ux-block-editor__canvas");
-                    if (!canvasEl) return;
-                    const hiddenInput = wrapperEl.querySelector("input[type=hidden]");
-                    const blockDefs = JSON.parse(wrapperEl.dataset.blocks || "{}");
-                    const formatDefs = JSON.parse(wrapperEl.dataset.formats || "{}");
-                    const placeholder = wrapperEl.dataset.placeholder || "";
-                    const state = { blocks: [], selectedBlockIndex: -1, blockDefs, formatDefs, placeholder };
-                    const initialBlocks = canvasEl.dataset.initialBlocks;
-                    if (initialBlocks) { try { state.blocks = JSON.parse(initialBlocks); } catch(e) { state.blocks = []; } }
-                    if (state.blocks.length === 0) {
-                        state.blocks.push({ blockName: "paragraph", attributes: { content: [{ text: "" }] } });
-                    }
-                    this.editors.set(editorId, { wrapperEl, canvasEl, hiddenInput, state, dragState: null });
-                    this.renderBlocks(editorId);
-                    this.bindGlobalEvents(editorId);
-                },
-                renderBlocks(editorId) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const { canvasEl, state } = editor;
-                    canvasEl.innerHTML = "";
-                    if (state.blocks.length === 0) {
-                        state.blocks.push({ blockName: "paragraph", attributes: { content: [{ text: "" }] } });
-                    }
-                    state.blocks.forEach((block, index) => {
-                        const blockEl = this.renderBlock(editorId, block, index);
-                        canvasEl.appendChild(blockEl);
-                    });
-                },
-                renderBlock(editorId, block, index) {
-                    const editor = this.editors.get(editorId);
-                    const blockDef = editor.state.blockDefs[block.blockName];
-                    const isSelected = index === editor.state.selectedBlockIndex;
-                    const wrapper = document.createElement("div");
-                    wrapper.className = "ux-block-editor__block" + (isSelected ? " ux-block-editor__block--selected" : "");
-                    wrapper.dataset.blockIndex = index;
-                    wrapper.dataset.blockName = block.blockName;
-                    const handle = document.createElement("div");
-                    handle.className = "ux-block-editor__block-handle";
-                    handle.innerHTML = \'<svg viewBox="0 0 24 24" width="16" height="16"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>\';
-                    handle.addEventListener("mousedown", (e) => { e.preventDefault(); this.startDrag(editorId, index, e); });
-                    wrapper.appendChild(handle);
-                    const content = document.createElement("div");
-                    content.className = "ux-block-editor__block-content";
-                    this.renderBlockContent(content, block, blockDef, editorId, index);
-                    wrapper.appendChild(content);
-                    wrapper.addEventListener("click", () => this.selectBlock(editorId, index));
-                    return wrapper;
-                },
-                renderBlockContent(container, block, blockDef, editorId, blockIndex) {
-                    if (!blockDef) { container.innerHTML = \'<div class="ux-block-editor__block-unknown">未知 Block: \' + block.blockName + "</div>"; return; }
-                    const attrs = block.attributes || {};
-                    switch (block.blockName) {
-                        case "paragraph": this.renderRichTextBlock(container, attrs, "content", "输入段落文字...", editorId, blockIndex, true); break;
-                        case "heading": this.renderHeadingBlock(container, attrs, editorId, blockIndex); break;
-                        case "image": this.renderImageBlock(container, attrs, editorId, blockIndex); break;
-                        case "quote": this.renderQuoteBlock(container, attrs, editorId, blockIndex); break;
-                        case "code": this.renderCodeBlock(container, attrs, editorId, blockIndex); break;
-                        case "list": this.renderListBlock(container, attrs, editorId, blockIndex); break;
-                        case "divider": this.renderDividerBlock(container); break;
-                        default: this.renderGenericBlock(container, block, blockDef, editorId, blockIndex); break;
-                    }
-                },
-                renderRichTextBlock(container, attrs, attrName, placeholder, editorId, blockIndex, hasInline) {
-                    const el = document.createElement("div");
-                    el.className = "ux-block-editor__editable";
-                    el.contentEditable = "true";
-                    el.dataset.attr = attrName;
-                    el.dataset.blockIndex = blockIndex;
-                    const content = attrs[attrName] || [];
-                    if (Array.isArray(content) && content.length > 0 && hasInline) {
-                        this.currentFormatDefs = this.editors.get(editorId)?.state.formatDefs || {};
-                        el.innerHTML = this.segmentsToHtml(content);
-                    } else if (typeof content === "string" && content) {
-                        el.innerHTML = content;
-                    }
-                    if (!el.textContent.trim()) {
-                        el.dataset.empty = "true";
-                        el.textContent = placeholder;
-                    }
-                    this.bindEditable(el, editorId);
-                    container.appendChild(el);
-                },
-                renderHeadingBlock(container, attrs, editorId, blockIndex) {
-                    const level = attrs.level || 2;
-                    const levelSelector = document.createElement("select");
-                    levelSelector.className = "ux-block-editor__heading-level";
-                    levelSelector.dataset.attr = "level";
-                    for (let i = 1; i <= 6; i++) { const opt = document.createElement("option"); opt.value = i; opt.textContent = "H" + i; if (i === level) opt.selected = true; levelSelector.appendChild(opt); }
-                    this.bindSelect(levelSelector, editorId);
-                    container.appendChild(levelSelector);
-                    this.renderRichTextBlock(container, attrs, "content", "输入标题...", editorId, blockIndex, true);
-                },
-                renderImageBlock(container, attrs, editorId, blockIndex) {
-                    const wrapper = document.createElement("div");
-                    wrapper.className = "ux-block-editor__image-wrapper";
-                    if (attrs.src) { const img = document.createElement("img"); img.src = attrs.src; img.alt = attrs.alt || ""; img.className = "ux-block-editor__image-preview"; wrapper.appendChild(img); }
-                    ["src", "alt", "caption"].forEach(key => {
-                        const input = document.createElement("input");
-                        input.type = "text"; input.className = "ux-block-editor__input";
-                        input.placeholder = key === "src" ? "图片地址" : key === "alt" ? "替代文字" : "图片说明";
-                        input.value = attrs[key] || ""; input.dataset.attr = key;
-                        this.bindInput(input, editorId);
-                        wrapper.appendChild(input);
-                    });
-                    container.appendChild(wrapper);
-                },
-                renderQuoteBlock(container, attrs, editorId, blockIndex) {
-                    this.renderRichTextBlock(container, attrs, "content", "输入引用内容...", editorId, blockIndex, true);
-                    const citeInput = document.createElement("input");
-                    citeInput.type = "text"; citeInput.className = "ux-block-editor__input";
-                    citeInput.placeholder = "引用来源"; citeInput.value = attrs.cite || "";
-                    citeInput.dataset.attr = "cite"; this.bindInput(citeInput, editorId);
-                    container.appendChild(citeInput);
-                },
-                renderCodeBlock(container, attrs, editorId, blockIndex) {
-                    const langInput = document.createElement("input");
-                    langInput.type = "text"; langInput.className = "ux-block-editor__input";
-                    langInput.placeholder = "语言（如 php, js）"; langInput.value = attrs.language || "";
-                    langInput.dataset.attr = "language"; this.bindInput(langInput, editorId);
-                    container.appendChild(langInput);
-                    const el = document.createElement("pre");
-                    el.className = "ux-block-editor__editable ux-block-editor__editable--code";
-                    el.contentEditable = "true"; el.dataset.attr = "content";
-                    el.textContent = attrs.content || "";
-                    if (!attrs.content) { el.dataset.empty = "true"; el.textContent = "输入代码..."; }
-                    this.bindEditable(el, editorId);
-                    container.appendChild(el);
-                },
-                renderListBlock(container, attrs, editorId, blockIndex) {
-                    const items = attrs.items || [];
-                    const toggleWrapper = document.createElement("div");
-                    toggleWrapper.className = "ux-block-editor__list-toggle";
-                    const orderedCheck = document.createElement("input");
-                    orderedCheck.type = "checkbox"; orderedCheck.checked = attrs.ordered || false;
-                    orderedCheck.dataset.attr = "ordered";
-                    const orderedLabel = document.createElement("label");
-                    orderedLabel.appendChild(orderedCheck);
-                    orderedLabel.appendChild(document.createTextNode(" 有序列表"));
-                    toggleWrapper.appendChild(orderedLabel);
-                    this.bindCheckbox(orderedCheck, editorId);
-                    container.appendChild(toggleWrapper);
-                    const listEl = document.createElement("div");
-                    listEl.className = "ux-block-editor__list-items";
-                    listEl.dataset.attr = "items";
-                    items.forEach((item, i) => listEl.appendChild(this.createListItem(item, i, editorId)));
-                    container.appendChild(listEl);
-                    const addBtn = document.createElement("button");
-                    addBtn.type = "button"; addBtn.className = "ux-block-editor__list-add";
-                    addBtn.textContent = "+ 添加列表项";
-                    addBtn.addEventListener("click", () => {
-                        const idx = listEl.querySelectorAll(".ux-block-editor__list-item").length;
-                        listEl.appendChild(this.createListItem("", idx, editorId));
-                        this.syncListItems(listEl, editorId);
-                    });
-                    container.appendChild(addBtn);
-                },
-                createListItem(text, index, editorId) {
-                    const itemEl = document.createElement("div");
-                    itemEl.className = "ux-block-editor__list-item";
-                    const input = document.createElement("input");
-                    input.type = "text"; input.className = "ux-block-editor__input";
-                    input.value = text; input.dataset.itemIndex = index;
-                    input.addEventListener("input", () => this.syncListItems(input.closest(".ux-block-editor__list-items"), editorId));
-                    const removeBtn = document.createElement("button");
-                    removeBtn.type = "button"; removeBtn.className = "ux-block-editor__list-item-remove";
-                    removeBtn.textContent = "✕";
-                    removeBtn.addEventListener("click", () => { itemEl.remove(); this.syncListItems(itemEl.closest(".ux-block-editor__list-items"), editorId); });
-                    itemEl.appendChild(input);
-                    itemEl.appendChild(removeBtn);
-                    return itemEl;
-                },
-                syncListItems(listEl, editorId) {
-                    if (!listEl) return;
-                    const wrapperEl = listEl.closest(".ux-block-editor");
-                    if (!wrapperEl) return;
-                    const eid = wrapperEl.dataset.editorId;
-                    const blockEl = listEl.closest(".ux-block-editor__block");
-                    const index = parseInt(blockEl.dataset.blockIndex);
-                    const items = [];
-                    listEl.querySelectorAll(".ux-block-editor__list-item input").forEach(input => items.push(input.value));
-                    const editor = this.editors.get(eid);
-                    if (editor && editor.state.blocks[index]) {
-                        editor.state.blocks[index].attributes.items = items;
-                        this.syncToHidden(eid);
-                    }
-                },
-                renderDividerBlock(container) {
-                    const hr = document.createElement("hr");
-                    hr.className = "ux-block-editor__divider";
-                    container.appendChild(hr);
-                },
-                renderGenericBlock(container, block, blockDef, editorId, blockIndex) {
-                    const attrs = block.attributes || {};
-                    const attrDefs = blockDef.attributes || {};
-                    for (const [attrName, attrDef] of Object.entries(attrDefs)) {
-                        const type = attrDef.type || "string";
-                        const value = attrs[attrName] ?? attrDef.default ?? "";
-                        const fieldWrapper = document.createElement("div");
-                        fieldWrapper.className = "ux-block-editor__field";
-                        const label = document.createElement("label");
-                        label.className = "ux-block-editor__field-label";
-                        label.textContent = attrName;
-                        fieldWrapper.appendChild(label);
-                        let input;
-                        if (type === "rich-text") {
-                            input = document.createElement("div"); input.className = "ux-block-editor__editable";
-                            input.contentEditable = true; input.dataset.attr = attrName;
-                            if (Array.isArray(value) && value.length > 0) {
-                                this.currentFormatDefs = this.editors.get(editorId)?.state.formatDefs || {};
-                                input.innerHTML = this.segmentsToHtml(value);
-                            } else if (typeof value === "string") { input.innerHTML = value; }
-                            this.bindEditable(input, editorId);
-                        } else if (type === "boolean") {
-                            input = document.createElement("input"); input.type = "checkbox";
-                            input.checked = !!value; input.dataset.attr = attrName;
-                            this.bindCheckbox(input, editorId);
-                        } else if (type === "number") {
-                            input = document.createElement("input"); input.type = "number";
-                            input.className = "ux-block-editor__input"; input.value = value;
-                            if (attrDef.min !== undefined) input.min = attrDef.min;
-                            if (attrDef.max !== undefined) input.max = attrDef.max;
-                            input.dataset.attr = attrName; this.bindInput(input, editorId);
-                        } else {
-                            input = document.createElement("input"); input.type = "text";
-                            input.className = "ux-block-editor__input"; input.value = value;
-                            input.dataset.attr = attrName; this.bindInput(input, editorId);
-                        }
-                        fieldWrapper.appendChild(input);
-                        container.appendChild(fieldWrapper);
-                    }
-                },
-                segmentsToHtml(segments) {
-                    if (!Array.isArray(segments)) return "";
-                    return segments.map(seg => {
-                        const text = seg.text || "";
-                        const formatKeys = Object.keys(seg).filter(k => k !== "text");
-                        if (formatKeys.length === 0) return this.escapeHtml(text);
-                        let html = this.escapeHtml(text);
-                        for (const fmt of formatKeys.reverse()) {
-                            const val = seg[fmt];
-                            const formatDef = this.currentFormatDefs ? this.currentFormatDefs[fmt] : null;
-                            const tag = formatDef ? formatDef.tag : "span";
-                            if (typeof val === "object" && val !== null) {
-                                let attrStr = "";
-                                for (const [k, v] of Object.entries(val)) {
-                                    attrStr += " " + k + \'="\' + this.escapeHtml(String(v)) + \'"\';
-                                }
-                                html = "<" + tag + attrStr + ">" + html + "</" + tag + ">";
-                            } else {
-                                html = "<" + tag + ">" + html + "</" + tag + ">";
-                            }
-                        }
-                        return html;
-                    }).join("");
-                },
-                htmlToSegments(html) {
-                    if (!html) return [{ text: "" }];
-                    const temp = document.createElement("div");
-                    temp.innerHTML = html;
-                    const segments = [];
-                    this.walkDomToSegments(temp, {}, segments);
-                    if (segments.length === 0) segments.push({ text: "" });
-                    return segments;
-                },
-                walkDomToSegments(node, activeFormats, segments) {
-                    for (const child of node.childNodes) {
-                        if (child.nodeType === Node.TEXT_NODE) {
-                            const text = child.textContent;
-                            if (text) {
-                                const seg = { text };
-                                for (const [name, attrs] of Object.entries(activeFormats)) {
-                                    seg[name] = attrs;
-                                }
-                                segments.push(seg);
-                            }
-                        } else if (child.nodeType === Node.ELEMENT_NODE) {
-                            const fmt = this.domElementToFormat(child);
-                            if (fmt) {
-                                const newFormats = { ...activeFormats, [fmt.name]: fmt.attrs };
-                                this.walkDomToSegments(child, newFormats, segments);
-                            } else {
-                                this.walkDomToSegments(child, activeFormats, segments);
-                            }
-                        }
-                    }
-                },
-                domElementToFormat(el) {
-                    const tag = el.tagName.toLowerCase();
-                    const tagMap = { strong: "bold", b: "bold", em: "italic", i: "italic", u: "underline", s: "strikethrough", del: "strikethrough", code: "code", a: "link" };
-                    if (tagMap[tag]) {
-                        const name = tagMap[tag];
-                        const attrs = {};
-                        if (name === "link") {
-                            if (el.hasAttribute("href")) attrs.href = el.getAttribute("href");
-                            if (el.hasAttribute("target")) attrs.target = el.getAttribute("target");
-                        }
-                        return { name, attrs };
-                    }
-                    const formatName = el.dataset.format;
-                    if (formatName) {
-                        const attrs = {};
-                        for (const attr of el.attributes) {
-                            if (attr.name.startsWith("data-") && attr.name !== "data-format") attrs[attr.name] = attr.value;
-                        }
-                        return { name: formatName, attrs };
-                    }
-                    if (el.classList && el.classList.contains("ux-mention")) {
-                        const attrs = {};
-                        if (el.dataset.mentionId) attrs["data-mention-id"] = el.dataset.mentionId;
-                        return { name: "mention", attrs };
-                    }
-                    return null;
-                },
-                escapeHtml(str) {
-                    const div = document.createElement("div");
-                    div.textContent = str;
-                    return div.innerHTML;
-                },
-                bindEditable(el, editorId) {
-                    el.addEventListener("focus", () => {
-                        if (el.dataset.empty === "true") { el.textContent = ""; delete el.dataset.empty; }
-                        const blockEl = el.closest(".ux-block-editor__block");
-                        if (blockEl) { const idx = parseInt(blockEl.dataset.blockIndex); this.selectBlock(editorId, idx); }
-                    });
-                    el.addEventListener("blur", () => {
-                        if (!el.textContent.trim()) {
-                            el.dataset.empty = "true";
-                            const blockEl = el.closest(".ux-block-editor__block");
-                            el.textContent = this.getPlaceholder(blockEl?.dataset.blockName);
-                        }
-                        this.syncFromEditable(el, editorId);
-                    });
-                    el.addEventListener("input", () => this.syncFromEditable(el, editorId));
-                    el.addEventListener("keydown", (e) => this.handleEditableKeydown(e, el, editorId));
-                    el.addEventListener("mouseup", () => setTimeout(() => this.checkSelectionAndShowToolbar(el, editorId), 10));
-                    el.addEventListener("keyup", () => setTimeout(() => this.checkSelectionAndShowToolbar(el, editorId), 10));
-                },
-                handleEditableKeydown(e, el, editorId) {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                        const blockEl = el.closest(".ux-block-editor__block");
-                        if (!blockEl) return;
-                        const blockName = blockEl.dataset.blockName;
-                        if (blockName === "code") return;
-                        e.preventDefault();
-                        this.syncFromEditable(el, editorId);
-                        const index = parseInt(blockEl.dataset.blockIndex);
-                        this.splitBlockAtCursor(editorId, index, el);
-                    }
-                    if (e.key === "Backspace" && el.textContent.trim() === "") {
-                        const blockEl = el.closest(".ux-block-editor__block");
-                        if (!blockEl) return;
-                        const index = parseInt(blockEl.dataset.blockIndex);
-                        if (index > 0) { e.preventDefault(); this.deleteBlock(editorId, index); }
-                    }
-                    if (e.key === "/") {
-                        const sel = window.getSelection();
-                        if (sel && sel.isCollapsed && el.textContent.trim() === "") {
-                            e.preventDefault();
-                            this.showSlashCommand(el, editorId);
-                        }
-                    }
-                },
-                splitBlockAtCursor(editorId, blockIndex, el) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const block = editor.state.blocks[blockIndex];
-                    if (!block) return;
-                    const sel = window.getSelection();
-                    if (!sel || sel.rangeCount === 0) return;
-                    const range = sel.getRangeAt(0);
-                    const preRange = document.createRange();
-                    preRange.selectNodeContents(el);
-                    preRange.setEnd(range.startContainer, range.startOffset);
-                    const postRange = document.createRange();
-                    postRange.selectNodeContents(el);
-                    postRange.setStart(range.endContainer, range.endOffset);
-                    const blockDef = editor.state.blockDefs[block.blockName];
-                    const hasInline = blockDef && blockDef.supportsInlineFormats;
-                    if (hasInline) {
-                        this.currentFormatDefs = editor.state.formatDefs;
-                        const beforeSegments = this.htmlToSegments(preRange.toString());
-                        const afterSegments = this.htmlToSegments(postRange.toString());
-                        block.attributes.content = beforeSegments;
-                        editor.state.blocks.splice(blockIndex + 1, 0, { blockName: "paragraph", attributes: { content: afterSegments } });
-                    } else {
-                        block.attributes.content = preRange.toString();
-                        editor.state.blocks.splice(blockIndex + 1, 0, { blockName: "paragraph", attributes: { content: postRange.toString() } });
-                    }
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                    setTimeout(() => {
-                        const newBlockEl = editor.canvasEl.children[blockIndex + 1];
-                        if (newBlockEl) { const editable = newBlockEl.querySelector("[contenteditable]"); if (editable) editable.focus(); }
-                    }, 50);
-                },
-                showSlashCommand(el, editorId) {
-                    const existing = document.querySelector(".ux-block-editor__slash-menu");
-                    if (existing) existing.remove();
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const menu = document.createElement("div");
-                    menu.className = "ux-block-editor__slash-menu";
-                    const rect = el.getBoundingClientRect();
-                    menu.style.top = rect.bottom + 4 + "px";
-                    menu.style.left = rect.left + "px";
-                    const categories = {};
-                    for (const [name, def] of Object.entries(editor.state.blockDefs)) {
-                        const cat = def.category || "common";
-                        if (!categories[cat]) categories[cat] = [];
-                        categories[cat].push(def);
-                    }
-                    for (const [cat, blocks] of Object.entries(categories)) {
-                        const section = document.createElement("div");
-                        section.className = "ux-block-editor__slash-section";
-                        const title = document.createElement("div");
-                        title.className = "ux-block-editor__slash-section-title";
-                        title.textContent = cat;
-                        section.appendChild(title);
-                        for (const def of blocks) {
-                            const item = document.createElement("div");
-                            item.className = "ux-block-editor__slash-item";
-                            item.dataset.blockName = def.name;
-                            item.innerHTML = \'<span class="ux-block-editor__slash-item-icon">\' + (def.icon || "") + \'</span><span class="ux-block-editor__slash-item-label">\' + def.title + \'</span>\';
-                            item.addEventListener("mousedown", (e) => {
-                                e.preventDefault();
-                                const blockEl = el.closest(".ux-block-editor__block");
-                                const index = parseInt(blockEl.dataset.blockIndex);
-                                this.replaceBlock(editorId, index, def.name);
-                                menu.remove();
-                            });
-                            section.appendChild(item);
-                        }
-                        menu.appendChild(section);
-                    }
-                    document.body.appendChild(menu);
-                    const closeSlash = (e) => {
-                        if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener("mousedown", closeSlash); }
-                    };
-                    setTimeout(() => document.addEventListener("mousedown", closeSlash), 10);
-                },
-                replaceBlock(editorId, index, newBlockName) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const blockDef = editor.state.blockDefs[newBlockName];
-                    const defaultAttrs = blockDef ? (blockDef.defaultAttributes || {}) : {};
-                    const newAttrs = Object.assign({}, defaultAttrs);
-                    if (newAttrs.content !== undefined && Array.isArray(newAttrs.content)) newAttrs.content = [{ text: "" }];
-                    editor.state.blocks[index] = { blockName: newBlockName, attributes: newAttrs };
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                    setTimeout(() => {
-                        const blockEl = editor.canvasEl.children[index];
-                        if (blockEl) { const editable = blockEl.querySelector("[contenteditable]"); if (editable) editable.focus(); }
-                    }, 50);
-                },
-                checkSelectionAndShowToolbar(el, editorId) {
-                    const sel = window.getSelection();
-                    if (!sel || sel.isCollapsed || sel.rangeCount === 0) { this.hideFormatToolbar(); return; }
-                    const range = sel.getRangeAt(0);
-                    if (!el.contains(range.commonAncestorContainer)) { this.hideFormatToolbar(); return; }
-                    const blockEl = el.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const blockDef = editor.state.blockDefs[blockEl.dataset.blockName];
-                    if (!blockDef || !blockDef.supportsInlineFormats) return;
-                    this.showFormatToolbar(sel, range, el, editorId);
-                },
-                showFormatToolbar(sel, range, el, editorId) {
-                    let toolbar = document.querySelector(".ux-block-editor__format-toolbar");
-                    if (!toolbar) {
-                        toolbar = document.createElement("div");
-                        toolbar.className = "ux-block-editor__format-toolbar";
-                        document.body.appendChild(toolbar);
-                    }
-                    const editor = this.editors.get(editorId);
-                    this.currentFormatDefs = editor.state.formatDefs;
-                    toolbar.innerHTML = "";
-                    for (const [name, fmt] of Object.entries(editor.state.formatDefs)) {
-                        const btn = document.createElement("button");
-                        btn.type = "button";
-                        btn.className = "ux-block-editor__format-btn";
-                        btn.dataset.format = name;
-                        btn.innerHTML = fmt.icon || fmt.title;
-                        btn.title = fmt.title;
-                        btn.addEventListener("mousedown", (e) => {
-                            e.preventDefault();
-                            this.toggleFormat(name, fmt, el, editorId);
-                        });
-                        toolbar.appendChild(btn);
-                    }
-                    const rect = range.getBoundingClientRect();
-                    toolbar.style.top = (rect.top - 40) + "px";
-                    toolbar.style.left = (rect.left + rect.width / 2) + "px";
-                    toolbar.style.transform = "translateX(-50%)";
-                    toolbar.classList.add("ux-block-editor__format-toolbar--visible");
-                },
-                hideFormatToolbar() {
-                    const toolbar = document.querySelector(".ux-block-editor__format-toolbar");
-                    if (toolbar) toolbar.classList.remove("ux-block-editor__format-toolbar--visible");
-                },
-                toggleFormat(formatName, formatDef, el, editorId) {
-                    const sel = window.getSelection();
-                    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-                    const range = sel.getRangeAt(0);
-                    const tag = formatDef.tag || "span";
-                    const formatEl = document.createElement(tag);
-                    if (formatName !== tag) formatEl.dataset.format = formatName;
-                    if (formatName === "link") {
-                        const href = prompt("输入链接地址:", "https://");
-                        if (!href) return;
-                        formatEl.href = href;
-                        formatEl.target = "_blank";
-                    }
-                    try { range.surroundContents(formatEl); } catch(e) {
-                        const fragment = range.extractContents();
-                        formatEl.appendChild(fragment);
-                        range.insertNode(formatEl);
-                    }
-                    this.syncFromEditable(el, editorId);
-                },
-                bindInput(input, editorId) { input.addEventListener("input", () => this.syncFromInput(input, editorId)); },
-                bindSelect(select, editorId) { select.addEventListener("change", () => this.syncFromSelect(select, editorId)); },
-                bindCheckbox(checkbox, editorId) { checkbox.addEventListener("change", () => this.syncFromCheckbox(checkbox, editorId)); },
-                getPlaceholder(blockName) {
-                    return { paragraph: "输入段落文字...", heading: "输入标题...", quote: "输入引用内容...", code: "输入代码..." }[blockName] || "输入内容...";
-                },
-                syncFromEditable(el, editorId) {
-                    const blockEl = el.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const eid = blockEl.closest(".ux-block-editor").dataset.editorId;
-                    const index = parseInt(blockEl.dataset.blockIndex);
-                    const attrName = el.dataset.attr;
-                    const editor = this.editors.get(eid);
-                    if (!editor || !editor.state.blocks[index]) return;
-                    const block = editor.state.blocks[index];
-                    const blockDef = editor.state.blockDefs[block.blockName];
-                    const hasInline = blockDef && blockDef.supportsInlineFormats && attrName === "content";
-                    if (hasInline) {
-                        this.currentFormatDefs = editor.state.formatDefs;
-                        block.attributes[attrName] = this.htmlToSegments(el.innerHTML);
-                    } else {
-                        block.attributes[attrName] = el.innerHTML;
-                    }
-                    this.syncToHidden(eid);
-                },
-                syncFromInput(input, editorId) {
-                    const blockEl = input.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const eid = blockEl.closest(".ux-block-editor").dataset.editorId;
-                    const index = parseInt(blockEl.dataset.blockIndex);
-                    const attrName = input.dataset.attr;
-                    const editor = this.editors.get(eid);
-                    if (editor && editor.state.blocks[index]) {
-                        editor.state.blocks[index].attributes[attrName] = input.value;
-                        this.syncToHidden(eid);
-                    }
-                },
-                syncFromSelect(select, editorId) {
-                    const blockEl = select.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const eid = blockEl.closest(".ux-block-editor").dataset.editorId;
-                    const index = parseInt(blockEl.dataset.blockIndex);
-                    const attrName = select.dataset.attr;
-                    const editor = this.editors.get(eid);
-                    if (editor && editor.state.blocks[index]) {
-                        editor.state.blocks[index].attributes[attrName] = parseInt(select.value);
-                        this.syncToHidden(eid);
-                    }
-                },
-                syncFromCheckbox(checkbox, editorId) {
-                    const blockEl = checkbox.closest(".ux-block-editor__block");
-                    if (!blockEl) return;
-                    const eid = blockEl.closest(".ux-block-editor").dataset.editorId;
-                    const index = parseInt(blockEl.dataset.blockIndex);
-                    const attrName = checkbox.dataset.attr;
-                    const editor = this.editors.get(eid);
-                    if (editor && editor.state.blocks[index]) {
-                        editor.state.blocks[index].attributes[attrName] = checkbox.checked;
-                        this.syncToHidden(eid);
-                    }
-                },
-                syncToHidden(editorId) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor || !editor.hiddenInput) return;
-                    const json = JSON.stringify(editor.state.blocks);
-                    if (editor.hiddenInput.value !== json) {
-                        editor.hiddenInput.value = json;
-                        editor.hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
-                        editor.hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
-                    }
-                },
-                selectBlock(editorId, index) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    editor.state.selectedBlockIndex = index;
-                    editor.canvasEl.querySelectorAll(".ux-block-editor__block").forEach((el, i) => {
-                        el.classList.toggle("ux-block-editor__block--selected", i === index);
-                    });
-                },
-                insertBlock(editorId, blockName) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const blockDef = editor.state.blockDefs[blockName];
-                    const defaultAttrs = blockDef ? (blockDef.defaultAttributes || {}) : {};
-                    const newAttrs = Object.assign({}, defaultAttrs);
-                    if (newAttrs.content !== undefined && Array.isArray(newAttrs.content)) newAttrs.content = [{ text: "" }];
-                    const newBlock = { blockName, attributes: newAttrs };
-                    const insertIndex = editor.state.selectedBlockIndex >= 0 ? editor.state.selectedBlockIndex + 1 : editor.state.blocks.length;
-                    editor.state.blocks.splice(insertIndex, 0, newBlock);
-                    editor.state.selectedBlockIndex = insertIndex;
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                    const inserterPanel = editor.wrapperEl.querySelector(".ux-block-editor__inserter-panel");
-                    if (inserterPanel) inserterPanel.classList.remove("ux-block-editor__inserter-panel--open");
-                },
-                deleteBlock(editorId, index) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    editor.state.blocks.splice(index, 1);
-                    if (editor.state.selectedBlockIndex >= editor.state.blocks.length) editor.state.selectedBlockIndex = editor.state.blocks.length - 1;
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                },
-                moveBlock(editorId, index, direction) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const newIndex = index + direction;
-                    if (newIndex < 0 || newIndex >= editor.state.blocks.length) return;
-                    const temp = editor.state.blocks[index];
-                    editor.state.blocks[index] = editor.state.blocks[newIndex];
-                    editor.state.blocks[newIndex] = temp;
-                    editor.state.selectedBlockIndex = newIndex;
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                },
-                startDrag(editorId, index, e) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const blockEl = editor.canvasEl.children[index];
-                    if (!blockEl) return;
-                    editor.dragState = { fromIndex: index, startY: e.clientY, blockEl, placeholder: null };
-                    blockEl.classList.add("ux-block-editor__block--dragging");
-                    const onMove = (ev) => this.onDragMove(ev, editorId);
-                    const onUp = (ev) => {
-                        this.onDragEnd(ev, editorId);
-                        document.removeEventListener("mousemove", onMove);
-                        document.removeEventListener("mouseup", onUp);
-                    };
-                    document.addEventListener("mousemove", onMove);
-                    document.addEventListener("mouseup", onUp);
-                },
-                onDragMove(e, editorId) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor || !editor.dragState) return;
-                    const { fromIndex, blockEl } = editor.dragState;
-                    const blocks = editor.canvasEl.children;
-                    let targetIndex = fromIndex;
-                    for (let i = 0; i < blocks.length; i++) {
-                        if (blocks[i] === blockEl) continue;
-                        const rect = blocks[i].getBoundingClientRect();
-                        const midY = rect.top + rect.height / 2;
-                        if (e.clientY < midY && i <= fromIndex) { targetIndex = i; break; }
-                        if (e.clientY > midY && i >= fromIndex) { targetIndex = i; }
-                    }
-                    for (let i = 0; i < blocks.length; i++) {
-                        blocks[i].classList.remove("ux-block-editor__block--drop-before", "ux-block-editor__block--drop-after");
-                    }
-                    if (targetIndex !== fromIndex) {
-                        const targetEl = blocks[targetIndex];
-                        if (targetEl) {
-                            targetEl.classList.add(targetIndex < fromIndex ? "ux-block-editor__block--drop-before" : "ux-block-editor__block--drop-after");
-                        }
-                    }
-                    editor.dragState.targetIndex = targetIndex;
-                },
-                onDragEnd(e, editorId) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor || !editor.dragState) return;
-                    const { fromIndex, blockEl, targetIndex } = editor.dragState;
-                    blockEl.classList.remove("ux-block-editor__block--dragging");
-                    const blocks = editor.canvasEl.children;
-                    for (let i = 0; i < blocks.length; i++) {
-                        blocks[i].classList.remove("ux-block-editor__block--drop-before", "ux-block-editor__block--drop-after");
-                    }
-                    if (targetIndex !== undefined && targetIndex !== fromIndex) {
-                        const block = editor.state.blocks.splice(fromIndex, 1)[0];
-                        editor.state.blocks.splice(targetIndex, 0, block);
-                        editor.state.selectedBlockIndex = targetIndex;
-                        this.renderBlocks(editorId);
-                        this.syncToHidden(editorId);
-                    }
-                    editor.dragState = null;
-                },
-                bindGlobalEvents(editorId) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    const toggleBtn = editor.wrapperEl.querySelector(".ux-block-editor__inserter-toggle");
-                    const panel = editor.wrapperEl.querySelector(".ux-block-editor__inserter-panel");
-                    if (toggleBtn && panel) {
-                        toggleBtn.addEventListener("click", () => panel.classList.toggle("ux-block-editor__inserter-panel--open"));
-                    }
-                    editor.wrapperEl.addEventListener("click", (e) => {
-                        const item = e.target.closest(".ux-block-editor__inserter-item");
-                        if (!item) return;
-                        const blockName = item.dataset.blockName;
-                        if (blockName) this.insertBlock(editorId, blockName);
-                    });
-                    document.addEventListener("selectionchange", () => {
-                        const sel = window.getSelection();
-                        if (!sel || sel.isCollapsed) this.hideFormatToolbar();
-                    });
-                },
-                getValue(editorId) { const editor = this.editors.get(editorId); return editor ? JSON.stringify(editor.state.blocks) : ""; },
-                setValue(editorId, value) {
-                    const editor = this.editors.get(editorId);
-                    if (!editor) return;
-                    try { editor.state.blocks = JSON.parse(value); } catch(e) { editor.state.blocks = []; }
-                    this.renderBlocks(editorId);
-                    this.syncToHidden(editorId);
-                },
-                liveHandler(op) {
-                    if (op.action === "setValue" && op.id) this.setValue(op.id, op.value);
-                }
-            };
-            return BlockEditor;
-        ');
+        if (is_string($props)) {
+            $instance = new static($props);
+            $instance->_invoke($routeParams);
+            return $instance;
+        }
+        return parent::make($props, $routeParams);
     }
 
-    public function allowedBlocks(array $blocks): static
-    {
-        $this->allowedBlocks = $blocks;
-        return $this;
-    }
+    public function name(string $name): static { $this->fieldName = $name; return $this; }
+    public function label(string|array $label): static { $this->fieldLabel = $label; return $this; }
+    public function placeholder(string $placeholder): static { $this->fieldPlaceholder = $placeholder; return $this; }
+    public function help(string $help): static { $this->fieldHelp = $help; return $this; }
+    public function required(bool $required = true): static { $this->fieldRequired = $required; return $this; }
+    public function allowedBlocks(array $blocks): static { $this->allowedBlocks = $blocks; return $this; }
+    public function minHeight(string $height): static { $this->minHeight = $height; return $this; }
+    public function height(string $height): static { return $this->minHeight($height); }
+    public function liveModel(string $property): static { $this->liveModelProperty = $property; return $this; }
 
-    public function placeholder(string $placeholder): static
+    public function value(mixed $value): static
     {
-        $this->placeholder = $placeholder;
-        return $this;
-    }
-
-    public function width(string $width): static
-    {
-        $this->width = $width;
-        return $this;
-    }
-
-    public function minHeight(string $height): static
-    {
-        $this->minHeight = $height;
-        return $this;
-    }
-
-    public function addBlockType(string $name, BlockType $blockType): static
-    {
-        $this->customBlockTypes[$name] = $blockType;
-        BlockRegistry::register($name, $blockType);
-        return $this;
-    }
-
-    public function addExtension(string $name, RichEditorExtension $extension): static
-    {
-        $extension->asBlock();
-        $this->blockExtensions[$name] = $extension;
-        BlockRegistry::register($name, $extension->toBlockType());
-        return $this;
-    }
-
-    protected function getBlockDefinitions(): array
-    {
-        if (!empty($this->allowedBlocks)) {
-            $definitions = [];
-            foreach ($this->allowedBlocks as $blockName) {
-                $blockType = BlockRegistry::get($blockName);
-                if ($blockType) {
-                    $definitions[$blockName] = $blockType->toArray();
-                }
+        if (is_string($value) && $value !== '') {
+            $parsed = BlockRegistry::parse($value);
+            if (!empty($parsed)) {
+                $this->blocks = $parsed;
             }
-            return $definitions;
         }
-
-        return BlockRegistry::allDefinitions();
+        return $this;
     }
 
-    protected function toElement(): Element
+    public function mount(): void
     {
-        $groupEl = Element::make('div')->class('ux-form-group');
+        if (empty($this->blocks)) {
+            $this->blocks[] = [
+                'blockName' => 'paragraph',
+                'attributes' => ['content' => ''],
+            ];
+        }
+    }
 
-        if ($this->width) {
-            $groupEl->style("width: {$this->width}");
+    #[LiveAction]
+    public function addBlock(array $formData): void
+    {
+        $this->mergeCurrentBlocks($formData);
+        $blockName = $formData['blockName'] ?: 'paragraph';
+        $blockType = BlockRegistry::get($blockName);
+        $defaults = $blockType ? $blockType->getDefaultAttributes() : [];
+        if (isset($defaults['content']) && is_array($defaults['content'])) {
+            $defaults['content'] = '';
+        }
+        $this->blocks[] = ['blockName' => $blockName, 'attributes' => $defaults];
+        $this->selectedIndex = count($this->blocks) - 1;
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function deleteBlock(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        if ($index >= 0 && $index < count($this->blocks)) {
+            array_splice($this->blocks, $index, 1);
+        }
+        if ($this->selectedIndex >= count($this->blocks)) {
+            $this->selectedIndex = count($this->blocks) - 1;
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function moveBlock(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $direction = (int)($params['direction'] ?? 1);
+        $newIndex = $index + $direction;
+        if ($index < 0 || $index >= count($this->blocks)) return;
+        if ($newIndex < 0 || $newIndex >= count($this->blocks)) return;
+        $tmp = $this->blocks[$index];
+        $this->blocks[$index] = $this->blocks[$newIndex];
+        $this->blocks[$newIndex] = $tmp;
+        $this->selectedIndex = $newIndex;
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function reorderBlocks(array $params): void
+    {
+        $ordered = $params['blocks'] ?? [];
+        if (!empty($ordered)) {
+            $this->blocks = $ordered;
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function updateBlockAttr(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $attr = $params['attr'] ?? '';
+        $value = $params['value'] ?? '';
+        if ($index < 0 || $index >= count($this->blocks) || !$attr) return;
+        $this->blocks[$index]['attributes'][$attr] = $value;
+    }
+
+    #[LiveAction]
+    public function selectBlock(array $params): void
+    {
+        $this->selectedIndex = (int)($params['index'] ?? -1);
+    }
+
+    #[LiveAction]
+    public function updateListItem(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $items = $params['items'] ?? [];
+        if ($index >= 0 && $index < count($this->blocks)) {
+            $this->blocks[$index]['attributes']['items'] = $items;
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function updateColumns(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $colCount = (int)($params['colCount'] ?? 2);
+        $colIndex = (int)($params['colIndex'] ?? 0);
+        $content = $params['content'] ?? '';
+        if ($index >= 0 && $index < count($this->blocks)) {
+            $cols = $this->blocks[$index]['attributes']['columns'] ?? [];
+            while (count($cols) < $colCount) {
+                $cols[] = ['content' => ''];
+            }
+            $cols[$colIndex]['content'] = $content;
+            $this->blocks[$index]['attributes']['columns'] = $cols;
+        }
+    }
+
+    #[LiveAction]
+    public function updateTable(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $type = $params['type'] ?? 'cell';
+        $row = (int)($params['row'] ?? 0);
+        $col = (int)($params['col'] ?? 0);
+        $value = $params['value'] ?? '';
+        if ($index >= 0 && $index < count($this->blocks)) {
+            if ($type === 'header') {
+                $this->blocks[$index]['attributes']['headers'][$col] = $value;
+            } else {
+                if (!isset($this->blocks[$index]['attributes']['rows'][$row])) {
+                    $this->blocks[$index]['attributes']['rows'][$row] = [];
+                }
+                $this->blocks[$index]['attributes']['rows'][$row][$col] = $value;
+            }
+        }
+    }
+
+    #[LiveAction]
+    public function addTableRow(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        if ($index >= 0 && $index < count($this->blocks)) {
+            $colCount = count($this->blocks[$index]['attributes']['headers'] ?? ['列1', '列2', '列3']);
+            $this->blocks[$index]['attributes']['rows'][] = array_fill(0, $colCount, '');
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function addTableCol(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        if ($index >= 0 && $index < count($this->blocks)) {
+            $this->blocks[$index]['attributes']['headers'][] = '新列';
+            foreach ($this->blocks[$index]['attributes']['rows'] as &$row) {
+                $row[] = '';
+            }
+            unset($row);
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function deleteTableRow(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $row = (int)($params['row'] ?? -1);
+        if ($index >= 0 && $index < count($this->blocks)) {
+            array_splice($this->blocks[$index]['attributes']['rows'], $row, 1);
+        }
+        $this->refresh('canvas');
+    }
+
+    #[LiveAction]
+    public function changeColumnCount(array $params): void
+    {
+        $index = (int)($params['index'] ?? -1);
+        $count = (int)($params['count'] ?? 2);
+        if ($index >= 0 && $index < count($this->blocks)) {
+            $cols = $this->blocks[$index]['attributes']['columns'] ?? [];
+            while (count($cols) < $count) {
+                $cols[] = ['content' => ''];
+            }
+            $this->blocks[$index]['attributes']['columns'] = array_slice($cols, 0, $count);
+            $this->blocks[$index]['attributes']['columnCount'] = $count;
+        }
+        $this->refresh('canvas');
+    }
+
+    protected function mergeCurrentBlocks(array $formData): void
+    {
+        if (!empty($formData['currentBlocks'])) {
+            $blocksData = json_decode($formData['currentBlocks'], true);
+            if (is_array($blocksData)) {
+                $this->blocks = array_values(array_filter($blocksData, fn($b) => !empty($b['blockName'])));
+            }
+        }
+    }
+
+    #[LiveAction]
+    public function togglePreview(array $formData = []): void
+    {
+        $this->mergeCurrentBlocks($formData);
+        $this->previewMode = !$this->previewMode;
+        $this->refresh('canvas');
+    }
+
+    public function render(): Element
+    {
+        $group = Element::make('div')->class('ux-block-editor');
+
+        $label = $this->renderLabel();
+        if ($label) {
+            $group->child($label);
         }
 
-        $labelEl = $this->renderLabel();
-        if ($labelEl) {
-            $groupEl->child($labelEl);
+        $group->child($this->renderToolbar());
+        $group->child($this->renderCanvas());
+
+        $hidden = Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('name', $this->fieldName)
+            ->attr('id', $this->fieldName)
+            ->attr('value', json_encode($this->blocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        $submitBlockName = Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('data-submit-field', 'blockName')
+            ->attr('value', '');
+
+        $submitBlocks = Element::make('input')
+            ->attr('type', 'hidden')
+            ->attr('data-submit-field', 'currentBlocks')
+            ->attr('value', '');
+
+        if ($this->fieldRequired) {
+            $hidden->attr('required', 'required');
         }
 
-        $editorId = $this->name . '-block-editor';
-        $inputId = $this->name;
+        $group->child($hidden);
+        $group->child($submitBlockName);
+        $group->child($submitBlocks);
 
-        $blockDefinitions = $this->getBlockDefinitions();
-
-        $wrapperEl = Element::make('div')
-            ->class('ux-block-editor')
-            ->data('editor-id', $editorId)
-            ->data('blocks', json_encode($blockDefinitions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
-            ->data('formats', json_encode(InlineFormatRegistry::allDefinitions(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
-        if ($this->placeholder) {
-            $wrapperEl->data('placeholder', $this->placeholder);
+        if ($this->fieldHelp) {
+            $group->child(Element::make('div')->class('ux-form-help')->text($this->fieldHelp));
         }
+
+        if ($this->liveModelProperty) {
+            $group->attr('data-live-model', $this->liveModelProperty);
+        }
+
+        return $group;
+    }
+
+    protected function renderLabel(): ?Element
+    {
+        if (!$this->fieldLabel) return null;
+        $label = Element::make('label')->class('ux-form-label')->attr('for', $this->fieldName);
+        if (is_array($this->fieldLabel)) {
+            $label->intl(...$this->fieldLabel);
+        } else {
+            $label->text($this->fieldLabel);
+        }
+        if ($this->fieldRequired) {
+            $label->child(Element::make('span')->class('ux-form-required')->text('*'));
+        }
+        return $label;
+    }
+
+    protected function renderToolbar(): Element
+    {
+        $toolbar = Element::make('div')->class('ux-block-editor__toolbar');
+
+        $previewBtn = Element::make('button')
+            ->class('ux-block-editor__toolbar-btn')
+            ->attr('type', 'button')
+            ->attr('title', $this->previewMode ? '编辑模式' : '预览')
+            ->attr('data-submit:click', 'togglePreview')
+            ->attr('data-block-name', '__preview__');
+        $previewBtn->html($this->previewMode
+            ? '<i class="bi bi-pencil"></i>'
+            : '<i class="bi bi-eye"></i>');
+        $toolbar->child($previewBtn);
+
+        $toolbar->child(Element::make('span')->class('ux-block-editor__toolbar-sep'));
+
+        $textBtns = [
+            ['paragraph', '段落', 'bi-type'],
+            ['heading', '标题', 'bi-type-h1'],
+            ['quote', '引用', 'bi-chat-quote'],
+            ['code', '代码', 'bi-code'],
+            ['list', '列表', 'bi-list-ul'],
+        ];
+        foreach ($textBtns as [$name, $title, $icon]) {
+            $toolbar->child($this->makeInsertBtn($name, $title, $icon));
+        }
+
+        $toolbar->child(Element::make('span')->class('ux-block-editor__toolbar-sep'));
+
+        $mediaBtns = [
+            ['image', '图片', 'bi-image'],
+            ['video', '视频', 'bi-camera-video'],
+        ];
+        foreach ($mediaBtns as [$name, $title, $icon]) {
+            $toolbar->child($this->makeInsertBtn($name, $title, $icon));
+        }
+
+        $toolbar->child(Element::make('span')->class('ux-block-editor__toolbar-sep'));
+
+        $layoutBtns = [
+            ['columns', '列数', 'bi-columns'],
+            ['callout', '提示', 'bi-info-circle'],
+            ['table', '表格', 'bi-grid-3x3'],
+            ['divider', '分隔线', 'bi-dash-lg'],
+        ];
+        foreach ($layoutBtns as [$name, $title, $icon]) {
+            $toolbar->child($this->makeInsertBtn($name, $title, $icon));
+        }
+
+        return $toolbar;
+    }
+
+    protected function makeInsertBtn(string $blockName, string $title, string $icon): Element
+    {
+        return Element::make('button')
+            ->class('ux-block-editor__toolbar-btn')
+            ->attr('type', 'button')
+            ->attr('title', $title)
+            ->attr('data-submit:click', 'addBlock')
+            ->attr('data-block-name', $blockName)
+            ->html('<i class="bi ' . $icon . '"></i>');
+    }
+
+    protected function renderCanvas(): Element
+    {
+        $canvas = Element::make('div')
+            ->class('ux-block-editor__canvas', $this->previewMode ? 'ux-block-editor__canvas--preview' : '')
+            ->liveFragment('canvas');
 
         if ($this->minHeight) {
-            $wrapperEl->style("min-height: {$this->minHeight}");
+            $canvas->style('min-height', $this->minHeight);
         }
 
-        $canvasEl = Element::make('div')
-            ->class('ux-block-editor__canvas')
-            ->attr('id', $editorId);
-
-        $value = $this->value ?? '';
-        if ($value) {
-            $blocks = BlockRegistry::parse((string)$value);
-            $canvasEl->data('initial-blocks', json_encode($blocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        if (empty($this->blocks)) {
+            $canvas->child(
+                Element::make('div')->class('ux-block-editor__empty')
+                    ->text($this->fieldPlaceholder ?: '点击上方按钮添加内容块')
+            );
+            return $canvas;
         }
 
-        $wrapperEl->child($canvasEl);
-
-        $inserterEl = $this->buildInserter($blockDefinitions);
-        $wrapperEl->child($inserterEl);
-
-        $hiddenInput = Element::make('input')
-            ->attr('type', 'hidden')
-            ->attr('id', $inputId)
-            ->attr('name', $this->name);
-
-        if ($this->value !== null) {
-            $hiddenInput->attr('value', (string)$this->value);
-        }
-
-        foreach ($this->buildFieldAttrs() as $key => $value) {
-            if (!in_array($key, ['id', 'name'])) {
-                $hiddenInput->attr($key, $value);
+        foreach ($this->blocks as $i => $block) {
+            if ($this->previewMode) {
+                $canvas->child($this->renderBlockPreview($i, $block));
+            } else {
+                $canvas->child($this->renderBlock($i, $block));
             }
         }
 
-        $wrapperEl->child($hiddenInput);
-        $groupEl->child($wrapperEl);
-
-        $helpEl = $this->renderHelp();
-        if ($helpEl) {
-            $groupEl->child($helpEl);
-        }
-
-        return $groupEl;
+        return $canvas;
     }
 
-    protected function buildInserter(array $blockDefinitions): Element
+    protected function renderBlock(int $index, array $block): Element
     {
-        $inserterEl = Element::make('div')->class('ux-block-editor__inserter');
+        $isSelected = $index === $this->selectedIndex;
+        $blockName = $block['blockName'] ?: 'paragraph';
 
-        $toggleBtn = Element::make('button')
-            ->class('ux-block-editor__inserter-toggle')
+        $wrapper = Element::make('div')
+            ->class('ux-block-editor__block', $isSelected ? 'ux-block-editor__block--selected' : '')
+            ->data('block-index', (string)$index)
+            ->data('block-name', $blockName);
+
+        $toolbar = Element::make('div')->class('ux-block-editor__block-toolbar');
+
+        $toolbarLeft = Element::make('div')->class('ux-block-editor__block-toolbar-left');
+
+        $toolbarLeft->child(Element::make('button')
+            ->class('ux-block-editor__block-handle-btn')
             ->attr('type', 'button')
-            ->html('<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>');
+            ->attr('data-drag-handle', '')
+            ->html('<i class="bi bi-grip-vertical"></i>'));
 
-        $inserterEl->child($toggleBtn);
+        $blockType = BlockRegistry::get($blockName);
+        if ($blockType) {
+            $toolbarLeft->child(
+                Element::make('span')->class('ux-block-editor__block-type-label')->text($blockType->title ?: $blockName)
+            );
+        }
 
-        $panelEl = Element::make('div')->class('ux-block-editor__inserter-panel');
+        $toolbarRight = Element::make('div')->class('ux-block-editor__block-toolbar-right');
 
-        $categories = [];
-        foreach ($blockDefinitions as $name => $def) {
-            $cat = $def['category'] ?? 'common';
-            if (!isset($categories[$cat])) {
-                $categories[$cat] = [];
+        if ($index > 0) {
+            $toolbarRight->child(Element::make('button')
+                ->class('ux-block-editor__block-action-btn')
+                ->attr('type', 'button')
+                ->liveAction('moveBlock', 'click', ['index' => $index, 'direction' => -1])
+                ->html('<i class="bi bi-chevron-up"></i>'));
+        }
+        if ($index < count($this->blocks) - 1) {
+            $toolbarRight->child(Element::make('button')
+                ->class('ux-block-editor__block-action-btn')
+                ->attr('type', 'button')
+                ->liveAction('moveBlock', 'click', ['index' => $index, 'direction' => 1])
+                ->html('<i class="bi bi-chevron-down"></i>'));
+        }
+        $toolbarRight->child(Element::make('button')
+            ->class('ux-block-editor__block-action-btn', 'ux-block-editor__block-action-btn--danger')
+            ->attr('type', 'button')
+            ->liveAction('deleteBlock', 'click', ['index' => $index])
+            ->html('<i class="bi bi-trash"></i>'));
+
+        $toolbar->child($toolbarLeft);
+        $toolbar->child($toolbarRight);
+        $wrapper->child($toolbar);
+
+        $content = Element::make('div')
+            ->class('ux-block-editor__block-content')
+            ->liveAction('selectBlock', 'click', ['index' => $index]);
+
+        $this->renderBlockContent($content, $index, $block);
+
+        $wrapper->child($content);
+
+        return $wrapper;
+    }
+
+    protected function renderBlockPreview(int $index, array $block): Element
+    {
+        $blockName = $block['blockName'] ?: 'paragraph';
+        $attrs = $block['attributes'] ?? [];
+        $blockType = BlockRegistry::get($blockName);
+
+        $wrapper = Element::make('div')
+            ->class('ux-block-editor__block', 'ux-block-editor__block--preview');
+
+        if ($blockType) {
+            $wrapper->child($blockType->renderElement($attrs));
+        } else {
+            $wrapper->child(Element::make('div')->class('ux-block-editor__block-unknown')
+                ->text('Unknown block: ' . $blockName));
+        }
+
+        return $wrapper;
+    }
+
+    protected function renderBlockContent(Element $container, int $index, array $block): void
+    {
+        $blockName = $block['blockName'] ?: 'paragraph';
+        $attrs = $block['attributes'] ?? [];
+
+        switch ($blockName) {
+            case 'paragraph':
+                $this->renderRichTextArea($container, $index, 'content', $attrs['content'] ?? '', '输入段落文字...');
+                break;
+            case 'heading':
+                $this->renderHeadingArea($container, $index, $attrs);
+                break;
+            case 'image':
+                $this->renderImageArea($container, $index, $attrs);
+                break;
+            case 'quote':
+                $this->renderRichTextArea($container, $index, 'content', $attrs['content'] ?? '', '输入引用内容...');
+                $this->renderTextInput($container, $index, 'cite', $attrs['cite'] ?? '', '引用来源');
+                break;
+            case 'code':
+                $this->renderTextInput($container, $index, 'language', $attrs['language'] ?? '', '语言');
+                $this->renderCodeArea($container, $index, 'content', $attrs['content'] ?? '');
+                break;
+            case 'list':
+                $this->renderListArea($container, $index, $attrs);
+                break;
+            case 'divider':
+                $container->child(Element::make('hr')->class('ux-block-editor__divider'));
+                break;
+            case 'columns':
+                $this->renderColumnsArea($container, $index, $attrs);
+                break;
+            case 'callout':
+                $this->renderCalloutArea($container, $index, $attrs);
+                break;
+            case 'table':
+                $this->renderTableArea($container, $index, $attrs);
+                break;
+            case 'video':
+                $this->renderVideoArea($container, $index, $attrs);
+                break;
+            default:
+                $this->renderGenericArea($container, $index, $block);
+                break;
+        }
+    }
+
+    protected function renderRichTextArea(Element $container, int $index, string $attrName, mixed $content, string $placeholder): void
+    {
+        $container->child(
+            Element::make('div')
+                ->class('ux-block-editor__editable')
+                ->attr('contenteditable', 'true')
+                ->attr('data-editable-index', (string)$index)
+                ->attr('data-editable-attr', $attrName)
+                ->attr('data-editable-placeholder', $placeholder)
+                ->html($this->contentToHtml($content))
+        );
+    }
+
+    protected function renderHeadingArea(Element $container, int $index, array $attrs): void
+    {
+        $level = $attrs['level'] ?? 2;
+        $select = Element::make('select')
+            ->class('ux-block-editor__select')
+            ->attr('data-attr-index', (string)$index)
+            ->attr('data-attr-name', 'level');
+        for ($i = 1; $i <= 6; $i++) {
+            $opt = Element::make('option')->attr('value', (string)$i)->text('H' . $i);
+            if ($i === (int)$level) $opt->attr('selected', 'selected');
+            $select->child($opt);
+        }
+        $container->child($select);
+
+        $container->child(
+            Element::make('div')
+                ->class('ux-block-editor__editable')
+                ->attr('contenteditable', 'true')
+                ->attr('data-editable-index', (string)$index)
+                ->attr('data-editable-attr', 'content')
+                ->attr('data-editable-placeholder', '输入标题...')
+                ->html($this->contentToHtml($attrs['content'] ?? ''))
+                ->style('font-size:' . match ((int)$level) {
+                    1 => '2rem', 2 => '1.5rem', 3 => '1.25rem', 4 => '1.1rem', 5 => '1rem', default => '0.9rem'
+                } . ';font-weight:600')
+        );
+    }
+
+    protected function renderImageArea(Element $container, int $index, array $attrs): void
+    {
+        $src = $attrs['src'] ?? '';
+        if ($src) {
+            $container->child(
+                Element::make('div')->class('ux-block-editor__image-preview')
+                    ->child(Element::make('img')->attr('src', $src)->attr('alt', $attrs['alt'] ?? ''))
+            );
+        }
+
+        $btn = Element::make('button')
+            ->class('ux-block-editor__image-pick-btn')
+            ->attr('type', 'button')
+            ->attr('data-media-pick', '')
+            ->attr('data-block-index', (string)$index)
+            ->text($src ? '更换图片' : '选择图片');
+        $container->child($btn);
+
+        if ($src) {
+            $container->child(
+                Element::make('button')
+                    ->class('ux-block-editor__image-remove-btn')
+                    ->attr('type', 'button')
+                    ->liveAction('updateBlockAttr', 'click', ['index' => $index, 'attr' => 'src', 'value' => ''])
+                    ->text('移除')
+            );
+        }
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '或手动输入图片地址')
+                ->attr('value', $src)
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'src')
+        );
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '替代文字')
+                ->attr('value', $attrs['alt'] ?? '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'alt')
+        );
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '图片说明')
+                ->attr('value', $attrs['caption'] ?? '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'caption')
+        );
+    }
+
+    protected function renderCodeArea(Element $container, int $index, string $attrName, mixed $content): void
+    {
+        $container->child(
+            Element::make('pre')
+                ->class('ux-block-editor__editable', 'ux-block-editor__editable--code')
+                ->attr('contenteditable', 'true')
+                ->attr('data-editable-index', (string)$index)
+                ->attr('data-editable-attr', $attrName)
+                ->attr('data-editable-placeholder', '输入代码...')
+                ->text(is_string($content) ? $content : '')
+        );
+    }
+
+    protected function renderTextInput(Element $container, int $index, string $attrName, mixed $value, string $placeholder): void
+    {
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', $placeholder)
+                ->attr('value', is_string($value) ? $value : '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', $attrName)
+        );
+    }
+
+    protected function renderSelect(Element $container, int $index, string $attrName, mixed $currentValue, array $options): void
+    {
+        $select = Element::make('select')
+            ->class('ux-block-editor__select')
+            ->attr('data-attr-index', (string)$index)
+            ->attr('data-attr-name', $attrName);
+        foreach ($options as $value => $label) {
+            $opt = Element::make('option')->attr('value', (string)$value)->text($label);
+            if ((string)$value === (string)$currentValue) $opt->attr('selected', 'selected');
+            $select->child($opt);
+        }
+        $container->child($select);
+    }
+
+    protected function renderListArea(Element $container, int $index, array $attrs): void
+    {
+        $ordered = $attrs['ordered'] ?? false;
+
+        $toggleLabel = Element::make('label')->class('ux-block-editor__checkbox-label');
+        $checkbox = Element::make('input')
+            ->attr('type', 'checkbox')
+            ->attr('data-attr-index', (string)$index)
+            ->attr('data-attr-name', 'ordered');
+        if ($ordered) $checkbox->attr('checked', 'checked');
+        $toggleLabel->child($checkbox);
+        $toggleLabel->text(' 有序列表');
+        $container->child($toggleLabel);
+
+        $items = $attrs['items'] ?? [];
+
+        $listEl = Element::make('div')
+            ->class('ux-block-editor__list-items')
+            ->attr('data-list-index', (string)$index);
+
+        foreach ($items as $i => $item) {
+            $row = Element::make('div')->class('ux-block-editor__list-item');
+            $row->child(
+                Element::make('div')
+                    ->class('ux-block-editor__editable', 'ux-block-editor__editable--list')
+                    ->attr('contenteditable', 'true')
+                    ->attr('data-editable-index', (string)$index)
+                    ->attr('data-editable-attr', 'listItem')
+                    ->attr('data-editable-subindex', (string)$i)
+                    ->attr('data-editable-placeholder', '列表项')
+                    ->text(is_string($item) ? $item : '')
+            );
+            $row->child(
+                Element::make('button')
+                    ->class('ux-block-editor__list-item-remove')
+                    ->attr('type', 'button')
+                    ->attr('data-list-remove', (string)$i)
+                    ->text('✕')
+            );
+            $listEl->child($row);
+        }
+
+        $container->child($listEl);
+
+        $container->child(
+            Element::make('button')
+                ->class('ux-block-editor__list-add')
+                ->attr('type', 'button')
+                ->liveAction('updateListItem', 'click', [
+                    'index' => $index,
+                    'items' => array_merge($items, ['']),
+                ])
+                ->text('+ 添加列表项')
+        );
+    }
+
+    protected function renderColumnsArea(Element $container, int $index, array $attrs): void
+    {
+        $colCount = (int)($attrs['columnCount'] ?? 2);
+        $columns = $attrs['columns'] ?? [];
+
+        $configRow = Element::make('div')->class('ux-block-editor__columns-config');
+        $configRow->child(Element::make('label')->class('ux-block-editor__field-label')->text('列数'));
+        $select = Element::make('select')
+            ->class('ux-block-editor__select')
+            ->attr('data-col-count-index', (string)$index);
+        for ($i = 1; $i <= 4; $i++) {
+            $opt = Element::make('option')->attr('value', (string)$i)->text($i . ' 列');
+            if ($i === $colCount) $opt->attr('selected', 'selected');
+            $select->child($opt);
+        }
+        $configRow->child($select);
+        $container->child($configRow);
+
+        $colsWrapper = Element::make('div')
+            ->class('ux-block-editor__columns-wrapper')
+            ->style("display:grid;grid-template-columns:repeat({$colCount},1fr);gap:0.5rem");
+
+        for ($i = 0; $i < $colCount; $i++) {
+            $colContent = $columns[$i]['content'] ?? '';
+            $colsWrapper->child(
+                Element::make('div')
+                    ->class('ux-block-editor__editable', 'ux-block-editor__editable--column')
+                    ->attr('contenteditable', 'true')
+                    ->attr('data-editable-index', (string)$index)
+                    ->attr('data-editable-attr', 'column')
+                    ->attr('data-editable-subindex', (string)$i)
+                    ->attr('data-editable-placeholder', '输入内容...')
+                    ->html(is_string($colContent) && $colContent !== '' ? $colContent : $this->contentToHtml($colContent))
+            );
+        }
+
+        $container->child($colsWrapper);
+    }
+
+    protected function renderCalloutArea(Element $container, int $index, array $attrs): void
+    {
+        $type = $attrs['type'] ?? 'info';
+        $this->renderSelect($container, $index, 'type', $type, [
+            'info' => '信息',
+            'warning' => '警告',
+            'success' => '成功',
+            'danger' => '危险',
+            'tip' => '提示',
+        ]);
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '标题（可选）')
+                ->attr('value', $attrs['title'] ?? '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'title')
+        );
+
+        $container->child(
+            Element::make('div')
+                ->class('ux-block-editor__editable')
+                ->attr('contenteditable', 'true')
+                ->attr('data-editable-index', (string)$index)
+                ->attr('data-editable-attr', 'content')
+                ->attr('data-editable-placeholder', '输入提示内容...')
+                ->html($this->contentToHtml($attrs['content'] ?? ''))
+        );
+    }
+
+    protected function renderTableArea(Element $container, int $index, array $attrs): void
+    {
+        $headers = $attrs['headers'] ?? [];
+        $rows = $attrs['rows'] ?? [];
+
+        $configRow = Element::make('div')->class('ux-block-editor__table-config');
+        $configRow->child(
+            Element::make('button')->class('ux-block-editor__list-add')->attr('type', 'button')
+                ->liveAction('addTableCol', 'click', ['index' => $index])
+                ->text('+ 添加列')
+        );
+        $configRow->child(
+            Element::make('button')->class('ux-block-editor__list-add')->attr('type', 'button')
+                ->liveAction('addTableRow', 'click', ['index' => $index])
+                ->text('+ 添加行')
+        );
+        $container->child($configRow);
+
+        $table = Element::make('table')->class('ux-block-editor__table');
+        $thead = Element::make('thead');
+        $headRow = Element::make('tr');
+        foreach ($headers as $ci => $header) {
+            $headRow->child(
+                Element::make('th')->child(
+                    Element::make('div')
+                        ->class('ux-block-editor__table-cell')
+                        ->attr('contenteditable', 'true')
+                        ->attr('data-table-index', (string)$index)
+                        ->attr('data-table-type', 'header')
+                        ->attr('data-table-col', (string)$ci)
+                        ->attr('data-table-placeholder', '表头')
+                        ->text(is_string($header) ? $header : '')
+                )
+            );
+        }
+        $thead->child($headRow);
+        $table->child($thead);
+
+        $tbody = Element::make('tbody');
+        foreach ($rows as $ri => $row) {
+            $tr = Element::make('tr');
+            foreach ((array)$row as $ci => $cell) {
+                $tr->child(
+                    Element::make('td')->child(
+                        Element::make('div')
+                            ->class('ux-block-editor__table-cell')
+                            ->attr('contenteditable', 'true')
+                            ->attr('data-table-index', (string)$index)
+                            ->attr('data-table-type', 'cell')
+                            ->attr('data-table-row', (string)$ri)
+                            ->attr('data-table-col', (string)$ci)
+                            ->attr('data-table-placeholder', ' ')
+                            ->text(is_string($cell) ? $cell : '')
+                    )
+                );
             }
+            $tr->child(
+                Element::make('td')->class('ux-block-editor__table-del')->child(
+                    Element::make('button')
+                        ->attr('type', 'button')
+                        ->liveAction('deleteTableRow', 'click', ['index' => $index, 'row' => $ri])
+                        ->text('✕')
+                )
+            );
+            $tbody->child($tr);
+        }
+        $table->child($tbody);
+        $container->child($table);
+    }
+
+    protected function renderVideoArea(Element $container, int $index, array $attrs): void
+    {
+        $type = $attrs['type'] ?? 'embed';
+        $this->renderSelect($container, $index, 'type', $type, [
+            'embed' => '嵌入链接',
+            'native' => '本地视频',
+        ]);
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', $type === 'embed' ? 'YouTube / Bilibili / Vimeo 链接' : '视频文件地址')
+                ->attr('value', $attrs['src'] ?? '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'src')
+        );
+
+        $container->child(
+            Element::make('input')
+                ->class('ux-block-editor__input')
+                ->attr('type', 'text')
+                ->attr('placeholder', '视频说明（可选）')
+                ->attr('value', $attrs['caption'] ?? '')
+                ->attr('data-attr-index', (string)$index)
+                ->attr('data-attr-name', 'caption')
+        );
+    }
+
+    protected function renderGenericArea(Element $container, int $index, array $block): void
+    {
+        $blockType = BlockRegistry::get($block['blockName'] ?? '');
+        $attrs = $block['attributes'] ?? [];
+        $attrDefs = $blockType ? $blockType->attributes : [];
+
+        foreach ($attrDefs as $attrName => $def) {
+            $type = $def['type'] ?? 'string';
+            $value = $attrs[$attrName] ?? $def['default'] ?? '';
+
+            $container->child(Element::make('label')->class('ux-block-editor__field-label')->text($attrName));
+
+            if ($type === 'rich-text') {
+                $container->child(
+                    Element::make('div')
+                        ->class('ux-block-editor__editable')
+                        ->attr('contenteditable', 'true')
+                        ->attr('data-editable-index', (string)$index)
+                        ->attr('data-editable-attr', $attrName)
+                        ->html($this->contentToHtml($value))
+                );
+            } elseif ($type === 'boolean') {
+                $label = Element::make('label')->class('ux-block-editor__checkbox-label');
+                $cb = Element::make('input')
+                    ->attr('type', 'checkbox')
+                    ->attr('data-attr-index', (string)$index)
+                    ->attr('data-attr-name', $attrName);
+                if ($value) $cb->attr('checked', 'checked');
+                $label->child($cb);
+                $label->text(' ' . $attrName);
+                $container->child($label);
+            } else {
+                $container->child(
+                    Element::make('input')
+                        ->class('ux-block-editor__input')
+                        ->attr('type', $type === 'number' ? 'number' : 'text')
+                        ->attr('value', is_scalar($value) ? (string)$value : '')
+                        ->attr('data-attr-index', (string)$index)
+                        ->attr('data-attr-name', $attrName)
+                );
+            }
+        }
+    }
+
+    protected function renderInserter(): Element
+    {
+        $inserter = Element::make('div')
+            ->class('ux-block-editor__inserter')
+            ->attr('data-inserter-panel', '');
+
+        $blocks = $this->getAvailableBlockDefs();
+        $categories = [];
+        foreach ($blocks as $def) {
+            $cat = $def['category'] ?? 'common';
             $categories[$cat][] = $def;
         }
 
-        foreach ($categories as $category => $blocks) {
-            $sectionEl = Element::make('div')->class('ux-block-editor__inserter-section');
-            $sectionEl->child(
-                Element::make('div')
-                    ->class('ux-block-editor__inserter-section-title')
-                    ->text(ucfirst($category))
+        foreach ($categories as $catName => $catBlocks) {
+            $section = Element::make('div')->class('ux-block-editor__inserter-section');
+            $section->child(
+                Element::make('div')->class('ux-block-editor__inserter-section-title')->text(ucfirst($catName))
             );
-
-            $gridEl = Element::make('div')->class('ux-block-editor__inserter-grid');
-
-            foreach ($blocks as $blockDef) {
-                $itemEl = Element::make('button')
+            $grid = Element::make('div')->class('ux-block-editor__inserter-grid');
+            foreach ($catBlocks as $def) {
+                $item = Element::make('button')
                     ->class('ux-block-editor__inserter-item')
                     ->attr('type', 'button')
-                    ->data('block-name', $blockDef['name']);
-
-                if (!empty($blockDef['icon'])) {
-                    $iconEl = Element::make('span')
-                        ->class('ux-block-editor__inserter-item-icon')
-                        ->html($blockDef['icon']);
-                    $itemEl->child($iconEl);
+                    ->liveAction('addBlock', 'click', ['blockName' => $def['name']]);
+                if (!empty($def['icon'])) {
+                    $item->child(Element::make('span')->class('ux-block-editor__inserter-item-icon')->html($def['icon']));
                 }
-
-                $labelEl = Element::make('span')
-                    ->class('ux-block-editor__inserter-item-label')
-                    ->text($blockDef['title'] ?: $blockDef['name']);
-                $itemEl->child($labelEl);
-
-                $gridEl->child($itemEl);
+                $item->child(Element::make('span')->class('ux-block-editor__inserter-item-label')->text($def['title'] ?: $def['name']));
+                $grid->child($item);
             }
-
-            $sectionEl->child($gridEl);
-            $panelEl->child($sectionEl);
+            $section->child($grid);
+            $inserter->child($section);
         }
 
-        $inserterEl->child($panelEl);
+        return $inserter;
+    }
 
-        return $inserterEl;
+    protected function getAvailableBlockDefs(): array
+    {
+        if (!empty($this->allowedBlocks)) {
+            $defs = [];
+            foreach ($this->allowedBlocks as $name) {
+                $bt = BlockRegistry::get($name);
+                if ($bt) $defs[$name] = $bt->toArray();
+            }
+            return $defs;
+        }
+        return BlockRegistry::allDefinitions();
+    }
+
+    protected function contentToHtml(mixed $content): string
+    {
+        if (is_string($content)) return $content;
+        if (is_array($content) && !empty($content)) {
+            return SegmentRenderer::segmentsToHtml($content);
+        }
+        return '';
     }
 }

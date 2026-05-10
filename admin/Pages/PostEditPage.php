@@ -256,7 +256,7 @@ class PostEditPage extends EmbeddedLiveComponent
         }
 
         $editor->liveModel('content');
-        $main->child($editor->render());
+        $main->child(Element::make('div')->html($editor->renderEmbedded()));
 
         $sidebar = Element::make('div')
             ->class('post-edit-sidebar', 'w-80', 'flex-shrink-0', 'space-y-4');

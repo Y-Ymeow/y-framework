@@ -11,6 +11,10 @@ use Framework\UX\RichEditor\Blocks\QuoteBlock;
 use Framework\UX\RichEditor\Blocks\CodeBlock;
 use Framework\UX\RichEditor\Blocks\ListBlock;
 use Framework\UX\RichEditor\Blocks\DividerBlock;
+use Framework\UX\RichEditor\Blocks\ColumnsBlock;
+use Framework\UX\RichEditor\Blocks\CalloutBlock;
+use Framework\UX\RichEditor\Blocks\TableBlock;
+use Framework\UX\RichEditor\Blocks\VideoBlock;
 
 /**
  * Block 注册表
@@ -101,6 +105,10 @@ class BlockRegistry
         self::register('code', new CodeBlock());
         self::register('list', new ListBlock());
         self::register('divider', new DividerBlock());
+        self::register('columns', new ColumnsBlock());
+        self::register('callout', new CalloutBlock());
+        self::register('table', new TableBlock());
+        self::register('video', new VideoBlock());
     }
 
     public static function serialize(array $blocks): string

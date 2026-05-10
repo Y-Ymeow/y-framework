@@ -17,6 +17,12 @@ abstract class EmbeddedLiveComponent extends AbstractLiveComponent
 {
     use HasParentInjection;
 
+    public function renderEmbedded(): string
+    {
+        $this->_invoke();
+        return $this->toHtml();
+    }
+
     public static function isLiveComponent(object $component): bool
     {
         if (!($component instanceof EmbeddedLiveComponent)) {
