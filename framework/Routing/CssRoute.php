@@ -159,7 +159,7 @@ class CssRoute
         preg_match_all('/[\'"]([^\'"]*)[\'"]/', $content, $stringMatches);
 
         foreach ($stringMatches[1] as $string) {
-            preg_match_all('/[a-zA-Z][a-zA-Z0-9_:.!-]{1,59}/', $string, $tokenMatches);
+            preg_match_all('/[a-zA-Z][a-zA-Z0-9_:.!\-()\[\]%\/]{1,59}/', $string, $tokenMatches);
 
             foreach ($tokenMatches[0] as $token) {
                 if (!str_contains($token, '-') && !str_contains($token, ':')) {

@@ -59,7 +59,13 @@ class LayoutRules
             return "width:{$v}rem";
         }
         if (preg_match('/^w-\[(.+)\]$/', $class, $m)) {
-            return "width:{$m[1]}";
+            $m[1] = str_replace([
+                '-',
+                '+',
+                '*',
+                '/'
+            ], [' - ', ' + ', ' * ', ' / '], $m[1]);
+            return "width: {$m[1]}";
         }
         if ($class === 'w-full') return 'width:100%';
         if ($class === 'w-auto') return 'width:auto';
@@ -72,7 +78,13 @@ class LayoutRules
             return "height:{$v}rem";
         }
         if (preg_match('/^h-\[(.+)\]$/', $class, $m)) {
-            return "height:{$m[1]}";
+            $m[1] = str_replace([
+                '-',
+                '+',
+                '*',
+                '/'
+            ], [' - ', ' + ', ' * ', ' / '], $m[1]);
+            return "height: {$m[1]}";
         }
         if ($class === 'h-full') return 'height:100%';
         if ($class === 'h-screen') return 'height:100vh';
@@ -82,7 +94,13 @@ class LayoutRules
         if ($class === 'min-h-full') return 'min-height:100%';
         if ($class === 'min-h-screen') return 'min-height:100vh';
         if (preg_match('/^min-h-\[(.+)\]$/', $class, $m)) {
-            return "min-height:{$m[1]}";
+            $m[1] = str_replace([
+                '-',
+                '+',
+                '*',
+                '/'
+            ], [' - ', ' + ', ' * ', ' / '], $m[1]);
+            return "min-height: {$m[1]}";
         }
 
         if ($class === 'min-w-0') return 'min-width:0';
@@ -90,7 +108,13 @@ class LayoutRules
         if ($class === 'min-w-min') return 'min-width:min-content';
         if ($class === 'min-w-max') return 'min-width:max-content';
         if (preg_match('/^min-w-\[(.+)\]$/', $class, $m)) {
-            return "min-width:{$m[1]}";
+            $m[1] = str_replace([
+                '-',
+                '+',
+                '*',
+                '/'
+            ], [' - ', ' + ', ' * ', ' / '], $m[1]);
+            return "min-width: {$m[1]}";
         }
 
         if ($class === 'shrink-0') return 'flex-shrink:0';
