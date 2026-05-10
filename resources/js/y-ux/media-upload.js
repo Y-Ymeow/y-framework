@@ -1,6 +1,53 @@
 class MediaUpload {
     constructor() {
         this.bound = new WeakSet();
+        this._setupGlobalDrag();
+    }
+
+    _setupGlobalDrag() {
+        if (document._mediaUploadDragReady) return;
+        document._mediaUploadDragReady = true;
+
+        let dragCounter = 0;
+
+        document.addEventListener('dragenter', (e) => {
+            dragCounter++;
+            const area = e.target.closest('[data-media-upload]');
+            if (area) {
+                area.classList.add('media-upload-dragover');
+            }
+        });
+
+        document.addEventListener('dragleave', (e) => {
+            dragCounter--;
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                document.querySelectorAll('.media-upload-dragover').forEach(el => {
+                    el.classList.remove('media-upload-dragover');
+                });
+            }
+        });
+
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.media-upload-dragover').forEach(el => {
+                el.classList.remove('media-upload-dragover');
+            });
+            dragCounter = 0;
+
+            const area = e.target.closest('[data-media-upload]');
+            if (!area) return;
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const uploadUrl = area.dataset.uploadUrl || '/admin/media/upload';
+                this.uploadFiles(files, uploadUrl, area);
+            }
+        });
     }
 
     init(root = document) {
@@ -11,33 +58,14 @@ class MediaUpload {
             const input = el.querySelector('.media-upload-input');
             if (!input) return;
 
-            const uploadUrl = el.dataset.uploadUrl || '/admin/media/upload';
-
             el.addEventListener('click', (e) => {
                 if (e.target.closest('.media-upload-input')) return;
                 input.click();
             });
 
-            el.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                el.classList.add('media-upload-dragover');
-            });
-
-            el.addEventListener('dragleave', () => {
-                el.classList.remove('media-upload-dragover');
-            });
-
-            el.addEventListener('drop', (e) => {
-                e.preventDefault();
-                el.classList.remove('media-upload-dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    this.uploadFiles(files, uploadUrl, el);
-                }
-            });
-
             input.addEventListener('change', () => {
                 if (input.files.length > 0) {
+                    const uploadUrl = el.dataset.uploadUrl || '/admin/media/upload';
                     this.uploadFiles(input.files, uploadUrl, el);
                     input.value = '';
                 }
