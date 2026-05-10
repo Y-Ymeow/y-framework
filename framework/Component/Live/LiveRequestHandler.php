@@ -64,9 +64,9 @@ class LiveRequestHandler
 
             if (!empty($params['state'])) {
                 $component->deserializeState($params['state']);
-                $component->fillPublicProperties($params['publicData']);
             }
 
+            $component->fillPublicProperties($params['publicData']);
             $component->_invokeAction();
 
             $before = $component->getDataForFrontend();
@@ -156,8 +156,9 @@ class LiveRequestHandler
 
             if (!empty($state)) {
                 $component->deserializeState($state);
-                $component->fillPublicProperties($publicData);
             }
+
+            $component->fillPublicProperties($publicData);
 
             // Fire onUpdate lifecycle hook after state merge
             $component->onUpdate();
@@ -225,8 +226,9 @@ class LiveRequestHandler
 
             if (!empty($state)) {
                 $component->deserializeState($state);
-                $component->fillPublicProperties($publicData);
             }
+
+            $component->fillPublicProperties($publicData);
 
             $eventName = $request->input('_event');
             $eventParams = $request->input('_params', []);

@@ -42,6 +42,13 @@ class DebugPage extends LiveComponent
         $this->mounted = true;
         AssetRegistry::getInstance()->ui();
         AssetRegistry::getInstance()->ux();
+
+        // Start fresh: clear accumulated data from before DebugPage opened
+        try {
+            $storage = DebugBarStorage::make();
+            $storage->save(DebugBar::getInstance()->getKey(), []);
+        } catch (\Throwable $e) {}
+
         $this->loadSnapshot();
     }
 
@@ -68,6 +75,7 @@ class DebugPage extends LiveComponent
     {
         $this->loadSnapshot();
         $this->refresh('debug-content');
+        $this->refresh('debug-header');
     }
 
     #[LiveAction]
@@ -102,7 +110,10 @@ class DebugPage extends LiveComponent
     public function render(): Element
     {
         $page = Element::make('div')
-            ->class('min-h-screen', 'bg-gray-900', 'text-gray-100', 'font-mono', 'text-sm');
+            ->class('min-h-screen', 'bg-gray-900', 'text-gray-100', 'font-mono', 'text-sm')
+            ->attr('data-poll', '{"poll":{"interval":2000}}');
+
+        $page->child(Element::make('style')->text('.debug-reverse-list{display:flex;flex-direction:column-reverse}'));
 
         $page->child($this->renderHeader());
         $page->child($this->renderBody());
@@ -118,7 +129,8 @@ class DebugPage extends LiveComponent
         $left = Element::make('div')->class('flex', 'items-center', 'gap-3');
         $left->child(Element::make('span')->class('text-lg', 'font-bold')->text('🐛 Debug Panel'));
 
-        $stats = Element::make('div')->class('flex', 'items-center', 'gap-4', 'text-xs', 'text-gray-400');
+        $stats = Element::make('div')->class('flex', 'items-center', 'gap-4', 'text-xs', 'text-gray-400')
+            ->liveFragment('debug-header');
         $stats->child(Element::make('span')->text("📡 {$this->requestCount} 请求"));
         $stats->child(Element::make('span')->text("💾 {$this->sqlCount} SQL"));
         $stats->child(Element::make('span')->text("📊 {$this->memory}"));
@@ -366,16 +378,19 @@ class DebugPage extends LiveComponent
         }
 
         $totalTime = $snapshot['panels']['sql']['data']['total_time'] ?? 0;
+        $totalTime = is_numeric($totalTime) ? round((float)$totalTime, 2) . 'ms' : (string)$totalTime;
 
         $parent->child(
             Element::make('div')->class('text-xs', 'text-gray-400', 'mb-3')
                 ->text("共 {$this->sqlCount} 条查询，总耗时 {$totalTime}")
         );
 
+        $list = Element::make('div')->class('debug-reverse-list');
+
         foreach ($queries as $q) {
-            $sql = $q[0] ?? '';
-            $bindings = $q[1] ?? [];
-            $time = $q[2] ?? 0;
+            $sql = is_array($q) ? ($q['sql'] ?? '') : '';
+            $bindings = is_array($q) ? ($q['bindings'] ?? []) : [];
+            $time = is_array($q) ? (float)($q['time'] ?? 0) : 0;
             $isSlow = $time > 100;
 
             $classes = ['bg-gray-800', 'rounded-lg', 'p-3', 'mb-2'];
@@ -402,8 +417,10 @@ class DebugPage extends LiveComponent
                 );
             }
 
-            $parent->child($card);
+            $list->child($card);
         }
+
+        $parent->child($list);
     }
 
     protected function renderDebugTab(Element $parent, array $snapshot): void
@@ -414,6 +431,8 @@ class DebugPage extends LiveComponent
             $parent->child(Element::make('div')->class('text-gray-500')->text('暂无调试数据（使用 debug() 函数添加）'));
             return;
         }
+
+        $list = Element::make('div')->class('debug-reverse-list');
 
         foreach ($debugItems as $item) {
             $file = $item['file'] ?? '';
@@ -434,8 +453,10 @@ class DebugPage extends LiveComponent
                 );
             }
 
-            $parent->child($card);
+            $list->child($card);
         }
+
+        $parent->child($list);
     }
 
     protected function renderMessagesTab(Element $parent, array $snapshot): void
@@ -446,6 +467,8 @@ class DebugPage extends LiveComponent
             $parent->child(Element::make('div')->class('text-gray-500')->text('暂无消息'));
             return;
         }
+
+        $list = Element::make('div')->class('debug-reverse-list');
 
         foreach ($messages as $msg) {
             $level = $msg['level'] ?? 'info';
@@ -468,8 +491,10 @@ class DebugPage extends LiveComponent
             $card->child(Element::make('span')->class('text-xs', 'text-gray-500')->text($msg['time'] ?? ''));
             $card->child(Element::make('span')->class('text-xs', $textColor)->text($msg['message'] ?? ''));
 
-            $parent->child($card);
+            $list->child($card);
         }
+
+        $parent->child($list);
     }
 
     protected function renderRoutesTab(Element $parent, array $snapshot): void

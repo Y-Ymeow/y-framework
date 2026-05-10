@@ -23,9 +23,16 @@ class DebugBarListener
         Hook::getInstance()->on('live.action.completed', [$this, 'onLiveActionCompleted'], 10);
     }
 
-    public function onResponseCreated(ResponseCreatedEvent $event): void
+public function onResponseCreated(ResponseCreatedEvent $event): void
     {
         if (!Application::isDebug()) return;
+
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+        if (str_contains($requestUri, '/_debug')) return;
+
+        // Also skip Live actions from DebugPage (they hit /live/action, not /_debug)
+        $component = $event->getRequest()->input('_component', '');
+        if (str_contains($component, 'DebugPage')) return;
 
         SqlCollector::register();
         RouteCollector::register();
@@ -38,6 +45,11 @@ class DebugBarListener
     public function onLiveActionCompleted(\Framework\Events\LiveActionEvent $event): void
     {
         if (!Application::isDebug()) return;
+
+        $component = $event->getComponent();
+        if (str_contains(get_class($component), 'DebugPage')) return;
+
+        $request = $event->getRequest();
 
         $response = $event->getResponse();
         $request = $event->getRequest();
