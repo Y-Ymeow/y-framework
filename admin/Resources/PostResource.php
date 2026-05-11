@@ -105,7 +105,7 @@ class PostResource extends BaseResource
                     ->label(['admin:posts.excerpt', [], '摘要'])
                     ->rows(3),
 
-                \Framework\UX\Form\BlockEditor::make('content')
+                \Framework\UX\Form\RichEditor::make('content')
                     ->label(['admin:posts.content', [], '内容']),
             ]),
         ]);

@@ -7,8 +7,9 @@ import {
 } from "./connection.js";
 import { replaceLiveHtml, applyLiveFragment } from "./dom.js";
 import { initDirectives } from "../../y-directive/index.js";
-
+import { executeOperation } from "../operations.js";
 import { batch } from "../../y-directive/reactive/index.js";
+import Poll from "../poll.js";
 
 function showLiveProgress() {
     let el = document.getElementById("y-progress");
@@ -231,28 +232,26 @@ async function callActionViaProxy(el, state, action, params) {
             if (data.domPatches) {
                 data.domPatches.forEach((patch) => {
                     const target = document.querySelector(patch.selector);
-                    if (target) {
+if (target) {
                         replaceLiveHtml(target, patch.html, data.state);
                         initDirectives(target);
+                        Poll.autoInit(target);
                     }
                 });
             }
 
             if (data.fragments) {
                 data.fragments.forEach((fragment) => {
-                    const liveEl = el.closest("[data-live]") || el;
+                    const liveEl = el.closest('[data-live]') || el;
                     applyLiveFragment(liveEl, fragment, data.state);
-                    const fragmentEl = liveEl.querySelector(
-                        `[data-live-fragment="${fragment.name}"]`,
-                    );
+                    const fragmentEl = liveEl.querySelector(`[data-live-fragment="${fragment.name}"]`);
                     if (fragmentEl) {
                         initDirectives(fragmentEl);
-                        fragmentEl.dispatchEvent(
-                            new CustomEvent("y:updated", {
-                                bubbles: true,
-                                detail: { el: fragmentEl },
-                            }),
-                        );
+                        Poll.autoInit(fragmentEl);
+                        fragmentEl.dispatchEvent(new CustomEvent('y:updated', {
+                            bubbles: true,
+                            detail: { el: fragmentEl }
+                        }));
                     }
                 });
             }

@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use Admin\PageBuilder\PageBuilderPageModel;
 use Framework\Foundation\Application;
+use Framework\Foundation\AppContext;
 use Framework\Foundation\ServiceProvider;
 use Framework\Http\Response\Response;
 use Framework\Routing\Router;
@@ -15,6 +16,10 @@ class PageBuilderServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        if (AppContext::isAdmin()) {
+            return;
+        }
+
         try {
             $router = $this->app->make(Router::class);
             $rows = PageBuilderPageModel::all();

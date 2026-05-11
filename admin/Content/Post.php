@@ -9,6 +9,7 @@ use Framework\Database\Model;
 class Post extends Model
 {
     use HasMeta;
+    use HasRevisions;
 
     protected string $table = 'posts';
     protected array $fillable = ['user_id', 'category_id', 'title', 'slug', 'excerpt', 'content', 'cover_image', 'status', 'type', 'published_at'];

@@ -78,6 +78,7 @@ class AdminServiceProvider extends ServiceProvider
         AdminManager::registerPage(MediaPage::class);
         AdminManager::registerPage(PageBuilderPage::class);
         AdminManager::registerPage(PluginPage::class);
+        AdminManager::registerPage(\Admin\Pages\ThemePage::class);
         AdminManager::registerResource(PostResource::class);
         AdminManager::registerResource(CategoryResource::class);
         AdminManager::registerResource(TagResource::class);

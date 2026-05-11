@@ -9,7 +9,7 @@ use Framework\Component\Live\EmbeddedLiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\State;
-use Framework\UX\Form\BlockEditor;
+use Framework\UX\Form\RichEditor;
 use Framework\UX\Form\Components\MediaPicker;
 use Framework\UX\Form\TagInput;
 use Framework\UX\Navigation\Tabs;
@@ -246,9 +246,9 @@ class PostEditPage extends EmbeddedLiveComponent
                 ->attr('data-live-debounce', '500')
         );
 
-        $editor = new BlockEditor('content');
+        $editor = new RichEditor('content');
         $editor->label('')
-            ->placeholder('输入 / 插入内容块...')
+            ->placeholder('输入内容...')
             ->minHeight('400px');
 
         if ($this->content) {

@@ -37,10 +37,14 @@ trait HasLiveDirectives
      * // 输入框的值会自动同步到 $this->username
      * @view-example-end
      */
-    public function liveModel(string $name): static
+    public function liveModel(string $name, bool $live = false): static
     {
-        $this->attrs['data-live-model'] = $name;
-        $this->model($name);
+        if ($live) {
+            $this->attrs['data-live-model.live'] = $name;
+        } else {
+            $this->attrs['data-live-model'] = $name;
+        }
+        // $this->model($name);
         return $this;
     }
 

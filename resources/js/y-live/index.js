@@ -388,6 +388,7 @@ async function dispatchAction(
                 if (target) {
                     replaceLiveHtml(target, patch.html, data.state);
                     initDirectives(target);
+                    Poll.autoInit(target);
                 }
             });
         }
@@ -404,6 +405,7 @@ async function dispatchAction(
                 );
                 if (fragmentEl) {
                     initDirectives(fragmentEl);
+                    Poll.autoInit(fragmentEl);
                 }
             });
         }

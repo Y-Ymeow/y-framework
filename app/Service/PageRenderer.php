@@ -7,10 +7,13 @@ namespace App\Service;
 use Admin\PageBuilder\Components\ComponentRegistry;
 use Admin\PageBuilder\PageBuilderCssService;
 use Admin\PageBuilder\PageGenerator;
+use Framework\Events\Hook;
+use Framework\Events\ThemeBootingEvent;
+use Framework\Events\ThemeBootedEvent;
 use Framework\Http\Response\Response;
+use Framework\Theme\ThemeManager;
 use Framework\View\Base\Element;
 use Framework\View\Document\AssetRegistry;
-use Framework\View\Document\Document;
 
 class PageRenderer
 {
@@ -29,7 +32,9 @@ class PageRenderer
         $css = $this->buildPageCss($tree);
         AssetRegistry::getInstance()->addCssSnippet('pages', $css);
 
-        return Response::html($page);
+        $wrapped = $this->wrapWithTheme($page);
+
+        return Response::html($wrapped);
     }
 
     public function renderTreeToElement(string $name): ?Element
@@ -44,7 +49,46 @@ class PageRenderer
         $page = Element::make('div')->class('pb-page');
         $this->renderTree($tree, $page);
 
-        return $page;
+        return $this->wrapWithTheme($page);
+    }
+
+    protected function wrapWithTheme(Element $content): Element
+    {
+        try {
+            $manager = app(ThemeManager::class);
+            $theme = $manager->getActiveThemeObject();
+        } catch (\Throwable) {
+            return $content;
+        }
+
+        if ($theme === null) {
+            return $content;
+        }
+
+        $theme->boot();
+        Hook::getInstance()->dispatch(new ThemeBootingEvent($theme));
+
+        $cssVars = $theme->renderCssVariables();
+        if ($cssVars) {
+            AssetRegistry::getInstance()->addCssSnippet('theme-vars', ":root {\n{$cssVars}}");
+        }
+
+        foreach ($theme->getStyles() as $style) {
+            AssetRegistry::getInstance()->css($style);
+        }
+
+        foreach ($theme->getScripts() as $script) {
+            AssetRegistry::getInstance()->js($script);
+        }
+
+        $wrapper = Element::make('div')->class('theme-wrapper');
+        $wrapper->child($theme->renderHeader());
+        $wrapper->child($content);
+        $wrapper->child($theme->renderFooter());
+
+        Hook::getInstance()->dispatch(new ThemeBootedEvent($theme, $wrapper));
+
+        return $wrapper;
     }
 
     protected function renderTree(array $tree, Element $parent): void
