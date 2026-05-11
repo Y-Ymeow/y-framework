@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Plugin;
 
+use Framework\Events\BootEvent;
 use Framework\Events\Hook;
 use Framework\Foundation\ServiceProvider;
 
@@ -18,7 +19,7 @@ class PluginServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Hook::addAction('app.booted', function () {
+        Hook::getInstance()->on('app.booted', function (BootEvent $event) {
             try {
                 $manager = $this->app->make(PluginManager::class);
 
@@ -31,6 +32,6 @@ class PluginServiceProvider extends ServiceProvider
             } catch (\Throwable $e) {
                 // Table may not exist before migration
             }
-        }, 0, 0);
+        }, 0);
     }
 }

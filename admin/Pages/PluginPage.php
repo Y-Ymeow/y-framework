@@ -5,6 +5,9 @@ namespace Admin\Pages;
 use Admin\Models\PluginSetting;
 use Admin\Contracts\Live\AdminLayout;
 use Admin\Contracts\Page\PageInterface;
+use Framework\Events\Hook;
+use Framework\Events\PluginActivatedEvent;
+use Framework\Events\PluginDeactivatedEvent;
 use Framework\Http\Middleware\AdminAuthenticate;
 use Framework\Plugin\PluginManager;
 use Framework\Routing\Attribute\Middleware;
@@ -87,7 +90,9 @@ class PluginPage implements PageInterface
             $setting->save();
         }
 
-        \Framework\Events\Hook::fire($enabled ? 'plugin.activated' : 'plugin.deactivated', [$name]);
+        Hook::getInstance()->dispatch(
+            $enabled ? new PluginActivatedEvent($name) : new PluginDeactivatedEvent($name)
+        );
     }
 
     protected function showPlugins(): Element

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Admin\Contracts\Resource;
 
 use Framework\Events\Hook;
+use Framework\Events\ResourceLifecycleEvent;
 use Framework\UX\Form\FormBuilder;
 use Framework\UX\Data\DataTable;
 use Framework\View\Base\Element;
@@ -259,10 +260,15 @@ abstract class BaseResource implements ResourceInterface
         $resourceName = static::getName();
         $fullHook = "{$hook}:{$resourceName}";
 
-        Hook::fire($hook, $this, $context);
-        Hook::fire($fullHook, $this, $context);
+        $event = new ResourceLifecycleEvent($hook, $this, $context);
+        Hook::getInstance()->dispatch($event);
+        $result = $event->getReturnValue();
 
-        return Hook::applyFilter($fullHook, Hook::applyFilter($hook, null, $this, $context), $this, $context);
+        $fullEvent = new ResourceLifecycleEvent($fullHook, $this, $context);
+        Hook::getInstance()->dispatch($fullEvent);
+        $result = $fullEvent->getReturnValue() ?? $result;
+
+        return $result;
     }
 
     public function setRecord(?object $record): void
@@ -280,10 +286,15 @@ abstract class BaseResource implements ResourceInterface
         $resourceName = static::getName();
         $fullHook = "{$hook}:{$resourceName}";
 
-        $result1 = Hook::applyFilter($hook, null, $this, $context);
-        $result2 = Hook::applyFilter($fullHook, $result1, $this, $context);
+        $event = new ResourceLifecycleEvent($hook, $this, $context);
+        Hook::getInstance()->dispatch($event);
+        $result = $event->getReturnValue();
 
-        return $result2;
+        $fullEvent = new ResourceLifecycleEvent($fullHook, $this, $context);
+        Hook::getInstance()->dispatch($fullEvent);
+        $result = $fullEvent->getReturnValue() ?? $result;
+
+        return $result;
     }
 
     protected static function resolveDefaultName(): string

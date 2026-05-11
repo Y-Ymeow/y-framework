@@ -199,5 +199,12 @@ return [
         'security' => 'Security Management',
         'performance' => 'Performance Management',
         'content' => 'Content Management',
+    ],
+
+    'themes' => [
+        'title' => 'Themes',
+        'settings' => 'Theme Settings',
+        'save_settings' => 'Save Settings',
+        'active' => 'Active',
     ]
 ];

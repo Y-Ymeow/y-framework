@@ -132,4 +132,17 @@ class SystemRoute
         $static->disableHotlinkProtection();
         return $static->serve('/' . $path, $request->host());
     }
+
+    #[Route('/themes/{path...}', methods: ['GET'], name: 'theme_assets')]
+    public function themeAssets(Request $request, string $path): Response|StreamedResponse
+    {
+        if (empty($path)) {
+            return new Response(\Framework\Error\ErrorPage::render(404), 404);
+        }
+
+        $themesPath = $this->basePath . '/themes';
+        $static = new StaticFile($themesPath);
+        $static->disableHotlinkProtection();
+        return $static->serve('/' . $path, $request->host());
+    }
 }

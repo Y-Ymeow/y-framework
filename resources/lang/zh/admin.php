@@ -176,5 +176,12 @@ return [
         'title' => '插件管理',
         'description' => '管理已安装的插件',
         'no_plugins' => '暂无已安装的插件',
+    ],
+
+    'themes' => [
+        'title' => '主题',
+        'settings' => '主题设置',
+        'save_settings' => '保存设置',
+        'active' => '激活',
     ]
 ];

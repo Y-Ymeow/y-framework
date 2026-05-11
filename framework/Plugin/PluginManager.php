@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Framework\Plugin;
 
 use Framework\Events\Hook;
+use Framework\Events\PluginBootingEvent;
+use Framework\Events\PluginBootedEvent;
 
 class PluginManager
 {
@@ -87,9 +89,9 @@ class PluginManager
                     continue;
                 }
 
-                Hook::fire('plugin.boot', [$instance]);
+                Hook::getInstance()->dispatch(new PluginBootingEvent($instance));
                 $instance->boot();
-                Hook::fire('plugin.booted', [$instance]);
+                Hook::getInstance()->dispatch(new PluginBootedEvent($instance));
 
                 $this->pluginInstances[$name] = $instance;
             } catch (\Throwable $e) {
