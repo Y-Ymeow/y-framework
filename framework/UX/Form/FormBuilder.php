@@ -12,7 +12,6 @@ use Framework\UX\Form\Components\Select;
 use Framework\UX\Form\Components\Checkbox;
 use Framework\UX\Form\Components\RadioGroup;
 use Framework\UX\Form\RichEditor;
-use Framework\UX\Form\BlockEditor;
 use Framework\UX\UI\Button;
 use Framework\UX\UXComponent;
 use Framework\View\Base\Element;
@@ -453,10 +452,9 @@ class FormBuilder extends UXComponent
         return $this->add($this->applyFieldOptions($input, $options));
     }
 
-    public function richEditor(string $name, string|array $label = '', array $options = []): static
+    public function richEditor(string $name, mixed $label = '', array $options = []): static
     {
-        $editor = new RichEditor();
-        $editor->name($name);
+        $editor = new RichEditor($name);
         
         if ($label) {
             $editor->label($label);
@@ -465,32 +463,17 @@ class FormBuilder extends UXComponent
         if (isset($options['placeholder'])) {
             $editor->placeholder($options['placeholder']);
         }
-        
-        if (isset($options['toolbar'])) {
-            $editor->toolbar($options['toolbar']);
+
+        if (isset($options['height'])) {
+            $editor->minHeight($options['height']);
         }
         
-        if (isset($options['minimal'])) {
-            $editor->minimal($options['minimal']);
-        }
-        
-        return $this->add($editor);
+        return $this->add($this->applyFieldOptions($editor, $options));
     }
 
-    public function blockEditor(string $name, string|array $label = '', array $options = []): static
+    public function blockEditor(string $name, mixed $label = '', array $options = []): static
     {
-        $editor = new BlockEditor();
-        $editor->name($name);
-        
-        if ($label) {
-            $editor->label($label);
-        }
-        
-        if (isset($options['height'])) {
-            $editor->height($options['height']);
-        }
-        
-        return $this->add($editor);
+        return $this->richEditor($name, $label, $options);
     }
 
     protected function applyFieldOptions(object $field, array $options): object

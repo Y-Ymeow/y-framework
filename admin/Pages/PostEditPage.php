@@ -9,7 +9,7 @@ use Framework\Component\Live\EmbeddedLiveComponent;
 use Framework\Component\Live\Attribute\LiveAction;
 use Framework\Component\Live\Attribute\LiveListener;
 use Framework\Component\Live\Attribute\State;
-use Framework\UX\Form\RichEditor;
+use Framework\UX\Form\RichTextEditor;
 use Framework\UX\Form\Components\MediaPicker;
 use Framework\UX\Form\TagInput;
 use Framework\UX\Navigation\Tabs;
@@ -246,17 +246,16 @@ class PostEditPage extends EmbeddedLiveComponent
                 ->attr('data-live-debounce', '500')
         );
 
-        $editor = new RichEditor('content');
-        $editor->label('')
+        $editor = RichTextEditor::make()
             ->placeholder('输入内容...')
-            ->minHeight('400px');
+            ->minHeight('400px')
+            ->liveModel('content');
 
         if ($this->content) {
-            $editor->value($this->content);
+            $editor->content($this->content);
         }
 
-        $editor->liveModel('content');
-        $main->child(Element::make('div')->html($editor->renderEmbedded()));
+        $main->child($editor->render());
 
         $sidebar = Element::make('div')
             ->class('post-edit-sidebar', 'w-80', 'flex-shrink-0', 'space-y-4');

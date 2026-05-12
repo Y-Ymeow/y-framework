@@ -80,21 +80,17 @@ class MiddlewareManager
     {
         $middleware = $this->getMiddleware($group);
 
+        $groups = config('app.middleware', []);
+
         foreach ($additionalMiddleware as $mw) {
             if (is_array($mw)) {
                 if (isset($mw['class'])) {
                     $middleware[] = $mw;
                 } elseif (isset($mw[0])) {
-                    $middleware[] = [
-                        'class' => $this->resolve($mw[0]),
-                        'params' => array_slice($mw, 1),
-                    ];
+                    $this->pushMiddleware($middleware, $mw[0], array_slice($mw, 1), $groups);
                 }
             } else {
-                $middleware[] = [
-                    'class' => $this->resolve($mw),
-                    'params' => [],
-                ];
+                $this->pushMiddleware($middleware, $mw, [], $groups);
             }
         }
 
@@ -104,6 +100,26 @@ class MiddlewareManager
         }
 
         return $handler($request);
+    }
+
+    private function pushMiddleware(array &$stack, string $name, array $params, array $groups): void
+    {
+        $resolved = $this->resolve($name);
+
+        if ($resolved === $name && !class_exists($name) && isset($groups[$name])) {
+            foreach ($groups[$name] as $groupMw) {
+                $stack[] = [
+                    'class' => $this->resolve($groupMw),
+                    'params' => [],
+                ];
+            }
+            return;
+        }
+
+        $stack[] = [
+            'class' => $resolved,
+            'params' => $params,
+        ];
     }
 
     private function createMiddlewareHandler(string $middlewareClass, callable $next, array $params): callable

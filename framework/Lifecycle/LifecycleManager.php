@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Lifecycle;
 
+use Framework\Events\CollectorsFlushedEvent;
 use Framework\Events\Hook;
 use Framework\Events\BootEvent;
 use Framework\Events\CollectorRegisteredEvent;
@@ -124,7 +125,7 @@ class LifecycleManager
             $collector = $this->getCollector($type);
             if ($collector !== null) {
                 $collector->collect($items);
-                Hook::fire("{$type}.flushed", $items);
+                Hook::getInstance()->dispatch(new CollectorsFlushedEvent($type, $items));
             }
         }
         $this->pendingRegistrations = [];
@@ -200,7 +201,7 @@ class LifecycleManager
 
     public function fire(string $hook, mixed ...$args): void
     {
-        Hook::fire($hook, ...$args);
+        Hook::getInstance()->emit($hook, $args);
     }
 
     public function filter(string $hook, mixed $value, mixed ...$args): mixed
