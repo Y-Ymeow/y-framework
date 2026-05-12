@@ -127,23 +127,23 @@ class DebugPage extends LiveComponent
             ->class('bg-gray-800', 'border-b', 'border-gray-700', 'px-6', 'py-3', 'flex', 'items-center', 'justify-between');
 
         $left = Element::make('div')->class('flex', 'items-center', 'gap-3');
-        $left->child(Element::make('span')->class('text-lg', 'font-bold')->text('🐛 Debug Panel'));
+        $left->child(Element::make('span')->class('text-lg', 'font-bold')->intl('admin:debug.title', [], '🐛 Debug Panel'));
 
         $stats = Element::make('div')->class('flex', 'items-center', 'gap-4', 'text-xs', 'text-gray-400')
             ->liveFragment('debug-header');
-        $stats->child(Element::make('span')->text("📡 {$this->requestCount} 请求"));
-        $stats->child(Element::make('span')->text("💾 {$this->sqlCount} SQL"));
-        $stats->child(Element::make('span')->text("📊 {$this->memory}"));
-        $stats->child(Element::make('span')->text("⏱ {$this->duration}"));
+        $stats->child(Element::make('span')->intl('admin:debug.stats.requests', ['count' => $this->requestCount], '📡 {count} 请求'));
+        $stats->child(Element::make('span')->intl('admin:debug.stats.sql', ['count' => $this->sqlCount], '💾 {count} SQL'));
+        $stats->child(Element::make('span')->intl('admin:debug.stats.memory', ['memory' => $this->memory], '📊 {memory}'));
+        $stats->child(Element::make('span')->intl('admin:debug.stats.duration', ['duration' => $this->duration], '⏱ {duration}'));
         $left->child($stats);
 
         $right = Element::make('div')->class('flex', 'items-center', 'gap-2');
-        $right->child(Element::make('span')->class('text-xs', 'text-green-400')->text('● 自动刷新 2s'));
+        $right->child(Element::make('span')->class('text-xs', 'text-green-400')->intl('admin:debug.auto_refresh', [], '● 自动刷新 2s'));
         $right->child(
             Element::make('button')
                 ->class('px-3', 'py-1', 'text-xs', 'bg-gray-700', 'rounded', 'hover:bg-gray-600', 'transition')
                 ->liveAction('clear')
-                ->text('× 清除')
+                ->intl('admin:debug.clear', [], '× 清除')
         );
 
         $header->child($left);
@@ -169,14 +169,14 @@ class DebugPage extends LiveComponent
             ->class('w-48', 'bg-gray-800', 'border-r', 'border-gray-700', 'p-4', 'space-y-1', 'flex-shrink-0', 'overflow-y-auto');
 
         $tabs = [
-            'overview' => ['📊', '概览'],
-            'requests' => ['📡', '请求'],
-            'sql' => ['💾', 'SQL'],
-            'debug' => ['🐛', '调试'],
-            'messages' => ['💬', '消息'],
-            'routes' => ['🛣', '路由'],
-            'session' => ['🔐', '会话'],
-            'php' => ['⚙', 'PHP'],
+            'overview' => ['📊', t('admin:debug.tabs.overview', [], '概览')],
+            'requests' => ['📡', t('admin:debug.tabs.requests', [], '请求')],
+            'sql' => ['💾', t('admin:debug.tabs.sql', [], 'SQL')],
+            'debug' => ['🐛', t('admin:debug.tabs.debug', [], '调试')],
+            'messages' => ['💬', t('admin:debug.tabs.messages', [], '消息')],
+            'routes' => ['🛣', t('admin:debug.tabs.routes', [], '路由')],
+            'session' => ['🔐', t('admin:debug.tabs.session', [], '会话')],
+            'php' => ['⚙', t('admin:debug.tabs.php', [], 'PHP')],
         ];
 
         foreach ($tabs as $key => [$icon, $label]) {
@@ -210,7 +210,7 @@ class DebugPage extends LiveComponent
         if (!$snapshot || empty($snapshot)) {
             $content->child(
                 Element::make('div')->class('text-center', 'text-gray-500', 'mt-20')
-                    ->text('等待数据... 发送一些请求后会自动显示')
+                    ->intl('admin:debug.waiting', [], '等待数据... 发送一些请求后会自动显示')
             );
             return $content;
         }
@@ -253,10 +253,10 @@ class DebugPage extends LiveComponent
         $grid = Element::make('div')->class('grid', 'grid-cols-4', 'gap-4', 'mb-6');
 
         $cards = [
-            ['⏱ 耗时', $summary['duration'] ?? '-', 'bg-blue-900'],
-            ['📊 内存', $summary['memory'] ?? '-', 'bg-green-900'],
-            ['📡 请求', (string)($this->requestCount), 'bg-purple-900'],
-            ['💾 SQL', (string)($this->sqlCount), 'bg-orange-900'],
+            [t('admin:debug.overview.duration', [], '⏱ 耗时'), $summary['duration'] ?? '-', 'bg-blue-900'],
+            [t('admin:debug.overview.memory', [], '📊 内存'), $summary['memory'] ?? '-', 'bg-green-900'],
+            [t('admin:debug.overview.requests', [], '📡 请求'), (string)($this->requestCount), 'bg-purple-900'],
+            [t('admin:debug.overview.sql', [], '💾 SQL'), (string)($this->sqlCount), 'bg-orange-900'],
         ];
 
         foreach ($cards as [$label, $value, $bg]) {
@@ -269,16 +269,16 @@ class DebugPage extends LiveComponent
         $parent->child($grid);
 
         $infoTable = Element::make('div')->class('bg-gray-800', 'rounded-lg', 'p-4');
-        $infoTable->child(Element::make('h3')->class('text-sm', 'font-semibold', 'mb-3', 'text-gray-300')->text('PHP 环境'));
+        $infoTable->child(Element::make('h3')->class('text-sm', 'font-semibold', 'mb-3', 'text-gray-300')->intl('admin:debug.overview.php_env', [], 'PHP 环境'));
 
         $phpInfo = [
-            ['PHP 版本', $php['version'] ?? PHP_VERSION],
-            ['服务器', $php['server'] ?? $_SERVER['SERVER_SOFTWARE'] ?? '-'],
-            ['请求方法', $php['method'] ?? $_SERVER['REQUEST_METHOD'] ?? '-'],
-            ['请求 URL', $php['url'] ?? $_SERVER['REQUEST_URI'] ?? '-'],
-            ['客户端 IP', $php['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '-'],
-            ['时间', $php['time'] ?? date('Y-m-d H:i:s')],
-            ['内存峰值', $summary['memory_peak'] ?? '-'],
+            [t('admin:debug.overview.php_version', [], 'PHP 版本'), $php['version'] ?? PHP_VERSION],
+            [t('admin:debug.overview.server', [], '服务器'), $php['server'] ?? $_SERVER['SERVER_SOFTWARE'] ?? '-'],
+            [t('admin:debug.overview.method', [], '请求方法'), $php['method'] ?? $_SERVER['REQUEST_METHOD'] ?? '-'],
+            [t('admin:debug.overview.url', [], '请求 URL'), $php['url'] ?? $_SERVER['REQUEST_URI'] ?? '-'],
+            [t('admin:debug.overview.client_ip', [], '客户端 IP'), $php['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '-'],
+            [t('admin:debug.overview.time', [], '时间'), $php['time'] ?? date('Y-m-d H:i:s')],
+            [t('admin:debug.overview.peak_memory', [], '内存峰值'), $summary['memory_peak'] ?? '-'],
         ];
 
         foreach ($phpInfo as [$label, $value]) {
@@ -296,19 +296,19 @@ class DebugPage extends LiveComponent
         $history = $snapshot['panels']['request']['data']['history'] ?? [];
 
         if (empty($history)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无请求记录'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.requests.empty', [], '暂无请求记录'));
             return;
         }
 
         $table = Element::make('div')->class('bg-gray-800', 'rounded-lg', 'overflow-hidden');
 
         $header = Element::make('div')->class('flex', 'bg-gray-700', 'px-4', 'py-2', 'text-xs', 'text-gray-400', 'font-semibold');
-        $header->child(Element::make('div')->class('w-16')->text('类型'));
-        $header->child(Element::make('div')->class('w-16')->text('方法'));
-        $header->child(Element::make('div')->class('w-20')->text('状态'));
-        $header->child(Element::make('div')->class('flex-1')->text('URL'));
-        $header->child(Element::make('div')->class('w-20')->text('耗时'));
-        $header->child(Element::make('div')->class('w-16')->text('时间'));
+        $header->child(Element::make('div')->class('w-16')->intl('admin:debug.requests.type', [], '类型'));
+        $header->child(Element::make('div')->class('w-16')->intl('admin:debug.requests.method', [], '方法'));
+        $header->child(Element::make('div')->class('w-20')->intl('admin:debug.requests.status', [], '状态'));
+        $header->child(Element::make('div')->class('flex-1')->intl('admin:debug.requests.url', [], 'URL'));
+        $header->child(Element::make('div')->class('w-20')->intl('admin:debug.requests.duration', [], '耗时'));
+        $header->child(Element::make('div')->class('w-16')->intl('admin:debug.requests.time', [], '时间'));
         $table->child($header);
 
         foreach ($history as $idx => $req) {
@@ -336,7 +336,7 @@ class DebugPage extends LiveComponent
 
             if ($isSelected) {
                 $detail = Element::make('div')->class('px-4', 'py-3', 'bg-gray-850', 'border-b', 'border-gray-700', 'space-y-2');
-                $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold')->text('请求详情'));
+                $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold')->intl('admin:debug.requests.detail', [], '请求详情'));
 
                 $requestBody = $req['requestBody'] ?? [];
                 if (!empty($requestBody)) {
@@ -348,7 +348,7 @@ class DebugPage extends LiveComponent
 
                 $responseSummary = $req['responseSummary'] ?? [];
                 if (!empty($responseSummary)) {
-                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold', 'mt-2')->text('响应摘要'));
+                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-400', 'font-semibold', 'mt-2')->intl('admin:debug.requests.response', [], '响应摘要'));
                     $detail->child(
                         Element::make('pre')->class('text-xs', 'text-blue-300', 'bg-gray-900', 'p-2', 'rounded', 'overflow-x-auto')
                             ->text(json_encode($responseSummary, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))
@@ -356,7 +356,7 @@ class DebugPage extends LiveComponent
                 }
 
                 if (empty($requestBody) && empty($responseSummary)) {
-                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-500')->text('无详细数据'));
+                    $detail->child(Element::make('div')->class('text-xs', 'text-gray-500')->intl('admin:debug.requests.no_detail', [], '无详细数据'));
                 }
 
                 $row->child($detail);
@@ -373,7 +373,7 @@ class DebugPage extends LiveComponent
         $queries = $snapshot['panels']['sql']['data']['queries'] ?? [];
 
         if (empty($queries)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无 SQL 查询'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.sql.empty', [], '暂无 SQL 查询'));
             return;
         }
 
@@ -382,7 +382,7 @@ class DebugPage extends LiveComponent
 
         $parent->child(
             Element::make('div')->class('text-xs', 'text-gray-400', 'mb-3')
-                ->text("共 {$this->sqlCount} 条查询，总耗时 {$totalTime}")
+                ->intl('admin:debug.sql.summary', ['count' => $this->sqlCount, 'time' => $totalTime], '共 {count} 条查询，总耗时 {time}')
         );
 
         $list = Element::make('div')->class('debug-reverse-list');
@@ -402,7 +402,7 @@ class DebugPage extends LiveComponent
 
             $top = Element::make('div')->class('flex', 'items-center', 'justify-between', 'mb-1');
             $top->child(Element::make('span')->class('text-xs', $isSlow ? 'text-red-400' : 'text-gray-400')
-                ->text($time . 'ms' . ($isSlow ? ' ⚠' : '')));
+                ->text($time . t('admin:debug.sql.ms', [], 'ms') . ($isSlow ? t('admin:debug.sql.slow_warning', [], ' ⚠') : '')));
             $card->child($top);
 
             $card->child(
@@ -413,7 +413,7 @@ class DebugPage extends LiveComponent
             if (!empty($bindings)) {
                 $card->child(
                     Element::make('div')->class('text-xs', 'text-gray-500', 'mt-1')
-                        ->text('Bindings: ' . json_encode($bindings, JSON_UNESCAPED_UNICODE))
+                        ->intl('admin:debug.sql.bindings', ['bindings' => json_encode($bindings, JSON_UNESCAPED_UNICODE)], 'Bindings: {bindings}')
                 );
             }
 
@@ -428,7 +428,7 @@ class DebugPage extends LiveComponent
         $debugItems = $snapshot['debug'] ?? [];
 
         if (empty($debugItems)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无调试数据（使用 debug() 函数添加）'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.debug.empty', [], '暂无调试数据（使用 debug() 函数添加）'));
             return;
         }
 
@@ -464,7 +464,7 @@ class DebugPage extends LiveComponent
         $messages = $snapshot['messages'] ?? [];
 
         if (empty($messages)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无消息'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.messages.empty', [], '暂无消息'));
             return;
         }
 
@@ -502,15 +502,15 @@ class DebugPage extends LiveComponent
         $routeData = $snapshot['panels']['route']['data'] ?? [];
 
         if (empty($routeData)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无路由信息'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.routes.empty', [], '暂无路由信息'));
             return;
         }
 
         $table = Element::make('div')->class('bg-gray-800', 'rounded-lg', 'overflow-hidden');
 
         $header = Element::make('div')->class('flex', 'bg-gray-700', 'px-4', 'py-2', 'text-xs', 'text-gray-400', 'font-semibold');
-        $header->child(Element::make('div')->class('w-24')->text('属性'));
-        $header->child(Element::make('div')->class('flex-1')->text('值'));
+        $header->child(Element::make('div')->class('w-24')->intl('admin:debug.routes.attribute', [], '属性'));
+        $header->child(Element::make('div')->class('flex-1')->intl('admin:debug.routes.value', [], '值'));
         $table->child($header);
 
         foreach ($routeData as $key => $value) {
@@ -528,16 +528,16 @@ class DebugPage extends LiveComponent
         $sessionData = $snapshot['panels']['session']['data']['data'] ?? [];
 
         if (empty($sessionData)) {
-            $parent->child(Element::make('div')->class('text-gray-500')->text('暂无会话数据'));
+            $parent->child(Element::make('div')->class('text-gray-500')->intl('admin:debug.session.empty', [], '暂无会话数据'));
             return;
         }
 
         $table = Element::make('div')->class('bg-gray-800', 'rounded-lg', 'overflow-hidden');
 
         $header = Element::make('div')->class('flex', 'bg-gray-700', 'px-4', 'py-2', 'text-xs', 'text-gray-400', 'font-semibold');
-        $header->child(Element::make('div')->class('w-32')->text('Key'));
-        $header->child(Element::make('div')->class('w-16')->text('类型'));
-        $header->child(Element::make('div')->class('flex-1')->text('值'));
+        $header->child(Element::make('div')->class('w-32')->intl('admin:debug.session.key', [], 'Key'));
+        $header->child(Element::make('div')->class('w-16')->intl('admin:debug.session.type', [], '类型'));
+        $header->child(Element::make('div')->class('flex-1')->intl('admin:debug.session.value', [], '值'));
         $table->child($header);
 
         foreach ($sessionData as $item) {
@@ -558,19 +558,19 @@ class DebugPage extends LiveComponent
         $table = Element::make('div')->class('bg-gray-800', 'rounded-lg', 'overflow-hidden');
 
         $phpInfo = [
-            ['PHP 版本', $php['version'] ?? PHP_VERSION],
-            ['服务器', $php['server'] ?? $_SERVER['SERVER_SOFTWARE'] ?? '-'],
-            ['请求方法', $php['method'] ?? $_SERVER['REQUEST_METHOD'] ?? '-'],
-            ['请求 URL', $php['url'] ?? $_SERVER['REQUEST_URI'] ?? '-'],
-            ['客户端 IP', $php['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '-'],
-            ['时间', $php['time'] ?? date('Y-m-d H:i:s')],
-            ['内存峰值', $snapshot['summary']['memory_peak'] ?? '-'],
-            ['Debug Key', $snapshot['key'] ?? '-'],
+            [t('admin:debug.php.version', [], 'PHP 版本'), $php['version'] ?? PHP_VERSION],
+            [t('admin:debug.php.server', [], '服务器'), $php['server'] ?? $_SERVER['SERVER_SOFTWARE'] ?? '-'],
+            [t('admin:debug.php.method', [], '请求方法'), $php['method'] ?? $_SERVER['REQUEST_METHOD'] ?? '-'],
+            [t('admin:debug.php.url', [], '请求 URL'), $php['url'] ?? $_SERVER['REQUEST_URI'] ?? '-'],
+            [t('admin:debug.php.ip', [], '客户端 IP'), $php['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '-'],
+            [t('admin:debug.php.time', [], '时间'), $php['time'] ?? date('Y-m-d H:i:s')],
+            [t('admin:debug.php.memory', [], '内存峰值'), $snapshot['summary']['memory_peak'] ?? '-'],
+            [t('admin:debug.php.debug_key', [], 'Debug Key'), $snapshot['key'] ?? '-'],
         ];
 
         $header = Element::make('div')->class('flex', 'bg-gray-700', 'px-4', 'py-2', 'text-xs', 'text-gray-400', 'font-semibold');
-        $header->child(Element::make('div')->class('w-32')->text('属性'));
-        $header->child(Element::make('div')->class('flex-1')->text('值'));
+        $header->child(Element::make('div')->class('w-32')->intl('admin:debug.routes.attribute', [], '属性'));
+        $header->child(Element::make('div')->class('flex-1')->intl('admin:debug.routes.value', [], '值'));
         $table->child($header);
 
         foreach ($phpInfo as [$key, $value]) {
@@ -583,4 +583,3 @@ class DebugPage extends LiveComponent
         $parent->child($table);
     }
 }
-

@@ -119,7 +119,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $middleware = trim($params['middleware'] ?? $this->newPageMiddleware);
 
         if (empty($name)) {
-            $this->toast('请填写页面名称', 'error');
+            $this->toast('error', t('admin:page_builder.toast.name_required', [], '请填写页面名称'));
             $this->refresh('page-content');
             return;
         }
@@ -131,9 +131,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         ]);
 
         if (!$result['success']) {
-            $this->toast($result['error'] ?? '创建失败', 'error');
+            $this->toast('error', $result['error'] ?? t('admin:page_builder.toast.create_failed', [], '创建失败'));
         } else {
-            $this->toast('页面已创建');
+            $this->toast('success', t('admin:page_builder.toast.created', [], '页面已创建'));
             $this->newPageName = '';
             $this->newPageRoute = '';
             $this->newPageSlug = '';
@@ -154,9 +154,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $result = $generator->delete($name);
 
         if ($result['success']) {
-            $this->toast('页面已删除');
+            $this->toast('success', t('admin:page_builder.toast.deleted', [], '页面已删除'));
         } else {
-            $this->toast($result['error'] ?? '删除失败', 'error');
+            $this->toast('error', $result['error'] ?? t('admin:page_builder.toast.delete_failed', [], '删除失败'));
         }
 
         $this->refresh('page-content');
@@ -219,7 +219,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $middleware = trim($this->editMiddleware);
 
         if (empty($name)) {
-            $this->toast('页面名称不能为空', 'error');
+            $this->toast('error', t('admin:page_builder.toast.empty_name', [], '页面名称不能为空'));
             return;
         }
 
@@ -234,7 +234,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         ]);
 
         if ($result['success']) {
-            $this->toast('页面设置已保存');
+            $this->toast('success', t('admin:page_builder.toast.settings_saved', [], '页面设置已保存'));
             $this->closeModal('edit-page-modal');
             $this->editingPageSettings = '';
 
@@ -246,7 +246,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 $this->componentTreeJson = '[]';
             }
         } else {
-            $this->toast($result['error'] ?? '保存失败', 'error');
+            $this->toast('error', $result['error'] ?? t('admin:page_builder.toast.save_failed', [], '保存失败'));
         }
 
         $this->refresh('page-content');
@@ -258,7 +258,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $treeJson = $params['tree'] ?? '[]';
         $tree = json_decode($treeJson, true);
         if (!is_array($tree)) {
-            $this->toast('无效的组件数据', 'error');
+            $this->toast('error', t('admin:page_builder.toast.invalid_data', [], '无效的组件数据'));
             return;
         }
 
@@ -267,9 +267,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         if ($result['success']) {
             $this->componentTreeJson = $treeJson;
-            $this->toast('已保存');
+            $this->toast('success', t('admin:page_builder.toast.saved', [], '已保存'));
         } else {
-            $this->toast($result['error'] ?? '保存失败', 'error');
+            $this->toast('error', $result['error'] ?? t('admin:page_builder.toast.save_failed', [], '保存失败'));
         }
 
         $this->refresh('page-content');
@@ -371,7 +371,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         error_log(json_encode($formData, JSON_UNESCAPED_UNICODE));
         $this->updateTreeFromParams($formData);
-        $this->toast('设置已保存');
+        $this->toast('success', t('admin:page_builder.toast.component_saved', [], '设置已保存'));
         $this->refresh('canvas');
         $this->refresh('properties-panel');
     }
@@ -396,7 +396,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                     $limit = $limits[$slotName] ?? null;
                     $currentCount = count($parent['slots'][$slotName] ?? []);
                     if ($limit !== null && $currentCount >= $limit) {
-                        $this->toast('该位置已达上限', 'error');
+                        $this->toast('error', t('admin:page_builder.toast.slot_limit', [], '该位置已达上限'));
                         return;
                     }
                 }
@@ -434,7 +434,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         }
 
         if (!$this->validateSlotLimits($tree)) {
-            $this->toast('拖放后某些插槽超出上限', 'error');
+            $this->toast('error', t('admin:page_builder.toast.slot_exceeded', [], '拖放后某些插槽超出上限'));
             return;
         }
 
@@ -452,7 +452,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $tree = json_decode($this->componentTreeJson, true);
         if (!is_array($tree)) {
-            $this->toast('无效的组件数据', 'error');
+            $this->toast('error', t('admin:page_builder.toast.invalid_data', [], '无效的组件数据'));
             return;
         }
 
@@ -460,9 +460,9 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $result = $generator->saveComponentTree($this->editingPage, $tree);
 
         if ($result['success']) {
-            $this->toast('页面已保存');
+            $this->toast('success', t('admin:page_builder.toast.tree_saved', [], '页面已保存'));
         } else {
-            $this->toast($result['error'] ?? '保存失败', 'error');
+            $this->toast('error', $result['error'] ?? t('admin:page_builder.toast.save_failed', [], '保存失败'));
         }
     }
 
@@ -586,59 +586,59 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $modal = Modal::make()
             ->id('create-page-modal')
-            ->title('创建新页面')
+            ->title(t('admin:page_builder.create_modal.title', [], '创建新页面'))
             ->size('md');
 
         $body = Element::make('div')->class('p-4');
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('页面名称'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.create_modal.page_name', [], '页面名称'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '如 About')
+                    ->intlAttr('placeholder', 'admin:page_builder.create_modal.page_name_placeholder', [], '如 About')
                     ->attr('data-live-model', 'newPageName')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('Slug'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.create_modal.slug', [], 'Slug'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '如 about-us')
+                    ->intlAttr('placeholder', 'admin:page_builder.create_modal.slug_placeholder', [], '如 about-us')
                     ->attr('data-live-model', 'newPageSlug')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('路由'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.create_modal.route', [], '路由'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '留空使用 /slug')
+                    ->intlAttr('placeholder', 'admin:page_builder.create_modal.route_placeholder', [], '留空使用 /slug')
                     ->attr('data-live-model', 'newPageRoute')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('Middleware'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.create_modal.middleware', [], 'Middleware'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '逗号分隔，可选')
+                    ->intlAttr('placeholder', 'admin:page_builder.create_modal.middleware_placeholder', [], '逗号分隔，可选')
                     ->attr('data-live-model', 'newPageMiddleware')
             )
         );
 
         $modal->content($body);
         $modal->footer(
-            Button::make()->label('取消')->secondary()->attr('data-ux-modal-close', 'create-page-modal'),
-            Button::make()->label('创建页面')->primary()->attr('data-action:click', 'createPage()')
+            Button::make()->label(t('admin:page_builder.create_modal.cancel', [], '取消'))->secondary()->attr('data-ux-modal-close', 'create-page-modal'),
+            Button::make()->label(t('admin:page_builder.create_modal.create', [], '创建页面'))->primary()->attr('data-action:click', 'createPage()')
         );
 
         return $modal;
@@ -648,59 +648,59 @@ class PageBuilderPage extends LiveComponent implements PageInterface
     {
         $modal = Modal::make()
             ->id('edit-page-modal')
-            ->title('编辑页面设置')
+            ->title(t('admin:page_builder.edit_modal.title', [], '编辑页面设置'))
             ->size('md');
 
         $body = Element::make('div')->class('p-4');
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('页面名称'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.edit_modal.page_name', [], '页面名称'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '如 About')
+                    ->intlAttr('placeholder', 'admin:page_builder.edit_modal.page_name_placeholder', [], '如 About')
                     ->attr('data-live-model', 'editPageName')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('Slug'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.edit_modal.slug', [], 'Slug'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '如 about-us')
+                    ->intlAttr('placeholder', 'admin:page_builder.edit_modal.slug_placeholder', [], '如 about-us')
                     ->attr('data-live-model', 'editSlug')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('路由'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.edit_modal.route', [], '路由'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '留空使用 /slug')
+                    ->intlAttr('placeholder', 'admin:page_builder.edit_modal.route_placeholder', [], '留空使用 /slug')
                     ->attr('data-live-model', 'editRoute')
             )
         );
 
         $body->child(
             Element::make('div')->class('mb-3')->children(
-                Element::make('label')->class('form-label')->text('Middleware'),
+                Element::make('label')->class('form-label')->intl('admin:page_builder.edit_modal.middleware', [], 'Middleware'),
                 Element::make('input')
                     ->class('ux-form-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '逗号分隔，可选')
+                    ->intlAttr('placeholder', 'admin:page_builder.edit_modal.middleware_placeholder', [], '逗号分隔，可选')
                     ->attr('data-live-model', 'editMiddleware')
             )
         );
 
         $modal->content($body);
         $modal->footer(
-            Button::make()->label('取消')->secondary()->attr('data-ux-modal-close', 'edit-page-modal'),
-            Button::make()->label('保存设置')->primary()->attr('data-action:click', 'savePageSettings()')
+            Button::make()->label(t('admin:page_builder.edit_modal.cancel', [], '取消'))->secondary()->attr('data-ux-modal-close', 'edit-page-modal'),
+            Button::make()->label(t('admin:page_builder.edit_modal.save', [], '保存设置'))->primary()->attr('data-action:click', 'savePageSettings()')
         );
 
         return $modal;
@@ -714,18 +714,18 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $pages = $generator->listPages();
 
         $headerRow = Element::make('div')->class('page-list-header-row mb-4 d-flex justify-content-between align-items-center');
-        $headerRow->child(Element::make('h2')->class('h5 mb-0')->text('现有页面'));
+        $headerRow->child(Element::make('h2')->class('h5 mb-0')->intl('admin:page_builder.page_list.title', [], '现有页面'));
         $headerRow->child(
             Button::make()
-                ->label('新建页面')
+                ->label(t('admin:page_builder.page_list.new_page', [], '新建页面'))
                 ->primary()
                 ->attr('data-ux-modal-open', 'create-page-modal')
-                ->child('<i class="bi bi-plus-lg"></i> 新建页面')
+                ->child('<i class="bi bi-plus-lg"></i> ' . t('admin:page_builder.page_list.new_page', [], '新建页面'))
         );
         $container->child($headerRow);
 
         if (empty($pages)) {
-            $container->child(Element::make('div')->class('page-list-empty')->text('暂无页面，请点击上方按钮创建'));
+            $container->child(Element::make('div')->class('page-list-empty')->intl('admin:page_builder.page_list.empty', [], '暂无页面，请点击上方按钮创建'));
             return $container;
         }
 
@@ -747,7 +747,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 Element::make('button')
                     ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
                     ->liveAction('openBuilder', 'click', ['name' => $page['name']])
-                    ->html('<i class="bi bi-pencil-square"></i> 编辑')
+                    ->html('<i class="bi bi-pencil-square"></i> ' . t('admin:page_builder.page_list.edit', [], '编辑'))
             );
             $actions->child(
                 Element::make('button')
@@ -784,12 +784,12 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 ->attr('data-action:click', 'closeBuilder()')
                 ->html('<i class="bi bi-x-lg"></i>')
         );
-        $header->child(Element::make('div')->class('page-builder-title-bar')->text('编辑: ' . $this->editingPage));
+        $header->child(Element::make('div')->class('page-builder-title-bar')->intl('admin:page_builder.builder.edit_prefix', ['name' => $this->editingPage], '编辑: {name}'));
         $header->child(
             Element::make('button')
                 ->class('page-btn', 'page-btn-primary', 'page-btn-sm')
                 ->attr('data-action:click', 'saveCurrentTree()')
-                ->text('保存')
+                ->intl('admin:page_builder.builder.save', [], '保存')
         );
         $builder->child($header);
 
@@ -853,21 +853,21 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             Element::make('button')
                 ->class('page-builder-preview-btn', 'active')
                 ->attr('data-preview-btn', 'desktop')
-                ->attr('title', '电脑')
+                ->intlAttr('title', 'admin:page_builder.builder.desktop', [], '电脑')
                 ->html('<i class="bi bi-display"></i>')
         );
         $toolbar->child(
             Element::make('button')
                 ->class('page-builder-preview-btn')
                 ->attr('data-preview-btn', 'tablet')
-                ->attr('title', '平板')
+                ->intlAttr('title', 'admin:page_builder.builder.tablet', [], '平板')
                 ->html('<i class="bi bi-tablet"></i>')
         );
         $toolbar->child(
             Element::make('button')
                 ->class('page-builder-preview-btn')
                 ->attr('data-preview-btn', 'mobile')
-                ->attr('title', '手机')
+                ->intlAttr('title', 'admin:page_builder.builder.mobile', [], '手机')
                 ->html('<i class="bi bi-phone"></i>')
         );
 
@@ -883,7 +883,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             Element::make('span')
                 ->class('page-builder-zoom-label')
                 ->attr('data-zoom-label', '')
-                ->text('100%')
+                ->intl('admin:page_builder.builder.zoom', [], '100%')
         );
         $toolbar->child(
             Element::make('button')
@@ -911,7 +911,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
 
         $tree = json_decode($this->componentTreeJson, true);
         if (empty($tree) || !is_array($tree)) {
-            $canvas->child(Element::make('div')->class('page-builder-canvas-empty')->text('拖拽左侧组件到这里'));
+            $canvas->child(Element::make('div')->class('page-builder-canvas-empty')->intl('admin:page_builder.builder.canvas_empty', [], '拖拽左侧组件到这里'));
             return $canvas;
         }
 
@@ -957,21 +957,21 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn', 'pb-comp-btn-drag')
-                ->attr('title', '拖动排序')
+                ->intlAttr('title', 'admin:page_builder.builder.drag_sort', [], '拖动排序')
                 ->html('<i class="bi bi-grip-vertical"></i>')
         );
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn')
                 ->liveAction('toggleComponent', 'click', ['uid' => $uid])
-                ->attr('title', '编辑')
+                ->intlAttr('title', 'admin:page_builder.builder.edit', [], '编辑')
                 ->html('<i class="bi bi-pencil"></i>')
         );
         $toolbar->child(
             Element::make('button')
                 ->class('pb-comp-btn', 'pb-comp-btn-danger')
                 ->liveAction('removeComponent', 'click', ['uid' => $uid])
-                ->attr('title', '删除')
+                ->intlAttr('title', 'admin:page_builder.builder.delete', [], '删除')
                 ->html('<i class="bi bi-trash3"></i>')
         );
         $comp->child($toolbar);
@@ -1034,7 +1034,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             $panel->child(
                 Element::make('div')->class('page-builder-properties-empty')
                     ->child(Element::make('i')->class('bi', 'bi-cursor'))
-                    ->child(Element::make('p')->text('选择组件以编辑属性'))
+                    ->child(Element::make('p')->intl('admin:page_builder.properties.empty', [], '选择组件以编辑属性'))
             );
             return $panel;
         }
@@ -1042,7 +1042,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $tree = json_decode($this->componentTreeJson, true);
         if (!is_array($tree)) {
             $panel->child(
-                Element::make('div')->class('page-builder-properties-empty')->text('选择组件以编辑属性')
+                Element::make('div')->class('page-builder-properties-empty')->intl('admin:page_builder.properties.empty', [], '选择组件以编辑属性')
             );
             return $panel;
         }
@@ -1050,7 +1050,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $component = $this->findInTree($tree, $this->selectedUid);
         if (!$component) {
             $panel->child(
-                Element::make('div')->class('page-builder-properties-empty')->text('选择组件以编辑属性')
+                Element::make('div')->class('page-builder-properties-empty')->intl('admin:page_builder.properties.empty', [], '选择组件以编辑属性')
             );
             return $panel;
         }
@@ -1058,7 +1058,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
         $componentType = ComponentRegistry::get($component['type'] ?? '');
         if (!$componentType) {
             $panel->child(
-                Element::make('div')->class('page-builder-properties-empty')->text('未知组件类型')
+                Element::make('div')->class('page-builder-properties-empty')->intl('admin:page_builder.properties.unknown', [], '未知组件类型')
             );
             return $panel;
         }
@@ -1085,14 +1085,14 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 ->class('page-builder-properties-tab', 'page-builder-properties-tab--active')
                 ->attr('data-properties-tab', 'content')
                 ->attr('type', 'button')
-                ->text('内容设置')
+                ->intl('admin:page_builder.properties.content_tab', [], '内容设置')
         );
         $tabNav->child(
             Element::make('button')
                 ->class('page-builder-properties-tab')
                 ->attr('data-properties-tab', 'style')
                 ->attr('type', 'button')
-                ->text('样式设置')
+                ->intl('admin:page_builder.properties.style_tab', [], '样式设置')
         );
 
         $contentPanel = Element::make('div')
@@ -1161,7 +1161,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                     ->class('ux-form-input', 'page-builder-style-classes')
                     ->attr('data-style-target', $target)
                     ->attr('rows', '2')
-                    ->attr('placeholder', 'CSS 类名，空格分隔')
+                    ->intlAttr('placeholder', 'admin:page_builder.properties.style_placeholder', [], 'CSS 类名，空格分隔')
                     ->text($classes)
             );
             $stylePanel->child($row);
@@ -1184,14 +1184,14 @@ class PageBuilderPage extends LiveComponent implements PageInterface
                 ->class('page-btn', 'page-btn-sm', 'page-btn-outline')
                 ->attr('type', 'button')
                 ->attr('data-style-add', '')
-                ->text('+ 添加')
+                ->intl('admin:page_builder.properties.add_style', [], '+ 添加')
         );
         $stylePanel->child($addRow);
 
         $stylePanel->child(
             Element::make('div')
                 ->class('page-builder-style-hint')
-                ->html('输入 CSS 引擎类名，如 <code>bg-blue-100</code> <code>p-4</code> <code>hover:bg-red-500</code> <code>md:text-lg</code>')
+                ->html(t('admin:page_builder.properties.style_hint', [], '输入 CSS 引擎类名，如 <code>bg-blue-100</code> <code>p-4</code> <code>hover:bg-red-500</code> <code>md:text-lg</code>'))
         );
 
         $panelBody = Element::make('div')->class('page-builder-properties-body');
@@ -1206,7 +1206,7 @@ class PageBuilderPage extends LiveComponent implements PageInterface
             Element::make('button')
                 ->class('page-btn', 'page-btn-primary', 'page-btn-sm')
                 ->attr('data-submit:click', 'saveComponentSettings')
-                ->text('保存设置')
+                ->intl('admin:page_builder.properties.save', [], '保存设置')
         );
         $panel->child($panelFooter);
 

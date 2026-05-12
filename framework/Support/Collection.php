@@ -8,7 +8,7 @@ namespace Framework\Support;
  * Collection 类 - 包装数据库查询返回的 array 为对象
  * 提供类似 Laravel 的 Model 属性访问方式
  */
-class Collection implements \ArrayAccess, \Iterator, \Countable
+class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializable
 {
     private array $items;
     private int $position = 0;
@@ -68,6 +68,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable
     public function __unset(string $name): void
     {
         unset($this->items[$name]);
+    }
+
+    /**
+     * JSON 序列化：转换为关联数组
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->items;
     }
 
     /**

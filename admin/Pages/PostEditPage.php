@@ -121,7 +121,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $model->syncTags($this->tagIds);
 
         $this->saved = true;
-        $this->toast('保存成功');
+        $this->toast('success', t('admin:posts.toast.saved', [], '保存成功'));
         $this->refresh('post-editor');
     }
 
@@ -181,11 +181,12 @@ class PostEditPage extends EmbeddedLiveComponent
                 ->class('text-sm', 'text-gray-500', 'hover:text-gray-700', 'flex', 'items-center', 'gap-1')
                 ->attr('href', "{$prefix}/posts")
                 ->attr('data-navigate', '')
-                ->text('← 返回列表')
+                ->intl('admin:posts.editor.back', [], '← 返回列表')
         );
 
         $left->child(
-            Text::h1($this->recordId ? '编辑文章' : '新建文章')
+            Text::h1()
+                ->intl($this->recordId ? 'admin:posts.editor.edit_title' : 'admin:posts.editor.new_title', [], $this->recordId ? '编辑文章' : '新建文章')
                 ->class('text-lg', 'font-semibold', 'ml-4')
         );
 
@@ -196,21 +197,21 @@ class PostEditPage extends EmbeddedLiveComponent
                 ->class('form-select', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-1.5')
                 ->attr('data-live-model', 'status')
                 ->attr('data-live-debounce', '0')
-                ->child($this->option('draft', '草稿'))
-                ->child($this->option('published', '已发布'))
-                ->child($this->option('archived', '归档'))
+                ->child($this->option('draft', 'admin:posts.statuses.draft', '草稿'))
+                ->child($this->option('published', 'admin:posts.statuses.published', '已发布'))
+                ->child($this->option('archived', 'admin:posts.statuses.archived', '归档'))
         );
 
         $right->child(
             Button::make()
-                ->label('保存')
+                ->intl('admin:posts.save', [], '保存')
                 ->primary()
                 ->liveAction('save')
         );
 
         $right->child(
             Button::make()
-                ->label('发布')
+                ->intl('admin:posts.publish', [], '发布')
                 ->success()
                 ->liveAction('publish')
         );
@@ -219,7 +220,7 @@ class PostEditPage extends EmbeddedLiveComponent
             $right->child(
                 Element::make('span')
                     ->class('text-sm', 'text-green-600')
-                    ->text('已保存')
+                    ->intl('admin:posts.saved_indicator', [], '已保存')
             );
         }
 
@@ -239,7 +240,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $main->child(
             Element::make('input')
                 ->attr('type', 'text')
-                ->attr('placeholder', '输入文章标题')
+                ->intlAttr('placeholder', 'admin:posts.editor.title_placeholder', [], '输入文章标题')
                 ->attr('value', $this->title)
                 ->class('post-edit-title', 'w-full', 'text-3xl', 'font-bold', 'border-none', 'outline-none', 'mb-6', 'px-4', 'py-3', 'bg-white', 'rounded-lg', 'shadow-sm')
                 ->attr('data-live-model', 'title')
@@ -247,7 +248,7 @@ class PostEditPage extends EmbeddedLiveComponent
         );
 
         $editor = RichTextEditor::make()
-            ->placeholder('输入内容...')
+            ->placeholder(t('admin:posts.editor.content_placeholder', [], '输入内容...'))
             ->minHeight('400px')
             ->liveModel('content');
 
@@ -260,11 +261,11 @@ class PostEditPage extends EmbeddedLiveComponent
         $sidebar = Element::make('div')
             ->class('post-edit-sidebar', 'w-80', 'flex-shrink-0', 'space-y-4');
 
-        $sidebar->child($this->renderSidebarCard('状态', $this->renderStatusFields()));
-        $sidebar->child($this->renderSidebarCard('分类与标签', $this->renderCategoryFields()));
-        $sidebar->child($this->renderSidebarCard('封面图', $this->renderCoverField()));
-        $sidebar->child($this->renderSidebarCard('摘要', $this->renderExcerptField()));
-        $sidebar->child($this->renderSidebarCard('标识', $this->renderSlugField()));
+        $sidebar->child($this->renderSidebarCard('admin:posts.sidebar.status', '状态', $this->renderStatusFields()));
+        $sidebar->child($this->renderSidebarCard('admin:posts.sidebar.categories_tags', '分类与标签', $this->renderCategoryFields()));
+        $sidebar->child($this->renderSidebarCard('admin:posts.sidebar.cover', '封面图', $this->renderCoverField()));
+        $sidebar->child($this->renderSidebarCard('admin:posts.sidebar.excerpt', '摘要', $this->renderExcerptField()));
+        $sidebar->child($this->renderSidebarCard('admin:posts.sidebar.slug', '标识', $this->renderSlugField()));
 
         $container->child($main);
         $container->child($sidebar);
@@ -272,7 +273,7 @@ class PostEditPage extends EmbeddedLiveComponent
         return $container;
     }
 
-    protected function renderSidebarCard(string $title, Element $content): Element
+    protected function renderSidebarCard(string $intlKey, string $defaultTitle, Element $content): Element
     {
         $card = Element::make('div')
             ->class('bg-white', 'rounded-lg', 'shadow-sm', 'border', 'border-gray-200', 'overflow-hidden');
@@ -280,7 +281,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $card->child(
             Element::make('div')
                 ->class('px-4', 'py-2.5', 'border-b', 'border-gray-200', 'bg-gray-50', 'text-sm', 'font-semibold', 'text-gray-700')
-                ->text($title)
+                ->intl($intlKey, [], $defaultTitle)
         );
 
         $card->child(
@@ -295,12 +296,12 @@ class PostEditPage extends EmbeddedLiveComponent
         $group = Element::make('div')->class('space-y-2');
 
         $statuses = [
-            'draft' => '草稿',
-            'published' => '已发布',
-            'archived' => '归档',
+            'draft' => ['key' => 'admin:posts.statuses.draft', 'default' => '草稿'],
+            'published' => ['key' => 'admin:posts.statuses.published', 'default' => '已发布'],
+            'archived' => ['key' => 'admin:posts.statuses.archived', 'default' => '归档'],
         ];
 
-        foreach ($statuses as $value => $label) {
+        foreach ($statuses as $value => $cfg) {
             $radio = Element::make('label')
                 ->class('flex', 'items-center', 'gap-2', 'cursor-pointer', 'text-sm');
 
@@ -317,7 +318,7 @@ class PostEditPage extends EmbeddedLiveComponent
             }
 
             $radio->child($input);
-            $radio->child(Element::make('span')->text($label));
+            $radio->child(Element::make('span')->intl($cfg['key'], [], $cfg['default']));
 
             $group->child($radio);
         }
@@ -337,7 +338,7 @@ class PostEditPage extends EmbeddedLiveComponent
             ->attr('data-live-debounce', '0');
 
         $select->child(
-            Element::make('option')->attr('value', '')->text('无分类')
+            Element::make('option')->attr('value', '')                ->intl('admin:posts.categories.none', [], '无分类')
         );
 
         foreach ($categories as $cat) {
@@ -356,7 +357,7 @@ class PostEditPage extends EmbeddedLiveComponent
 
         $tagInput = new TagInput();
         $tagInput->value($this->tagIds)
-            ->placeholder('输入标签后回车')
+            ->placeholder(t('admin:posts.tags.placeholder', [], '输入标签后回车'))
             ->allowClear()
             ->liveModel('tagIds');
 
@@ -397,7 +398,7 @@ class PostEditPage extends EmbeddedLiveComponent
         return Element::make('textarea')
             ->class('w-full', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-2', 'resize-none')
             ->attr('rows', '4')
-            ->attr('placeholder', '输入文章摘要...')
+            ->intlAttr('placeholder', 'admin:posts.excerpt_placeholder', [], '输入文章摘要...')
             ->attr('data-live-model', 'excerpt')
             ->attr('data-live-debounce', '500')
             ->text(htmlspecialchars($this->excerpt));
@@ -410,7 +411,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $wrapper->child(
             Element::make('input')
                 ->attr('type', 'text')
-                ->attr('placeholder', 'auto-generated')
+                ->intlAttr('placeholder', 'admin:posts.slug_placeholder', [], 'auto-generated')
                 ->attr('value', $this->slug)
                 ->class('w-full', 'text-sm', 'border', 'border-gray-300', 'rounded', 'px-3', 'py-2')
                 ->attr('data-live-model', 'slug')
@@ -420,7 +421,7 @@ class PostEditPage extends EmbeddedLiveComponent
         $wrapper->child(
             Element::make('p')
                 ->class('text-xs', 'text-gray-400')
-                ->text('留空将自动从标题生成')
+                ->intl('admin:posts.slug_hint', [], '留空将自动从标题生成')
         );
 
         return $wrapper;
@@ -434,12 +435,12 @@ class PostEditPage extends EmbeddedLiveComponent
         return mb_strtolower($slug);
     }
 
-    protected function option(string $value, string $label): Element
+    protected function option(string $value, string $intlKey, string $default): Element
     {
         return Element::make('option')
             ->attr('value', $value)
             ->attrs($this->status === $value ? ['selected' => 'selected'] : [])
-            ->text($label);
+            ->intl($intlKey, [], $default);
     }
 
     protected function normalizeMediaUrl(string $path): string

@@ -352,7 +352,7 @@ class RichTextEditor extends UXComponent
         $body->child($urlPanel);
 
         $mediaPanel = Element::make('div')
-            ->class('ux-editor-modal-tab-panel')
+            ->class('ux-editor-modal-tab-panel', 'ux-editor-media-panel')
             ->attr('data-editor-panel', 'image-media');
         $mediaPanel->child(
             Element::make('div')->class('ux-editor-media-search')
@@ -372,6 +372,13 @@ class RichTextEditor extends UXComponent
         $mediaPanel->child(
             Element::make('div')->class('ux-editor-media-grid')
                 ->attr('data-editor-media-grid', '')
+        );
+        $mediaPanel->child(
+            Element::make('div')
+                ->class('ux-editor-media-sentinel')
+                ->attr('data-editor-media-sentinel', '')
+                ->style('display:none')
+                ->text('加载更多...')
         );
         $body->child($mediaPanel);
 
@@ -579,6 +586,13 @@ class RichTextEditor extends UXComponent
                 el.addEventListener('click', e => {
                     const tab = e.target.closest('[data-editor-tab]');
                     if (tab) { e.preventDefault(); this._switchTab(tab.dataset.editorTab, el); return; }
+                    const sentinel = e.target.closest('[data-editor-media-sentinel]');
+                    if (sentinel) {
+                        e.preventDefault();
+                        const popup = el.querySelector('[data-editor-modal-backdrop="image"]');
+                        if (popup) this._fetchMedia(el, popup._mediaSearch || '', true);
+                        return;
+                    }
                     const mediaItem = e.target.closest('[data-editor-media-item]');
                     if (mediaItem) {
                         e.preventDefault();
@@ -596,7 +610,11 @@ class RichTextEditor extends UXComponent
                     const search = e.target.closest('[name="media-search"]');
                     if (search) {
                         clearTimeout(el._mediaSearchTimer);
-                        el._mediaSearchTimer = setTimeout(() => this._fetchMedia(el, search.value), 300);
+                        el._mediaSearchTimer = setTimeout(() => {
+                            const popup = el.querySelector('[data-editor-modal-backdrop="image"]');
+                            if (popup) { popup._mediaPage = 1; popup._mediaSearch = search.value; }
+                            this._fetchMedia(el, search.value, false);
+                        }, 350);
                     }
                 });
 
@@ -756,7 +774,11 @@ class RichTextEditor extends UXComponent
             },
 
             _hidePopup() {
-                if (this._currentPopup) { this._currentPopup.style.display = 'none'; this._currentPopup = null; }
+                if (this._currentPopup) {
+                    this._currentPopup.style.display = 'none';
+                    if (this._currentPopup._mediaObserver) { this._currentPopup._mediaObserver.disconnect(); this._currentPopup._mediaObserver = null; }
+                    this._currentPopup = null;
+                }
             },
 
             _switchTab(tabName, el) {
@@ -765,27 +787,75 @@ class RichTextEditor extends UXComponent
                 popup.querySelectorAll('[data-editor-tab]').forEach(t => t.classList.toggle('active', t.dataset.editorTab === tabName));
                 popup.querySelectorAll('[data-editor-panel]').forEach(p => p.classList.toggle('active', p.dataset.editorPanel === tabName));
                 if (tabName === 'image-media') {
-                    const grid = popup.querySelector('[data-editor-media-grid]');
-                    if (grid && !grid.children.length) this._fetchMedia(el, '');
+                    this._setupMediaObserver(popup);
+                    if (!popup.querySelectorAll('[data-editor-media-item]').length) {
+                        popup._mediaPage = 1;
+                        popup._mediaSearch = '';
+                        this._fetchMedia(el, '', false);
+                    }
+                } else {
+                    if (popup._mediaObserver) { popup._mediaObserver.disconnect(); popup._mediaObserver = null; }
                 }
             },
 
-            _fetchMedia(el, search) {
-                const popup = el.querySelector('[data-editor-modal-backdrop="image"]');
+            _setupMediaObserver(popup) {
+                if (popup._mediaObserver) popup._mediaObserver.disconnect();
+                const sentinel = popup.querySelector('[data-editor-media-sentinel]');
+                if (!sentinel) return;
+                const panel = sentinel.closest('.ux-editor-media-panel') || sentinel.parentElement;
+                popup._mediaObserver = new IntersectionObserver(entries => {
+                    if (entries[0].isIntersecting && popup._mediaHasMore) {
+                        this._fetchMedia(popup.closest('.ux-rich-text-editor'), popup._mediaSearch || '', true);
+                    }
+                }, { root: panel, rootMargin: '120px' });
+                popup._mediaObserver.observe(sentinel);
+            },
+
+            _fetchMedia(el, search, append) {
+                const popup = el?.querySelector('[data-editor-modal-backdrop="image"]');
                 if (!popup) return;
                 const grid = popup.querySelector('[data-editor-media-grid]');
+                const sentinel = popup.querySelector('[data-editor-media-sentinel]');
                 const loading = popup.querySelector('.ux-editor-media-loading');
                 if (!grid) return;
-                loading.style.display = 'block';
-                grid.innerHTML = '';
-                const params = new URLSearchParams({ filter: 'image', per_page: '40' });
+
+                if (!append) {
+                    popup._mediaPage = 1;
+                    popup._mediaSearch = search || '';
+                    grid.innerHTML = '';
+                    popup._mediaHasMore = true;
+                }
+
+                const page = Number(popup._mediaPage) || 1;
+                if (!append) { loading.style.display = 'block'; sentinel && (sentinel.style.display = 'none'); }
+                else { sentinel && (sentinel.textContent = '加载更多...'); }
+
+                const params = new URLSearchParams({ filter: 'image', per_page: '30', page: String(page) });
                 if (search) params.set('search', search);
+
+                popup._mediaPage = page + 1;
+
                 fetch('/api/media?' + params.toString())
                     .then(r => r.json())
                     .then(data => {
                         loading.style.display = 'none';
-                        const items = data?.data || [];
-                        if (!items.length) { grid.innerHTML = '<div class="ux-editor-media-empty">暂无图片</div>'; return; }
+                        const result = data?.data;
+                        let items;
+                        if (result) {
+                            if (Array.isArray(result)) { items = result; }
+                            else if (result.data && Array.isArray(result.data)) { items = result.data; }
+                            else { items = []; }
+                        } else { items = []; }
+
+                        const lastPage = Number(result?.last_page) || 1;
+                        popup._mediaHasMore = page < lastPage;
+
+                        if (!items.length && !append) {
+                            grid.innerHTML = '<div class="ux-editor-media-empty">暂无图片</div>';
+                            sentinel && (sentinel.style.display = 'none');
+                            return;
+                        }
+
                         items.forEach(item => {
                             const mime = item.mime_type || '';
                             const isImage = mime.startsWith('image/');
@@ -806,10 +876,17 @@ class RichTextEditor extends UXComponent
                             }
                             grid.appendChild(div);
                         });
+
+                        if (sentinel) {
+                            sentinel.style.display = popup._mediaHasMore ? '' : 'none';
+                            if (!popup._mediaHasMore) sentinel.textContent = '已加载全部';
+                        }
                     })
                     .catch(() => {
                         loading.style.display = 'none';
-                        grid.innerHTML = '<div class="ux-editor-media-empty">加载失败</div>';
+                        if (!append) grid.innerHTML = '<div class="ux-editor-media-empty">加载失败</div>';
+                        if (sentinel) { sentinel.textContent = '加载失败，点击重试'; sentinel.style.display = ''; }
+                        popup._mediaPage = page;
                     });
             },
 
@@ -1013,12 +1090,15 @@ JS;
 
 /* ── 媒体库网格 ── */
 .ux-editor-media-search { margin-bottom:4px; }
-.ux-editor-media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:6px; max-height:260px; overflow-y:auto; }
+.ux-editor-media-panel { overflow-y:auto; max-height:340px; }
+.ux-editor-media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:6px; }
 .ux-editor-media-item { aspect-ratio:1; border:1px solid #e5e7eb; border-radius:4px; overflow:hidden; cursor:pointer; transition:transform .1s,border-color .15s; display:flex; align-items:center; justify-content:center; background:#f9fafb; }
 .ux-editor-media-item:hover { transform:scale(1.05); border-color:#3b82f6; }
 .ux-editor-media-item img { width:100%; height:100%; object-fit:cover; }
 .ux-editor-media-item-icon { font-size:12px; font-weight:700; color:#9ca3af; }
 .ux-editor-media-loading { text-align:center; padding:20px; color:#9ca3af; font-size:13px; }
+.ux-editor-media-sentinel { text-align:center; padding:12px; color:#9ca3af; font-size:13px; cursor:pointer; }
+.ux-editor-media-sentinel:hover { color:#3b82f6; }
 .ux-editor-media-empty { text-align:center; padding:20px; color:#9ca3af; font-size:13px; grid-column:1/-1; }
 
 .ux-editor-content { flex:1; padding:12px 16px; outline:none; font-size:15px; line-height:1.7; color:#1f2937; overflow-y:auto; word-break:break-word; }

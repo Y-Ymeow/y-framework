@@ -152,8 +152,10 @@ class MediaPicker extends BaseField
             );
         } else {
             $preview->child(
-                Element::make('div')->class('ux-form-media-placeholder')
-                    ->html('<i class="bi bi-image"></i><span>未选择图片</span>')
+                Element::make('div')->class('ux-form-media-placeholder')->children(
+                    Element::make('i')->class('bi', 'bi-image'),
+                    Element::make('span')->intl('ux:media-picker.no_selection', [], '未选择图片')
+                )
             );
         }
         $container->child($preview);
@@ -172,15 +174,15 @@ class MediaPicker extends BaseField
 
         $actions = Element::make('div')->class('ux-form-media-actions');
         $actions->child(
-            Button::make()
-                ->label('选择图片')
+                Button::make()
+                    ->intl('ux:media-picker.select_image', [], '选择图片')
                 ->class('flex-1')
                 ->attr('data-ux-modal-open', $modalId)
         );
         if ($hasValue) {
             $actions->child(
                 Button::make()
-                    ->label('移除')
+                    ->intl('ux:media-picker.remove', [], '移除')
                     ->danger()
                     ->liveAction('removeMedia', 'click')
             );
@@ -201,12 +203,12 @@ class MediaPicker extends BaseField
     protected function buildModal(string $modalId): Modal
     {
         $modal = Modal::make()
-            ->title('选择图片')
+            ->title(t('ux:media-picker.select_image', [], '选择图片'))
             ->size('lg')
             ->content($this->renderModalBody($modalId))
             ->footer(
                 Button::make()
-                    ->label('取消')
+                    ->intl('ux:media-picker.cancel', [], '取消')
                     ->variant('secondary')
                     ->attr('data-ux-modal-close', $modalId)
             );
@@ -247,7 +249,10 @@ class MediaPicker extends BaseField
         $trigger = Element::make('div')
             ->class('media-picker-upload-btn')
             ->attr('data-media-trigger', '')
-            ->html('<i class="bi bi-cloud-arrow-up"></i> <span>点击或拖拽上传新图片</span>');
+            ->children(
+                Element::make('i')->class('bi', 'bi-cloud-arrow-up'),
+                Element::make('span')->intl('ux:media-picker.upload_hint', [], '点击或拖拽上传新图片')
+            );
 
         $zone->child($fileInput);
         $zone->child($hiddenInput);
@@ -261,18 +266,18 @@ class MediaPicker extends BaseField
         $tabs = Element::make('div')->class('media-picker-filters');
 
         $filters = [
-            'all' => '全部',
-            'image' => '图片',
-            'video' => '视频',
-            'document' => '文档',
+            'all' => ['key' => 'ux:media-picker.filter_all', 'default' => '全部'],
+            'image' => ['key' => 'ux:media-picker.filter_image', 'default' => '图片'],
+            'video' => ['key' => 'ux:media-picker.filter_video', 'default' => '视频'],
+            'document' => ['key' => 'ux:media-picker.filter_document', 'default' => '文档'],
         ];
 
-        foreach ($filters as $key => $label) {
-            $isActive = $this->filterType === $key;
+        foreach ($filters as $filterType => $cfg) {
+            $isActive = $this->filterType === $filterType;
             $tab = Element::make('button')
                 ->class('media-picker-filter', $isActive ? 'active' : '')
-                ->liveAction('filterMedia', 'click', ['type' => $key])
-                ->text($label);
+                ->liveAction('filterMedia', 'click', ['type' => $filterType])
+                ->intl($cfg['key'], [], $cfg['default']);
             $tabs->child($tab);
         }
 

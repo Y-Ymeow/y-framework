@@ -109,7 +109,7 @@ class MediaPage extends LiveComponent implements PageInterface
         }
 
         if (empty($files)) {
-            return Response::json(['success' => false, 'message' => 'No file uploaded'], 400);
+            return Response::json(['success' => false, 'message' => t('admin:media.upload.no_file', [], 'No file uploaded')], 400);
         }
 
         $results = [];
@@ -170,7 +170,7 @@ class MediaPage extends LiveComponent implements PageInterface
         }
 
         Media::destroy($id);
-        $this->toast('已删除');
+        $this->toast('success', t('admin:media.toast.deleted', [], '已删除'));
         $this->refresh('media-grid');
     }
 
@@ -205,7 +205,7 @@ class MediaPage extends LiveComponent implements PageInterface
         $media->save();
 
         $this->editingMediaId = 0;
-        $this->toast('已更新');
+        $this->toast('success', t('admin:media.toast.updated', [], '已更新'));
         $this->refresh('media-grid');
     }
 
@@ -262,8 +262,8 @@ class MediaPage extends LiveComponent implements PageInterface
 
         $content = Element::make('div')->class('media-upload-content');
         $content->child(Element::make('i')->class('bi', 'bi-cloud-arrow-up', 'media-upload-icon'));
-        $content->child(Element::make('div')->class('media-upload-text')->text('点击或拖拽文件到此区域上传'));
-        $content->child(Element::make('div')->class('media-upload-hint')->text('支持 JPG、PNG、GIF、WebP、SVG、MP4、PDF，单文件最大 10MB'));
+        $content->child(Element::make('div')->class('media-upload-text')->intl('admin:media.upload_area.instruction', [], '点击或拖拽文件到此区域上传'));
+        $content->child(Element::make('div')->class('media-upload-hint')->intl('admin:media.upload_area.hint', [], '支持 JPG、PNG、GIF、WebP、SVG、MP4、PDF，单文件最大 10MB'));
 
         $input = Element::make('input')
             ->attr('type', 'file')
@@ -285,10 +285,10 @@ class MediaPage extends LiveComponent implements PageInterface
 
         $filters = Element::make('div')->class('media-toolbar-filters');
         $types = [
-            'all' => '全部',
-            'image' => '图片',
-            'video' => '视频',
-            'document' => '文档',
+            'all' => t('admin:media.filters.all', [], '全部'),
+            'image' => t('admin:media.filters.image', [], '图片'),
+            'video' => t('admin:media.filters.video', [], '视频'),
+            'document' => t('admin:media.filters.document', [], '文档'),
         ];
         foreach ($types as $type => $label) {
             $btn = Element::make('button')
@@ -347,7 +347,7 @@ class MediaPage extends LiveComponent implements PageInterface
 
         if (empty($items)) {
             $container->child(
-                Element::make('div')->class('media-grid-empty')->text('暂无媒体文件')
+                Element::make('div')->class('media-grid-empty')->intl('admin:media.grid.empty', [], '暂无媒体文件')
             );
             return $container;
         }
@@ -389,7 +389,7 @@ class MediaPage extends LiveComponent implements PageInterface
                 $editForm = Element::make('div')->class('media-card-edit');
                 $editForm->child(
                     Element::make('div')->class('media-form-group')->children(
-                        Element::make('label')->class('media-form-label')->text('标题'),
+                        Element::make('label')->class('media-form-label')->intl('admin:media.edit_form.title', [], '标题'),
                         Element::make('input')
                             ->class('media-input', 'media-input-sm')
                             ->attr('type', 'text')
@@ -399,7 +399,7 @@ class MediaPage extends LiveComponent implements PageInterface
                 );
                 $editForm->child(
                     Element::make('div')->class('media-form-group')->children(
-                        Element::make('label')->class('media-form-label')->text('替代文本'),
+                        Element::make('label')->class('media-form-label')->intl('admin:media.edit_form.alt', [], '替代文本'),
                         Element::make('input')
                             ->class('media-input', 'media-input-sm')
                             ->attr('type', 'text')
@@ -412,11 +412,11 @@ class MediaPage extends LiveComponent implements PageInterface
                         Element::make('button')
                             ->class('media-btn', 'media-btn-primary', 'media-btn-sm')
                             ->liveAction('saveMedia', 'click', ['id' => $id])
-                            ->text('保存'),
+                            ->intl('admin:media.edit_form.save', [], '保存'),
                         Element::make('button')
                             ->class('media-btn', 'media-btn-ghost', 'media-btn-sm')
                             ->attr('data-action:click', 'cancelEdit()')
-                            ->text('取消')
+                            ->intl('admin:media.edit_form.cancel', [], '取消')
                     )
                 );
                 $info->child($editForm);
@@ -492,10 +492,10 @@ class MediaPage extends LiveComponent implements PageInterface
 
     private function formatSize(int $bytes): string
     {
-        if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
-        if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
-        if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
-        return $bytes . ' B';
+        if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . t('admin:media.size_suffix.gb', [], ' GB');
+        if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . t('admin:media.size_suffix.mb', [], ' MB');
+        if ($bytes >= 1024) return number_format($bytes / 1024, 2) . t('admin:media.size_suffix.kb', [], ' KB');
+        return $bytes . t('admin:media.size_suffix.b', [], ' B');
     }
 
     public static function handleApiList()

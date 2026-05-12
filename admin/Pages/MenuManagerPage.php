@@ -134,7 +134,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $url = trim($params['url'] ?? $this->newItemUrl);
 
         if (empty($title) || $this->selectedMenuId === 0) {
-            $this->toast('请填写标题并选择菜单', 'error');
+            $this->toast(t('admin:menus.toast.title_and_menu_required', [], '请填写标题并选择菜单'), 'error');
             return;
         }
 
@@ -160,7 +160,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $this->newItemTarget = '_self';
         $this->newItemPermission = '';
 
-        $this->toast('菜单项已添加');
+        $this->toast('success', t('admin:menus.toast.item_added', [], '菜单项已添加'));
         $this->refresh('menu-editor');
     }
 
@@ -173,7 +173,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         db()->table('menu_items')->where('parent_id', $itemId)->update(['parent_id' => null]);
         MenuItem::destroy($itemId);
 
-        $this->toast('菜单项已删除');
+        $this->toast('success', t('admin:menus.toast.item_deleted', [], '菜单项已删除'));
         $this->refresh('menu-editor');
     }
 
@@ -193,7 +193,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
             ]);
         }
 
-        $this->toast('排序已保存');
+        $this->toast('success', t('admin:menus.toast.order_saved', [], '排序已保存'));
         $this->refresh('menu-editor');
     }
 
@@ -234,7 +234,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $item->save();
 
         $this->editingItemId = 0;
-        $this->toast('菜单项已更新');
+        $this->toast('success', t('admin:menus.toast.item_updated', [], '菜单项已更新'));
         $this->refresh('menu-editor');
     }
 
@@ -266,7 +266,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $slug = trim($params['slug'] ?? $this->newMenuSlug);
 
         if (empty($name) || empty($slug)) {
-            $this->toast('请填写菜单名称和标识', 'error');
+            $this->toast(t('admin:menus.toast.name_and_slug_required', [], '请填写菜单名称和标识'), 'error');
             return;
         }
 
@@ -276,7 +276,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $this->newMenuSlug = '';
         $this->showNewMenuForm = false;
 
-        $this->toast('菜单已创建');
+        $this->toast('success', t('admin:menus.toast.menu_created', [], '菜单已创建'));
         $this->refresh('menu-editor');
     }
 
@@ -299,7 +299,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
             }
         }
 
-        $this->toast('菜单已删除');
+        $this->toast('success', t('admin:menus.toast.menu_deleted', [], '菜单已删除'));
         $this->refresh('menu-editor');
     }
 
@@ -334,7 +334,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
 
         $sidebar->child(
             Element::make('div')->class('menu-sidebar-header')->children(
-                Element::make('h2')->class('menu-sidebar-title')->text('菜单位置'),
+                Element::make('h2')->class('menu-sidebar-title')->intl('admin:menus.sidebar.locations', [], '菜单位置'),
                 Element::make('button')
                     ->class('menu-sidebar-add-btn')
                     ->attr('data-action:click', 'toggleNewMenuForm()')
@@ -348,14 +348,14 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '菜单名称')
+                    ->intlAttr('placeholder', 'admin:menus.sidebar.menu_name', [], '菜单名称')
                     ->attr('data-live-model', 'newMenuName')
             );
             $form->child(
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
-                    ->attr('placeholder', '标识 (如: main_nav)')
+                    ->intlAttr('placeholder', 'admin:menus.sidebar.slug_placeholder', [], '标识 (如: main_nav)')
                     ->attr('data-live-model', 'newMenuSlug')
             );
             $form->child(
@@ -363,11 +363,11 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                     Element::make('button')
                         ->class('menu-btn', 'menu-btn-primary', 'menu-btn-sm')
                         ->attr('data-action:click', 'createMenu()')
-                        ->text('创建'),
+                        ->intl('admin:menus.sidebar.create', [], '创建'),
                     Element::make('button')
                         ->class('menu-btn', 'menu-btn-ghost', 'menu-btn-sm')
                         ->attr('data-action:click', 'toggleNewMenuForm()')
-                        ->text('取消')
+                        ->intl('admin:menus.sidebar.cancel', [], '取消')
                 )
             );
             $sidebar->child($form);
@@ -413,7 +413,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
 
         if ($this->selectedMenuId === 0) {
             $editor->child(
-                Element::make('div')->class('menu-editor-empty')->text('请选择一个菜单位置')
+                Element::make('div')->class('menu-editor-empty')->intl('admin:menus.sidebar.select_location', [], '请选择一个菜单位置')
             );
             return $editor;
         }
@@ -427,60 +427,60 @@ class MenuManagerPage extends LiveComponent implements PageInterface
     protected function renderAddForm(): Element
     {
         $form = Element::make('div')->class('menu-add-form');
-        $form->child(Element::make('h3')->class('menu-add-form-title')->text('添加链接'));
+        $form->child(Element::make('h3')->class('menu-add-form-title')->intl('admin:menus.add_form.title', [], '添加链接'));
 
         $fields = Element::make('div')->class('menu-add-form-fields');
 
         $fields->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('标题 *'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.add_form.label_title', [], '标题 *'),
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
                     ->attr('data-live-model', 'newItemTitle')
-                    ->attr('placeholder', '菜单项标题')
+                    ->intlAttr('placeholder', 'admin:menus.add_form.title_placeholder', [], '菜单项标题')
             )
         );
 
         $fields->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('链接'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.add_form.label_url', [], '链接'),
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
                     ->attr('data-live-model', 'newItemUrl')
-                    ->attr('placeholder', '/path 或 https://...')
+                    ->intlAttr('placeholder', 'admin:menus.add_form.url_placeholder', [], '/path 或 https://...')
             )
         );
 
         $row = Element::make('div')->class('menu-form-row');
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('图标'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.add_form.label_icon', [], '图标'),
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
                     ->attr('data-live-model', 'newItemIcon')
-                    ->attr('placeholder', 'bi-icon-name')
+                    ->intlAttr('placeholder', 'admin:menus.add_form.icon_placeholder', [], 'bi-icon-name')
             )
         );
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('打开方式'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.add_form.label_target', [], '打开方式'),
                 Element::make('select')
                     ->class('menu-select')
                     ->attr('data-live-model', 'newItemTarget')
-                    ->html('<option value="_self">当前窗口</option><option value="_blank">新窗口</option>')
+                    ->html('<option value="_self">' . t('admin:menus.add_form.self', [], '当前窗口') . '</option><option value="_blank">' . t('admin:menus.add_form.blank', [], '新窗口') . '</option>')
             )
         );
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('权限'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.add_form.label_permission', [], '权限'),
                 Element::make('input')
                     ->class('menu-input')
                     ->attr('type', 'text')
                     ->attr('data-live-model', 'newItemPermission')
-                    ->attr('placeholder', 'permission.key')
+                    ->intlAttr('placeholder', 'admin:menus.add_form.permission_placeholder', [], 'permission.key')
             )
         );
         $fields->child($row);
@@ -491,7 +491,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                 Element::make('button')
                     ->class('menu-btn', 'menu-btn-primary')
                     ->attr('data-action:click', 'addMenuItem()')
-                    ->text('添加到菜单')
+                    ->intl('admin:menus.add_form.submit', [], '添加到菜单')
             )
         );
 
@@ -502,16 +502,16 @@ class MenuManagerPage extends LiveComponent implements PageInterface
     {
         $menu = Menu::find($this->selectedMenuId);
         if (!$menu) {
-            return Element::make('div')->class('menu-tree-empty')->text('菜单不存在');
+            return Element::make('div')->class('menu-tree-empty')->intl('admin:menus.tree.not_found', [], '菜单不存在');
         }
 
         $tree = $menu->getItemsTree();
 
         $container = Element::make('div')->class('menu-tree');
-        $container->child(Element::make('h3')->class('menu-tree-title')->text('菜单结构'));
+        $container->child(Element::make('h3')->class('menu-tree-title')->intl('admin:menus.tree.title', [], '菜单结构'));
 
         if (empty($tree)) {
-            $container->child(Element::make('div')->class('menu-tree-empty')->text('暂无菜单项，请添加'));
+            $container->child(Element::make('div')->class('menu-tree-empty')->intl('admin:menus.tree.empty', [], '暂无菜单项，请添加'));
             return $container;
         }
 
@@ -527,7 +527,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
             Element::make('button')
                 ->class('menu-btn', 'menu-btn-outline', 'menu-btn-sm', 'menu-save-order-btn')
                 ->attr('onclick', 'window.MenuManager && window.MenuManager.saveCurrentOrder(this)')
-                ->text('保存排序')
+                ->intl('admin:menus.tree.save_order', [], '保存排序')
         );
 
         return $container;
@@ -613,7 +613,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
 
         $form->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('标题'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.edit_form.title', [], '标题'),
                 Element::make('input')
                     ->class('menu-input', 'menu-input-sm')
                     ->attr('type', 'text')
@@ -624,7 +624,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
 
         $form->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('链接'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.edit_form.url', [], '链接'),
                 Element::make('input')
                     ->class('menu-input', 'menu-input-sm')
                     ->attr('type', 'text')
@@ -636,7 +636,7 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         $row = Element::make('div')->class('menu-form-row');
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('图标'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.edit_form.icon', [], '图标'),
                 Element::make('input')
                     ->class('menu-input', 'menu-input-sm')
                     ->attr('type', 'text')
@@ -646,19 +646,19 @@ class MenuManagerPage extends LiveComponent implements PageInterface
         );
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('打开方式'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.edit_form.target', [], '打开方式'),
                 Element::make('select')
                     ->class('menu-select', 'menu-select-sm')
                     ->attr('data-live-model', 'editTarget')
                     ->html(
-                        '<option value="_self"' . ($this->editTarget === '_self' ? ' selected' : '') . '>当前窗口</option>' .
-                            '<option value="_blank"' . ($this->editTarget === '_blank' ? ' selected' : '') . '>新窗口</option>'
+                        '<option value="_self"' . ($this->editTarget === '_self' ? ' selected' : '') . '>' . t('admin:menus.edit_form.self', [], '当前窗口') . '</option>' .
+                            '<option value="_blank"' . ($this->editTarget === '_blank' ? ' selected' : '') . '>' . t('admin:menus.edit_form.blank', [], '新窗口') . '</option>'
                     )
             )
         );
         $row->child(
             Element::make('div')->class('menu-form-group')->children(
-                Element::make('label')->class('menu-form-label')->text('权限'),
+                Element::make('label')->class('menu-form-label')->intl('admin:menus.edit_form.permission', [], '权限'),
                 Element::make('input')
                     ->class('menu-input', 'menu-input-sm')
                     ->attr('type', 'text')
@@ -673,11 +673,11 @@ class MenuManagerPage extends LiveComponent implements PageInterface
                 Element::make('button')
                     ->class('menu-btn', 'menu-btn-primary', 'menu-btn-sm')
                     ->liveAction('saveItem', 'click', ['itemId' => $id])
-                    ->text('保存'),
+                    ->intl('admin:menus.edit_form.save', [], '保存'),
                 Element::make('button')
                     ->class('menu-btn', 'menu-btn-ghost', 'menu-btn-sm')
                     ->liveAction('cancelEdit', 'click')
-                    ->text('取消')
+                    ->intl('admin:menus.edit_form.cancel', [], '取消')
             )
         );
 

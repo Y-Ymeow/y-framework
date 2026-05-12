@@ -211,3 +211,95 @@ directive(
         execute(content);
     },
 );
+
+directive(
+    "ajax",
+    (el, state, method, { content, cleanup }) => {
+        if (!content || !method) return;
+
+        const template = el.querySelector('template');
+        if (!template) return;
+
+        const templateHTML = template.innerHTML;
+        const keyPath = el.getAttribute('data-ajax-key') || 'data';
+        const container = el.querySelector('[data-ajax-container]') || el;
+        let controller = null;
+
+        const showState = (stateClass) => {
+            el.classList.remove('y-ajax-loading', 'y-ajax-error', 'y-ajax-empty');
+            if (stateClass) el.classList.add(stateClass);
+        };
+
+        const resolvePath = (obj, path) => {
+            for (const key of path.split('.')) {
+                if (obj == null) return null;
+                obj = obj[key];
+            }
+            return obj;
+        };
+
+        const fetchAndRender = async () => {
+            if (controller) controller.abort();
+            controller = new AbortController();
+            showState('y-ajax-loading');
+
+            try {
+                const res = await fetch(content, { signal: controller.signal });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+
+                let items = resolvePath(json, keyPath);
+                if (!Array.isArray(items)) items = [];
+
+                if (!items.length) {
+                    showState('y-ajax-empty');
+                    return;
+                }
+
+                container.querySelectorAll('[data-ajax-item]').forEach(n => n.remove());
+
+                items.forEach(item => {
+                    let html = templateHTML;
+                    if (typeof item === 'object' && item !== null) {
+                        for (const [key, value] of Object.entries(item)) {
+                            html = html.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value ?? ''));
+                        }
+                    }
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = html;
+                    Array.from(wrapper.children).forEach(child => {
+                        child.setAttribute('data-ajax-item', '');
+                        container.appendChild(child);
+                    });
+                });
+
+                showState('y-ajax-loaded');
+
+                container.querySelectorAll('[data-ajax-item]').forEach(child => {
+                    if (window.Y?.initDirectives) {
+                        window.Y.initDirectives(child);
+                    }
+                });
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                showState('y-ajax-error');
+                const errorEl = el.querySelector('[data-ajax-error]');
+                if (errorEl) errorEl.textContent = e.message || '请求失败';
+            }
+        };
+
+        const trigger = el.getAttribute('data-ajax-trigger') || 'load';
+
+        if (trigger === 'load') {
+            fetchAndRender();
+        } else {
+            const handler = () => fetchAndRender();
+            el.addEventListener(trigger, handler);
+            cleanup(() => el.removeEventListener(trigger, handler));
+        }
+
+        cleanup(() => {
+            if (controller) controller.abort();
+        });
+    },
+);

@@ -24,6 +24,8 @@ use Framework\View\Base\Element;
 class Button extends UXComponent
 {
     protected string $label = '';
+    protected string $intlKey = '';
+    protected array $intlParams = [];
     protected string $type = 'button';
     protected string $variant = 'primary';
     protected string $size = 'md';
@@ -202,6 +204,24 @@ CSS
     public function label(string $label): static
     {
         $this->label = $label;
+        return $this;
+    }
+
+    /**
+     * 设置国际化翻译键名
+     * @param string $key 翻译键名，如 'admin:posts.save'
+     * @param array $params 替换参数
+     * @param string|null $defaultLabel 默认文本（未找到翻译时的回退）
+     * @return static
+     * @ux-example Button::make()->intl('admin:posts.save', [], '保存')
+     */
+    public function intl(string $key, array $params = [], ?string $defaultLabel = null): static
+    {
+        $this->intlKey = $key;
+        $this->intlParams = $params;
+        if ($defaultLabel !== null) {
+            $this->label = $defaultLabel;
+        }
         return $this;
     }
 
@@ -534,7 +554,13 @@ CSS
         }
 
         if ($this->label) {
-            $el->child(Element::make('span')->class('ux-btn-label')->text($this->label));
+            $labelSpan = Element::make('span')->class('ux-btn-label');
+            if ($this->intlKey) {
+                $labelSpan->intl($this->intlKey, $this->intlParams, $this->label);
+            } else {
+                $labelSpan->text($this->label);
+            }
+            $el->child($labelSpan);
         }
 
         if (!$this->loading && $this->icon && $this->iconPosition === 'right') {
