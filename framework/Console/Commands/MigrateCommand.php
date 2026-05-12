@@ -14,6 +14,7 @@ use Framework\Foundation\Application;
 use Framework\Database\Connection\Manager;
 use Framework\Database\Schema\Schema;
 use Framework\Database\Migration\DatabaseMigrationRepository;
+use Framework\Plugin\PluginManager;
 
 #[AsCommand(
     name: 'migrate',
@@ -62,7 +63,18 @@ class MigrateCommand extends Command
             mkdir($migrationsPath, 0755, true);
         }
 
-        $migrations = $this->getPendingMigrations($repository, $migrationsPath);
+        $allPaths = ['app' => $migrationsPath];
+
+        try {
+            $pluginManager = $this->app->make(PluginManager::class);
+            foreach ($pluginManager->getMigrationPaths() as $pluginName => $pluginPath) {
+                $allPaths[$pluginName] = $pluginPath;
+            }
+        } catch (\Throwable $e) {
+            // PluginManager not available
+        }
+
+        $migrations = $this->getPendingMigrations($repository, $allPaths);
 
         if (empty($migrations)) {
             $io->success('Nothing to migrate.');
@@ -76,14 +88,17 @@ class MigrateCommand extends Command
 
         $batch = $repository->getLastBatchNumber() + 1;
 
-        foreach ($migrations as $file) {
+        foreach ($migrations as $migration) {
+            $file = $migration['file'];
+            $path = $migration['path'];
+
             $io->text("Migrating: {$file}");
 
-            require_once $migrationsPath . '/' . $file;
+            require_once $path . '/' . $file;
 
-            $className = $this->getClassNameFromFile($file);
-            $migration = new $className($manager);
-            $migration->up();
+            $className = $this->getClassNameFromFile($file, $path);
+            $migrationInstance = new $className($manager);
+            $migrationInstance->up();
 
             $repository->log($file, $batch);
 
@@ -100,26 +115,36 @@ class MigrateCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function getPendingMigrations(DatabaseMigrationRepository $repository, string $path): array
+    private function getPendingMigrations(DatabaseMigrationRepository $repository, array $paths): array
     {
         $ran = $repository->getRan();
         $ranWithExt = array_map(fn($m) => str_ends_with($m, '.php') ? $m : $m . '.php', $ran);
-        $files = glob($path . '/*.php');
         $migrations = [];
 
-        foreach ($files as $file) {
-            $name = basename($file);
-            if (!in_array($name, $ranWithExt)) {
-                $migrations[] = $name;
+        foreach ($paths as $source => $path) {
+            if (!is_dir($path)) continue;
+            $files = glob($path . '/*.php');
+            foreach ($files as $file) {
+                $name = basename($file);
+                if (!in_array($name, $ranWithExt)) {
+                    $migrations[] = ['file' => $name, 'path' => $path, 'source' => $source];
+                }
             }
         }
 
-        sort($migrations);
+        usort($migrations, fn($a, $b) => $a['file'] <=> $b['file']);
         return $migrations;
     }
 
-    private function getClassNameFromFile(string $file): string
+    private function getClassNameFromFile(string $file, string $path): string
     {
+        $content = file_get_contents($path . '/' . $file);
+        $namespace = 'Database\\Migrations';
+
+        if (preg_match('/namespace\s+([^\s;{]+)/', $content, $m)) {
+            $namespace = trim($m[1]);
+        }
+
         $name = pathinfo($file, PATHINFO_FILENAME);
         $parts = explode('_', $name);
         $className = '';
@@ -128,7 +153,7 @@ class MigrateCommand extends Command
             $className .= ucfirst($part);
         }
 
-        return "Database\\Migrations\\{$className}";
+        return $namespace . '\\' . $className;
     }
 
     private function dropAllTables(Manager $manager): void

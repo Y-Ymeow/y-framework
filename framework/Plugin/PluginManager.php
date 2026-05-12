@@ -110,6 +110,43 @@ class PluginManager
         return $this->pluginInstances;
     }
 
+    /**
+     * 注册插件 PSR-4 自动加载
+     */
+    public function autoloadPlugin(string $name, string $namespace, ?string $srcPath = null): void
+    {
+        $info = $this->plugins[$name] ?? null;
+        $srcPath = $srcPath ?? ($info['path'] ?? '') . '/src';
+
+        $prefix = rtrim($namespace, '\\') . '\\';
+
+        spl_autoload_register(function (string $class) use ($prefix, $srcPath): void {
+            if (strncmp($class, $prefix, strlen($prefix)) !== 0) {
+                return;
+            }
+            $relative = substr($class, strlen($prefix));
+            $file = $srcPath . '/' . str_replace('\\', '/', $relative) . '.php';
+            if (file_exists($file)) {
+                require_once $file;
+            }
+        });
+    }
+
+    /**
+     * 获取所有插件的迁移文件路径
+     */
+    public function getMigrationPaths(): array
+    {
+        $paths = [];
+        foreach ($this->plugins as $name => $meta) {
+            $migrationPath = $meta['path'] . '/Migrations';
+            if (is_dir($migrationPath)) {
+                $paths[$name] = $migrationPath;
+            }
+        }
+        return $paths;
+    }
+
     protected function loadPlugin(array $meta): ?PluginInterface
     {
         $pluginFile = $meta['path'] . '/Plugin.php';

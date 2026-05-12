@@ -12,7 +12,10 @@ use Framework\Events\ResponseSendingEvent;
 use Framework\Events\ResponseSentEvent;
 use Framework\Http\Request\Request;
 use Framework\Http\Response\Response;
+use Framework\Http\Response\RedirectResponse;
 use Framework\Http\Response\StreamedResponse;
+use Framework\Install\InstallController;
+use Framework\Install\InstallManager;
 use Framework\Routing\Router;
 
 class Kernel
@@ -66,6 +69,16 @@ class Kernel
     {
         $this->bootstrap();
         $this->app->instance(Request::class, $request);
+
+        if (!InstallManager::isInstalled()) {
+            $this->router->addRoute('GET', '/install', [InstallController::class, 'show'], 'install.show');
+            $this->router->addRoute('POST', '/install', [InstallController::class, 'handle'], 'install.handle');
+
+            $path = '/' . trim($request->path(), '/');
+            if ($path !== '/install') {
+                return new RedirectResponse('/install');
+            }
+        }
 
         Hook::getInstance()->dispatch(new RequestEvent($request));
 
