@@ -27,6 +27,7 @@
 | Database | `framework/Database/` | Model, Query Builder, Schema, `HasTranslations` |
 | Auth | `framework/Auth/` | Auth 系统 |
 | Events | `framework/Events/` | 事件系统 |
+| Install | `framework/Install/` | InstallManager, InstallController |
 | 前端 | `resources/js/` | y-directive, y-live, y-ux |
 | 入口 | `resources/js/ui.js` | y-directive + y-live |
 | 入口 | `resources/js/ux.js` | y-ux 组件 |
@@ -78,6 +79,12 @@
 - 使用 `#[RouteGroup]` 定义路由组前缀
 - 使用 `#[Middleware]` 绑定中间件
 - 缓存命令：`php bin/console route:cache`
+
+### 安装系统
+- `.env` 不存在或 `APP_KEY` 为空时，`Kernel::handle()` 自动拦截并重定向到 `/install`
+- 6 步安装向导（Element 渲染，非 Live 模式，使用隐藏字段传递步骤数据）
+- 安装后访问 `/install` 自动重定向到首页
+- 核心检测：`InstallManager::isInstalled()`
 
 ---
 

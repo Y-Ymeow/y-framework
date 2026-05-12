@@ -30,6 +30,7 @@ framework/            # 核心框架代码
   ├─ Config/         # ConfigManager, 配置管理
   ├─ Module/         # ModuleManager, 模块系统
   ├─ Intl/           # Translator, 国际化
+  ├─ Install/        # InstallManager, InstallController
   ├─ Scheduler/      # 定时任务调度
   ├─ Log/            # 日志系统
   ├─ DebugBar/       # 调试栏
