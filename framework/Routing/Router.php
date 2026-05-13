@@ -237,7 +237,7 @@ class Router
     public function dispatch(Request $request): Response|StreamedResponse
     {
         $method = $request->method();
-        $path = $request->path();
+        $path = '/' . trim($request->path(), '/') ?: '/';
 
         foreach ($this->routes->getByMethod($method) as $route) {
             $params = $route->match($path);

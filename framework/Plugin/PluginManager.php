@@ -186,21 +186,25 @@ class PluginManager
         $class = '';
 
         for ($i = 0; $i < count($tokens); $i++) {
+            if (!is_array($tokens[$i])) {
+                continue;
+            }
+
             if ($tokens[$i][0] === T_NAMESPACE) {
                 $namespace = '';
                 for ($j = $i + 1; $j < count($tokens); $j++) {
-                    if ($tokens[$j] === ';' || $tokens[$j] === '{') {
+                    if (!is_array($tokens[$j]) && ($tokens[$j] === ';' || $tokens[$j] === '{')) {
                         break;
                     }
-                    if (is_array($tokens[$j])) {
+                    if (is_array($tokens[$j]) && $tokens[$j][0] !== T_WHITESPACE) {
                         $namespace .= $tokens[$j][1];
                     }
                 }
             }
 
-            if ($tokens[$i][0] === T_CLASS) {
+            if ($tokens[$i][0] === T_CLASS && $class === '') {
                 for ($j = $i + 1; $j < count($tokens); $j++) {
-                    if ($tokens[$j][0] === T_STRING) {
+                    if (is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
                         $class = $tokens[$j][1];
                         break;
                     }

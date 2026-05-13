@@ -78,6 +78,11 @@ class Kernel
             if ($path !== '/install') {
                 return new RedirectResponse('/install');
             }
+        } else {
+            $path = '/' . trim($request->path(), '/');
+            if ($path === '/install') {
+                return new RedirectResponse('/');
+            }
         }
 
         Hook::getInstance()->dispatch(new RequestEvent($request));

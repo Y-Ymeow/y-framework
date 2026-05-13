@@ -19,9 +19,11 @@ class PluginServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Hook::getInstance()->on('app.booted', function (BootEvent $event) {
+        Hook::getInstance()->on('app.booting', function (BootEvent $event) {
             try {
                 $manager = $this->app->make(PluginManager::class);
+
+                $manager->scan();
 
                 $enabled = array_column(
                     \Admin\Models\PluginSetting::where('enabled', true)->get()->all(),
@@ -29,6 +31,9 @@ class PluginServiceProvider extends ServiceProvider
                 );
 
                 $manager->boot($enabled);
+
+                $router = $this->app->make(\Framework\Routing\Router::class);
+                \Admin\Services\AdminManager::registerPluginRoutes($router);
             } catch (\Throwable $e) {
                 // Table may not exist before migration
             }

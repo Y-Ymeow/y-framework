@@ -81,6 +81,23 @@ return [
         'today_visits' => '今日访问',
         'orders' => '订单数',
         'revenue' => '收入',
+        'posts' => [
+            'title' => '文章统计',
+            'published' => '已发布',
+            'draft' => '草稿',
+            'archived' => '归档',
+        ],
+        'recent_posts' => '最近文章',
+        'no_posts' => '暂无文章',
+        'untitled' => '无标题',
+        'system_info' => '系统信息',
+        'php_version' => 'PHP 版本',
+        'framework_version' => '框架版本',
+        'environment' => '运行环境',
+        'debug_mode' => '调试模式',
+        'db_driver' => '数据库驱动',
+        'on' => '开启',
+        'off' => '关闭',
     ],
 
     'roles' => [

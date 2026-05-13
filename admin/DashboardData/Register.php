@@ -18,7 +18,11 @@ class Register
 
     public static function getWidgets(): array
     {
-        return static::$widgets;
+        $widgets = static::$widgets;
+
+        usort($widgets, fn (string $a, string $b) => $a::getOrder() <=> $b::getOrder());
+
+        return $widgets;
     }
 
     public static function boot(string $basePath): void

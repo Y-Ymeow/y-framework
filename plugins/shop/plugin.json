@@ -1,0 +1,8 @@
+{
+  "name": "shop",
+  "title": "商城",
+  "description": "电商商城模块，提供商品管理、订单管理、分类管理等功能",
+  "version": "1.0.0",
+  "author": "Framework Team",
+  "framework_version": "1.0.0"
+}

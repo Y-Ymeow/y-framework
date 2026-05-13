@@ -10,6 +10,8 @@ use Framework\View\Base\Element;
 
 class UserStatWidget extends LiveComponent
 {
+    public static function getOrder(): int { return 30; }
+    public static function getSection(): string { return 'stats'; }
     public function render(): Element
     {
         $userModel = \Admin\Auth\User::class;

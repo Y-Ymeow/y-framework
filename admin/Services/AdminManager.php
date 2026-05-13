@@ -14,6 +14,7 @@ class AdminManager
 {
     protected static array $resources = [];
     protected static array $pages = [];
+    protected static array $registeredResourceNames = [];
     protected static string $prefix = '/admin';
     protected static ?string $brandTitle = 'Admin';
     protected static bool $booted = false;
@@ -115,14 +116,19 @@ class AdminManager
                 $router->addRoute('GET', '/dashboard', [$dashboardClass, '__invoke'], 'dashboard.alias');
             }
 
-            foreach (static::$resources as $resourceClass) {
+            foreach (static::$resources as $name => $resourceClass) {
+                if (in_array($name, static::$registeredResourceNames, true)) {
+                    continue;
+                }
+                static::$registeredResourceNames[] = $name;
+
                 $routes = $resourceClass::getRoutes();
-                foreach ($routes as $name => $config) {
+                foreach ($routes as $routeName => $config) {
                     $method = $config['method'] ?? 'GET';
                     $path = $config['path'];
                     $handler = $config['handler'];
 
-                    $router->addRoute($method, $path, $handler, $name);
+                    $router->addRoute($method, $path, $handler, $routeName);
                 }
             }
 
@@ -142,6 +148,33 @@ class AdminManager
                     }
                 } else {
                     $router->addRoute('GET', '/' . $name, [$pageClass, '__invoke'], 'page.' . $name);
+                }
+            }
+        });
+    }
+
+    public static function registerPluginRoutes(\Framework\Routing\Router $router): void
+    {
+        $prefix = static::getPrefix();
+
+        $router->group([
+            'prefix' => $prefix,
+            'middleware' => [AdminAuthenticate::class],
+            'name' => 'admin',
+        ], function (\Framework\Routing\Router $router) {
+            foreach (static::$resources as $name => $resourceClass) {
+                if (in_array($name, static::$registeredResourceNames, true)) {
+                    continue;
+                }
+                static::$registeredResourceNames[] = $name;
+
+                $routes = $resourceClass::getRoutes();
+                foreach ($routes as $routeName => $config) {
+                    $method = $config['method'] ?? 'GET';
+                    $path = $config['path'];
+                    $handler = $config['handler'];
+
+                    $router->addRoute($method, $path, $handler, $routeName);
                 }
             }
         });

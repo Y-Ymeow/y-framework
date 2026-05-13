@@ -80,9 +80,26 @@ return [
 
     'stats' => [
         'total_users' => 'Total Users',
-        'today_visits' => 'Today Visits',
+        'today_visits' => 'Today\'s Visits',
         'orders' => 'Orders',
         'revenue' => 'Revenue',
+        'posts' => [
+            'title' => 'Post Statistics',
+            'published' => 'Published',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+        ],
+        'recent_posts' => 'Recent Posts',
+        'no_posts' => 'No posts yet',
+        'untitled' => 'Untitled',
+        'system_info' => 'System Info',
+        'php_version' => 'PHP Version',
+        'framework_version' => 'Framework Version',
+        'environment' => 'Environment',
+        'debug_mode' => 'Debug Mode',
+        'db_driver' => 'Database Driver',
+        'on' => 'On',
+        'off' => 'Off',
     ],
 
     'fields' => [

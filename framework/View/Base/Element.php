@@ -200,11 +200,15 @@ class Element
      *
      * @view-since 1.0.0
      * @param string $name 属性名（如 'href', 'title'）
-     * @param string $value 属性值
+     * @param string|null $value 属性值
      * @return static
      */
-    public function attr(string $name, string $value): static
+    public function attr(string $name, ?string $value): static
     {
+        if ($value === null) {
+            return $this;
+        }
+
         if (preg_match('/^on/', $name)) {
             return $this;
         }

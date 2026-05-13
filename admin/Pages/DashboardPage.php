@@ -13,9 +13,6 @@ use Admin\Contracts\Page\PageInterface;
 use Framework\Component\Live\LiveComponent;
 use Framework\View\Base\Element;
 use Framework\UX\Layout\Grid;
-use Framework\UX\Display\Card;
-use Framework\UX\Display\StatCard;
-use Framework\UX\Feedback\Alert;
 use Framework\UX\Feedback\EmptyState;
 use Framework\UX\UXComponent;
 
@@ -62,7 +59,7 @@ class DashboardPage implements PageInterface
         return $layout;
     }
 
-    protected function renderDashboard(): UXComponent
+    protected function renderDashboard(): mixed
     {
         $widgets = Register::getWidgets();
 
@@ -70,14 +67,39 @@ class DashboardPage implements PageInterface
             return $this->renderEmptyDashboard();
         }
 
-        $grid = Grid::make()->cols(3)->class('dashboard-widgets', 'gap-6');
+        $statWidgets = [];
+        $otherWidgets = [];
 
         foreach ($widgets as $widgetClass) {
-            $widget = new $widgetClass();
-            $grid->child($widget->toHtml());
+            $section = method_exists($widgetClass, 'getSection') ? $widgetClass::getSection() : 'content';
+            if ($section === 'stats') {
+                $statWidgets[] = $widgetClass;
+            } else {
+                $otherWidgets[] = $widgetClass;
+            }
         }
 
-        return $grid;
+        $wrapper = Element::make('div')->class('dashboard-widgets', 'space-y-6');
+
+        if (!empty($statWidgets)) {
+            $statRow = Element::make('div')->class('grid', 'grid-cols-4', 'gap-6');
+            foreach ($statWidgets as $widgetClass) {
+                $widget = new $widgetClass();
+                $statRow->child($widget->toHtml());
+            }
+            $wrapper->child($statRow);
+        }
+
+        if (!empty($otherWidgets)) {
+            $grid = Grid::make()->cols(2)->gap(6);
+            foreach ($otherWidgets as $widgetClass) {
+                $widget = new $widgetClass();
+                $grid->child($widget->toHtml());
+            }
+            $wrapper->child($grid);
+        }
+
+        return $wrapper;
     }
 
     protected function renderEmptyDashboard(): UXComponent

@@ -67,6 +67,7 @@ class MigrateCommand extends Command
 
         try {
             $pluginManager = $this->app->make(PluginManager::class);
+            $pluginManager->scan();
             foreach ($pluginManager->getMigrationPaths() as $pluginName => $pluginPath) {
                 $allPaths[$pluginName] = $pluginPath;
             }
